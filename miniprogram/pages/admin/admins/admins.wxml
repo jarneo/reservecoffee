@@ -1,0 +1,25 @@
+<view class="page">
+  <view class="sec">管理员列表</view>
+  <view wx:for="{{list}}" wx:key="_id" class="card">
+    <view class="row between">
+      <view class="bold">{{item.role==='owner'?'超级管理员':'普通管理员'}}</view>
+      <view class="badge {{item.role==='owner'?'ok':'paused'}}">{{item.role==='owner'?'owner':'manager'}}</view>
+    </view>
+    <view class="sm muted" style="margin-top:6rpx">openid：{{item.openid}}</view>
+    <view wx:if="{{item.note}}" class="xs" style="margin-top:4rpx">备注：{{item.note}}</view>
+    <button wx:if="{{item.role!=='owner'}}" class="btn ghost sm" style="margin-top:14rpx" bindtap="remove" data-id="{{item._id}}">移除</button>
+  </view>
+
+  <view class="card">
+    <view class="sec">新增管理员</view>
+    <view class="field"><view class="label">被授权人 openid</view><input placeholder="微信 openid" value="{{openid}}" bindinput="onOpenid"/></view>
+    <view class="field"><view class="label">角色</view>
+      <view class="row">
+        <view class="chip {{role==='manager'?'on':''}}" bindtap="pickRole" data-r="manager">普通管理员</view>
+        <view class="chip {{role==='owner'?'on':''}}" bindtap="pickRole" data-r="owner">超级管理员</view>
+      </view>
+    </view>
+    <view class="field"><view class="label">备注（选填）</view><input placeholder="如 店员小王" value="{{note}}" bindinput="onNote"/></view>
+    <button class="btn block" bindtap="add">授权</button>
+  </view>
+</view>

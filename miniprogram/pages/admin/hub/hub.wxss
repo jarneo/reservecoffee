@@ -1,0 +1,6 @@
+.hd { display:flex; align-items:center; justify-content:space-between; padding:8rpx 4rpx 20rpx; }
+.menu { background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; }
+.mi { display:flex; align-items:center; justify-content:space-between; padding:28rpx 24rpx; border-bottom:1rpx solid var(--line); }
+.mi:last-child { border-bottom:none; }
+.mt { font-size:30rpx; }
+.ma { color:var(--ink-3); font-size:32rpx; }

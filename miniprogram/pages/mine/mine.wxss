@@ -1,0 +1,2 @@
+.note { color: var(--ink-3); font-size: 26rpx; text-align: center; padding: 60rpx; }
+.btn.ghost.sm { width: auto; }

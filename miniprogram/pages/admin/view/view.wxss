@@ -1,0 +1,8 @@
+.chips { display:flex; flex-wrap:wrap; gap:12rpx; margin-bottom:16rpx; }
+.chip { padding:10rpx 20rpx; border:1rpx solid var(--line); border-radius:999rpx; font-size:24rpx; }
+.chip.on { border-color:var(--ink); font-weight:600; }
+.ma { color:var(--ink-3); }
+.note { color:var(--ink-3); text-align:center; padding:30rpx; }
+.sheet-mask { position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,.4); display:flex; align-items:flex-end; z-index:50; }
+.sheet { background:#fff; width:100%; padding:36rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); border-radius:24rpx 24rpx 0 0; }
+.noop {}

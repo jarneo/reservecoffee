@@ -1,0 +1,13 @@
+<view class="scard">
+  <view class="row between">
+    <view class="bold">{{session.start}} – {{session.end}}</view>
+    <view class="badge {{session.remaining<=0?'full':(session.paused?'paused':'ok')}}">{{session.paused?'已暂停':(session.remaining<=0?'已满':'剩'+session.remaining+'/'+session.capacity)}}</view>
+  </view>
+  <view wx:if="{{session.desc}}" class="xs muted" style="margin-top:6rpx">{{session.desc}}</view>
+  <view class="actions">
+    <button wx:if="{{session.paused}}" class="btn ghost sm" size="mini" bindtap="onResume">恢复</button>
+    <button wx:else class="btn ghost sm" size="mini" bindtap="onPause">暂停</button>
+    <button wx:if="{{canChangeCap}}" class="btn ghost sm" size="mini" bindtap="onCap">改名额</button>
+    <button wx:if="{{showCancel}}" class="btn ghost sm" size="mini" bindtap="onCancel">取消全部</button>
+  </view>
+</view>

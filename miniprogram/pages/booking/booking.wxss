@@ -1,0 +1,14 @@
+.topbar { padding: 12rpx 4rpx 20rpx; }
+.legend { display:flex; align-items:center; font-size:22rpx; color:var(--ink-3); margin-bottom:16rpx; }
+.legend .dot { width:18rpx; height:18rpx; border-radius:50%; margin-right:8rpx; }
+.legend .dot.ok { background:#fff; border:2rpx solid var(--ink); }
+.legend .dot.off { background:var(--fill); border:2rpx solid var(--line); margin-left:24rpx; }
+.daygrid { display:grid; grid-template-columns:repeat(7,1fr); gap:12rpx; margin-bottom:24rpx; }
+.daycell { background:#fff; border:1rpx solid var(--line); border-radius:12rpx; padding:14rpx 0; text-align:center; }
+.daycell .dn { font-size:28rpx; font-weight:600; }
+.daycell .dw { font-size:20rpx; color:var(--ink-3); margin-top:2rpx; }
+.daycell.on { border:2rpx solid var(--ink); background:var(--fill-2); }
+.daycell.off { opacity:.35; background:var(--fill); }
+.biz { font-size:24rpx; color:var(--ink-2); padding:10rpx 4rpx 18rpx; }
+.card.dis { opacity:.45; }
+.note { color:var(--ink-3); font-size:26rpx; text-align:center; padding:36rpx; }

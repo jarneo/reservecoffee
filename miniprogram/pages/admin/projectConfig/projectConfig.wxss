@@ -1,0 +1,5 @@
+.sec { font-size:26rpx; color:var(--ink-3); margin-bottom:14rpx; }
+.ma { color:var(--ink-3); }
+.bartools { display:flex; gap:12rpx; margin-top:16rpx; flex-wrap:wrap; }
+.note { color:var(--ink-3); text-align:center; padding:30rpx; }
+.add { background:var(--fill-2); border:1rpx solid var(--line); border-radius:12rpx; padding:16rpx; margin-top:14rpx; }

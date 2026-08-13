@@ -1,0 +1,14 @@
+<view class="page">
+  <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onPick">
+    <view class="card row between tap"><view class="bold">{{projects.length?projects[0].name:'选择项目'}}</view><view class="ma">切换 ›</view></view>
+  </picker>
+
+  <view class="chips">
+    <view wx:for="{{dates}}" wx:key="*this" class="chip {{item===selDate?'on':''}}" bindtap="onDate" data-d="{{item}}">{{item}}</view>
+  </view>
+
+  <view wx:if="{{sessions.length===0}}" class="note">该日暂无场次</view>
+  <sessionCard wx:for="{{sessions}}" wx:key="id" session="{{item}}" canChangeCap="{{canChangeCap}}" showCancel="{{true}}" bind:op="onOp"/>
+
+  <view class="tip">{{role==='owner'?'可暂停/取消/改名额':'普通管理员可暂停或取消场次，不可改名额'}}</view>
+</view>

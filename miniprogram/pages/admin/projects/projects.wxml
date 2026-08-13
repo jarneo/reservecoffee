@@ -1,0 +1,29 @@
+<view class="page">
+  <view class="row between" style="padding:8rpx 4rpx 16rpx">
+    <view class="bold">预约项目</view>
+    <view class="btn sm" bindtap="toggleForm">{{showForm?'收起':'+ 新建'}}</view>
+  </view>
+
+  <view wx:if="{{showForm}}" class="card">
+    <view class="field"><view class="label">项目名称</view><input placeholder="如 法兰绒深烘咖啡预约" value="{{form.name}}" bindinput="onName"/></view>
+    <view class="field"><view class="label">简介</view><input placeholder="一句话介绍" value="{{form.intro}}" bindinput="onIntro"/></view>
+    <view class="field"><view class="label">图标</view>
+      <view class="row">
+        <view wx:for="{{icons}}" wx:key="*this" class="chip {{form.icon===item?'on':''}}" bindtap="pickIcon" data-i="{{item}}">{{item}}</view>
+      </view>
+    </view>
+    <view class="field row between"><view class="label">需审核</view><switch checked="{{form.needReview}}" bindchange="toggleReview"/></view>
+    <view class="field row between"><view class="label">每日次数上限</view><input type="number" style="width:120rpx;text-align:right" value="{{form.dailyLimit}}" bindinput="onDaily"/></view>
+    <view class="field row between"><view class="label">提前可预约天数(1–30)</view><input type="number" style="width:120rpx;text-align:right" value="{{form.advanceDays}}" bindinput="onAdv"/></view>
+    <button class="btn block" bindtap="create" style="margin-top:12rpx">创建项目</button>
+  </view>
+
+  <view wx:for="{{list}}" wx:key="_id" class="card">
+    <view class="row between">
+      <view class="bold">{{item.name}}</view>
+      <view class="badge {{item.published?'ok':'full'}}">{{item.published?'已发布':'草稿'}}</view>
+    </view>
+    <view class="xs muted" style="margin-top:6rpx">需审核：{{item.needReview?'是':'否'}} · 状态：{{item.paused?'已暂停':'开放'}} · 可约日 {{item.openDays.length}} 天</view>
+  </view>
+  <view wx:if="{{list.length===0}}" class="note">暂无项目，点击右上角新建</view>
+</view>

@@ -1,0 +1,8 @@
+<view class="page">
+  <view class="card">
+    <view class="field"><view class="label">品牌名称</view><input value="{{form.logo}}" bindinput="on" data-k="logo"/></view>
+    <view class="field"><view class="label">顶部标签</view><input value="{{form.tag}}" bindinput="on" data-k="tag"/></view>
+    <view class="field"><view class="label">首页简介</view><textarea value="{{form.intro}}" bindinput="on" data-k="intro"/></view>
+  </view>
+  <button class="btn block" bindtap="save">保存首页配置</button>
+</view>

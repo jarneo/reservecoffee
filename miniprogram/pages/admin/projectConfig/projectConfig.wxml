@@ -1,0 +1,55 @@
+<view class="page">
+  <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onProjectPick">
+    <view class="card row between tap"><view class="bold">{{project?project.name:'选择项目'}}</view><view class="ma">切换 ›</view></view>
+  </picker>
+
+  <!-- 日历 + 批量治理 -->
+  <view class="card">
+    <view class="sec">可约日期治理（点选日期加入/移出选中集）</view>
+    <calendar openDays="{{openDays}}" selected="{{selected}}" year="{{year}}" month="{{month}}" bind:select="onCalSelect"/>
+    <view class="bartools">
+      <button class="btn sm" bindtap="batchOpen">批量开放选中</button>
+      <button class="btn ghost sm" bindtap="batchClose">批量关闭</button>
+      <button wx:if="{{selected.length}}" class="btn ghost sm" bindtap="clearSel">清除选择</button>
+    </view>
+  </view>
+
+  <!-- 全局设定 -->
+  <view class="card">
+    <view class="sec">全局设定</view>
+    <view class="field row between"><view class="label">需审核</view><switch checked="{{global.needReview}}" bindchange="gReview"/></view>
+    <view class="field row between"><view class="label">暂停/开放</view><switch checked="{{global.paused}}" bindchange="gPaused"/></view>
+    <view class="field row between"><view class="label">每日次数上限</view><input type="number" style="width:120rpx;text-align:right" value="{{global.dailyLimit}}" bindinput="gDaily"/></view>
+    <view class="field row between"><view class="label">提前天数(1–30)</view><input type="number" style="width:120rpx;text-align:right" value="{{global.advanceDays}}" bindinput="gAdv"/></view>
+    <view class="field row between"><view class="label">启用固定时段模板</view><switch checked="{{global.useSlotTemplate}}" bindchange="gTemplate"/></view>
+    <view class="field"><view class="label">时段模板（每行 起-止，如 10:00-11:30）</view><textarea value="{{global.slotTemplateText}}" bindinput="onSlotText"/></view>
+    <button class="btn block" bindtap="saveGlobal">保存全局设定</button>
+  </view>
+
+  <view class="row" style="gap:16rpx;margin:8rpx 0 16rpx">
+    <button class="btn sm" bindtap="publish" data-v="true">发布到首页</button>
+    <button class="btn ghost sm" bindtap="publish" data-v="false">下架</button>
+  </view>
+
+  <!-- 单日场次编辑 -->
+  <view class="card">
+    <view class="sec">单日场次编辑</view>
+    <picker mode="date" value="{{editDate}}" bindchange="onEditDate">
+      <view class="field tap"><view class="label">选择日期</view><view class="bold">{{editDate||'点击选择'}}</view></view>
+    </picker>
+    <view wx:if="{{editDate}}">
+      <sessionCard wx:for="{{sessions}}" wx:key="id" session="{{item}}" canChangeCap="{{true}}" showCancel="{{true}}" bind:op="onSessionOp"/>
+      <view class="add">
+        <view class="row" style="gap:12rpx">
+          <input placeholder="开始" value="{{newSess.start}}" bindinput="onStart" style="width:160rpx"/>
+          <text>–</text>
+          <input placeholder="结束" value="{{newSess.end}}" bindinput="onEnd" style="width:160rpx"/>
+          <input placeholder="名额" type="number" value="{{newSess.capacity}}" bindinput="onCap" style="width:120rpx"/>
+        </view>
+        <button class="btn sm" bindtap="addSession" style="margin-top:12rpx">添加场次</button>
+      </view>
+      <button class="btn ghost block" bindtap="copyDay" style="margin-top:16rpx">复制当天设置</button>
+    </view>
+    <view wx:else class="note">选择日期后可编辑场次</view>
+  </view>
+</view>

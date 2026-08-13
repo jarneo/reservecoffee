@@ -1,0 +1,18 @@
+<view class="cal">
+  <view class="cal-hd">
+    <view class="btn ghost sm" bindtap="prev">‹</view>
+    <view class="cal-title">{{year}} 年 {{month}} 月</view>
+    <view class="btn ghost sm" bindtap="next">›</view>
+  </view>
+  <view class="cal-week">
+    <view wx:for="{{WEEK}}" wx:key="*this" class="cw">{{item}}</view>
+  </view>
+  <view class="cal-grid">
+    <view wx:for="{{cells}}" wx:key="ymd"
+      class="cell {{item.empty?'empty':''}} {{item.open?'open':''}} {{item.sel?'sel':''}}"
+      data-ymd="{{item.ymd}}" bindtap="tap">
+      <view wx:if="{{!item.empty}}" class="cd">{{item.day}}</view>
+    </view>
+  </view>
+  <view class="cal-legend"><view class="dot open"></view>可约<view class="dot closed"></view>不可约<view class="dot sel"></view>已选</view>
+</view>

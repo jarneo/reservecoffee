@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="hd">
+    <view class="bold">管理台</view>
+    <view class="badge {{role==='owner'?'ok':'paused'}}">{{role==='owner'?'超级管理员':'普通管理员'}}</view>
+  </view>
+  <view class="menu">
+    <view wx:for="{{menus}}" wx:key="t" class="mi" bindtap="go" data-u="{{item.u}}">
+      <view class="mt">{{item.t}}</view><view class="ma">›</view>
+    </view>
+  </view>
+  <view class="btn ghost block" bindtap="exit" style="margin-top:24rpx">退出管理端</view>
+</view>

@@ -1,0 +1,2 @@
+.sec { font-size:26rpx; color:var(--ink-3); padding:8rpx 4rpx 16rpx; }
+.note { color:var(--ink-3); text-align:center; padding:40rpx; }

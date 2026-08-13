@@ -1,0 +1,19 @@
+{
+  "miniprogramRoot": "miniprogram/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "appid": "touristappid",
+  "projectname": "reservecoffee",
+  "description": "二曜路8号咖啡和清酒 · 预约小程序",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "nodeModules": false
+  },
+  "compileType": "miniprogram",
+  "libVersion": "latest",
+  "condition": {}
+}

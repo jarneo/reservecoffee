@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="hero">
+    <view class="brand-row"><view class="brand-dot"></view><view class="brand-text">{{homepage.logo}}</view></view>
+    <view class="tag">{{homepage.tag}}</view>
+    <view class="intro">{{homepage.intro}}</view>
+  </view>
+
+  <view class="sec-title">预约项目</view>
+  <view wx:if="{{projects.length===0}}" class="note">暂无可预约项目</view>
+  <view wx:for="{{projects}}" wx:key="_id" class="card tap" bindtap="goBooking" data-id="{{item._id}}">
+    <view class="row between">
+      <view class="bold">{{item.name}}</view>
+      <view class="badge {{item.needReview?'paused':''}}">{{item.needReview?'需审核':'免审核'}}</view>
+    </view>
+    <view class="sm muted" style="margin-top:8rpx">{{item.intro}}</view>
+  </view>
+
+  <view wx:if="{{role!=='none'}}" class="btn ghost block" bindtap="goAdmin" style="margin-top:24rpx">进入管理端</view>
+</view>

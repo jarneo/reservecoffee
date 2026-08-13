@@ -1,0 +1,37 @@
+<view class="page">
+  <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onPick">
+    <view class="card row between tap"><view class="bold">{{projects.length?projects[0].name:'选择项目'}}</view><view class="ma">切换 ›</view></view>
+  </picker>
+
+  <view class="chips">
+    <view wx:for="{{dates}}" wx:key="*this" class="chip {{item===selDate?'on':''}}" bindtap="onDate" data-d="{{item}}">{{item}}</view>
+  </view>
+
+  <view class="chips">
+    <view wx:for="{{sessions}}" wx:key="id" class="chip {{item.id===selSession?'on':''}}" bindtap="onSession" data-id="{{item.id}}">{{item.start}}–{{item.end}}</view>
+  </view>
+
+  <view wx:if="{{selSession}}">
+    <view wx:if="{{list.length===0}}" class="note">该场次暂无预约人</view>
+    <view wx:for="{{list}}" wx:key="_id" class="card tap" bindtap="showDetail" data-id="{{item._id}}">
+      <view class="row between">
+        <view class="bold">{{item.name}} <text class="muted">· {{item.partySize}}人</text></view>
+        <view class="badge {{item.review==='pending'?'paused':(item.status==='confirmed'?'ok':'full')}}">{{item.review==='pending'?'待审':(item.status==='confirmed'?'已确认':'已取消')}}</view>
+      </view>
+      <view class="sm muted" style="margin-top:6rpx">{{item.phone}}</view>
+    </view>
+  </view>
+  <view wx:else class="note">请选择日期与场次</view>
+
+  <view wx:if="{{detail}}" class="sheet-mask" bindtap="closeDetail">
+    <view class="sheet" catchtap="noop">
+      <view class="bold" style="font-size:32rpx">{{detail.name}}</view>
+      <view class="row" style="margin-top:12rpx;gap:24rpx">
+        <view><view class="xs muted">电话</view><view>{{detail.phone}}</view></view>
+        <view><view class="xs muted">人数</view><view>{{detail.partySize}} 人</view></view>
+      </view>
+      <view class="xs muted" style="margin-top:12rpx">审核：{{detail.review==='pending'?'待审核':(detail.review==='approved'?'已通过':'已拒绝')}}</view>
+      <button class="btn block" style="margin-top:20rpx" bindtap="dial">📞 拨打电话</button>
+    </view>
+  </view>
+</view>
