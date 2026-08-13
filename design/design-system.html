@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>预约小程序 · 黑白极简设计系统 v6.2</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#0A0A0A; --ink-2:#6B6B6B; --ink-3:#9A9A9A;
+    --line:#E7E7E7; --fill:#F5F5F5; --fill-2:#FAFAFA; --inv:#0A0A0A; --inv-ink:#FFFFFF;
+    --r:14px; --r-sm:10px; --gap:14px;
+    --font:"PingFang SC","Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:#F0F0F0;color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .app{display:flex;min-height:100vh}
+  /* ---- sidebar ---- */
+  .side{width:268px;background:#161616;color:#EDEDED;padding:18px 14px;flex:0 0 auto;overflow:auto}
+  .side h1{font-size:14px;font-weight:600;letter-spacing:.5px;margin-bottom:2px}
+  .side .sub{font-size:11px;color:#9A9A9A;margin-bottom:16px}
+  .role{display:flex;gap:6px;background:#000;padding:4px;border-radius:10px;margin-bottom:18px}
+  .role button{flex:1;border:0;background:transparent;color:#BDBDBD;font-size:12px;padding:7px 4px;border-radius:7px;cursor:pointer;font-family:var(--font)}
+  .role button.on{background:#FFFFFF;color:#0A0A0A;font-weight:600}
+  .grp{font-size:10px;color:#7A7A7A;text-transform:uppercase;letter-spacing:1px;margin:14px 6px 6px}
+  .nav button{display:block;width:100%;text-align:left;border:0;background:transparent;color:#D6D6D6;font-size:13px;padding:9px 10px;border-radius:8px;cursor:pointer;font-family:var(--font)}
+  .nav button:hover{background:#232323}
+  .nav button.on{background:#FFFFFF;color:#0A0A0A;font-weight:600}
+  .nav button .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4D4D4D;margin-right:8px;vertical-align:middle}
+  .nav button.on .dot{background:#0A0A0A}
+  .legend{margin-top:18px;font-size:11px;color:#8A8A8A;line-height:1.6;border-top:1px solid #2A2A2A;padding-top:12px}
+  /* ---- stage ---- */
+  .stage{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:32px;overflow:auto}
+  .phone{width:390px;flex:0 0 auto;background:var(--bg);border-radius:38px;border:10px solid #0A0A0A;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;position:relative}
+  .phone .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#0A0A0A;border-radius:0 0 16px 16px;z-index:30}
+  .screen{height:780px;overflow:auto;padding:0}
+  .screen::-webkit-scrollbar{width:0}
+  /* ---- shared components ---- */
+  .top{position:sticky;top:0;background:var(--bg);z-index:10;padding:14px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .top .back{font-size:20px;color:var(--ink);cursor:pointer;line-height:1;width:24px}
+  .top .ttl{font-size:16px;font-weight:600}
+  .top .r{margin-left:auto;font-size:12px;color:var(--ink-2)}
+  .pad{padding:16px}
+  .sec{font-size:12px;color:var(--ink-2);letter-spacing:.4px;margin:18px 16px 8px;text-transform:none}
+  .sec:first-child{margin-top:8px}
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 16px 12px}
+  .card.tap{cursor:pointer;transition:border-color .15s}
+  .card.tap:active{border-color:var(--ink)}
+  .row{display:flex;align-items:center;gap:10px}
+  .between{justify-content:space-between}
+  .muted{color:var(--ink-2)}
+  .sm{font-size:12px}
+  .xs{font-size:11px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:var(--r-sm);padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);width:100%}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .btn.sm{padding:8px 12px;font-size:13px;width:auto}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .pill{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;color:var(--ink-2);background:#fff}
+  .pill.on{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .badge{display:inline-flex;align-items:center;font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+  .badge.full{background:var(--fill);color:var(--ink-2)}
+  .badge.paused{border-style:dashed}
+  .badge.ok{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .ico{width:44px;height:44px;flex:0 0 auto;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--fill-2)}
+  .ico svg{width:24px;height:24px;stroke:var(--ink);fill:none;stroke-width:1.6}
+  .ico.lg{width:56px;height:56px;border-radius:14px}
+  .ico.lg svg{width:30px;height:30px}
+  .field{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 12px;font-size:14px;width:100%;font-family:var(--font);color:var(--ink);background:#fff}
+  .field:focus{outline:none;border-color:var(--ink)}
+  .label{font-size:12px;color:var(--ink-2);margin-bottom:6px;display:block}
+  .divider{height:1px;background:var(--line);margin:14px 0}
+  .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .stepper button{width:34px;height:34px;border:0;background:#fff;font-size:18px;cursor:pointer;color:var(--ink);font-family:var(--font)}
+  .stepper .v{min-width:38px;text-align:center;font-size:15px;font-weight:600}
+  .switch{width:46px;height:28px;border-radius:999px;background:var(--fill);border:1px solid var(--line);position:relative;cursor:pointer;flex:0 0 auto}
+  .switch.on{background:var(--ink);border-color:var(--ink)}
+  .switch i{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s}
+  .switch.on i{left:20px}
+  /* hero */
+  .hero{margin:16px;border-radius:var(--r);border:1px solid var(--line);overflow:hidden}
+  .hero .img{height:150px;background:linear-gradient(135deg,#1c1c1c,#3a3a3a);display:flex;align-items:center;justify-content:center;color:#fff;flex-direction:column;gap:6px}
+  .hero .img .logo{font-size:22px;font-weight:700;letter-spacing:2px}
+  .hero .img .tag{font-size:11px;opacity:.8;letter-spacing:1px}
+  .hero .txt{padding:14px}
+  .hero .txt h2{font-size:17px;font-weight:700;margin-bottom:4px}
+  .hero .txt p{font-size:13px;color:var(--ink-2);line-height:1.6}
+  /* project card */
+  .pcard{display:flex;gap:12px;align-items:center;margin:0 16px 12px;border:1px solid var(--line);border-radius:var(--r);padding:14px;cursor:pointer;background:#fff}
+  .pcard:active{border-color:var(--ink)}
+  .pcard .meta{flex:1;min-width:0}
+  .pcard .meta .nm{font-size:15px;font-weight:600}
+  .pcard .meta .ds{font-size:12px;color:var(--ink-2);margin-top:3px}
+  .pcard .meta .ft{font-size:11px;color:var(--ink-3);margin-top:6px}
+  .pcard .go{font-size:20px;color:var(--ink-3)}
+  /* calendar */
+  .cal{border:1px solid var(--line);border-radius:var(--r);margin:0 16px 12px;overflow:hidden}
+  .cal .ch{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .cal .ch b{font-size:15px}
+  .cal .ch span{font-size:18px;cursor:pointer;color:var(--ink-2);padding:0 6px}
+  .cal .wd{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line)}
+  .cal .wd div{text-align:center;font-size:11px;color:var(--ink-3);padding:8px 0}
+  .cal .grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cal .d{aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;border-top:1px solid var(--fill);border-right:1px solid var(--fill);position:relative;cursor:pointer}
+  .cal .d.dim{color:var(--ink-3);cursor:default}
+  .cal .d.sel{background:var(--ink);color:#fff}
+  .cal .d.sel .ind{background:#fff}
+  .cal .d .ind{position:absolute;bottom:7px;width:5px;height:5px;border-radius:50%;background:var(--ink)}
+  .cal .d .cnt{position:absolute;bottom:6px;font-size:9px;color:var(--ink-3)}
+  .cal .d .st{position:absolute;top:5px;font-size:9px;line-height:1}
+  .cal .d.open{background:#fff;border:1px solid var(--ink);font-weight:600}
+  .cal .d.open .st{color:var(--ink-2)}
+  .cal .d.off{background:var(--fill);color:var(--ink-3);cursor:pointer}
+  .cal .d.off .st{color:var(--ink-3)}
+  .cal .d.pick{outline:2px solid var(--ink);outline-offset:-2px;background:#fff}
+  .cal .d.pick .st{color:var(--ink)}
+  .bartools{margin:0 16px 12px;border:1px solid var(--line);border-radius:var(--r);padding:12px;background:#fff}
+  .bartools .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .bartools .seln{font-size:12px;color:var(--ink-2)}
+  .bartools .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .bartools .selclear{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+  .bartools .selclear .cnt{font-size:12px;color:var(--ink-2)}
+  .bartools .selclear .btn.ghost{color:var(--ink-3);border-color:var(--line)}
+  /* session editor */
+  .sess{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin-bottom:10px}
+  .sess .top2{display:flex;align-items:center;justify-content:space-between}
+  .sess .tm{font-size:14px;font-weight:600}
+  .sess .cap{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .sess .cap input{width:64px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;font-family:var(--font);text-align:center}
+  /* sheet (bottom) */
+  .sheet-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{width:390px;background:#fff;border-radius:22px 22px 0 0;padding:18px 16px 24px;max-height:560px;overflow:auto}
+  .sheet .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .sheet .hd b{font-size:16px}
+  .sheet .x{font-size:22px;color:var(--ink-3);cursor:pointer}
+  .person{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin-bottom:10px;cursor:pointer}
+  .person .nm{font-size:14px;font-weight:600}
+  .person .ln{font-size:12px;color:var(--ink-2);margin-top:3px}
+  .person .ph{font-size:12px;color:var(--ink);margin-top:3px;font-weight:600}
+  .detail .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--fill);font-size:13px}
+  .detail .kv .k{color:var(--ink-2)}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#0A0A0A;color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:1}
+  .stat{display:flex;gap:10px;margin:0 16px}
+  .stat .b{flex:1;border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:center}
+  .stat .b .n{font-size:20px;font-weight:700}
+  .stat .b .l{font-size:11px;color:var(--ink-2);margin-top:2px}
+  .menu{margin:0 16px}
+  .menu .mi{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px;cursor:pointer;background:#fff}
+  .menu .mi:active{border-color:var(--ink)}
+  .menu .mi .t{font-size:14px;font-weight:600}
+  .menu .mi .d{font-size:11px;color:var(--ink-2);margin-top:2px}
+  .menu .mi .a{margin-left:auto;font-size:18px;color:var(--ink-3)}
+  .note{font-size:11px;color:var(--ink-3);margin:6px 16px 14px;line-height:1.5}
+  .tag-soft{font-size:11px;color:var(--ink-2);background:var(--fill);border-radius:6px;padding:2px 7px}
+  .copybtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .copybtns .btn.ghost{font-size:12px;padding:9px}
+  /* static two-row date grid (booking) */
+  .daygrid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:14px 16px 4px}
+  .daycell{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 2px;text-align:center;cursor:pointer;background:#fff}
+  .daycell .d1{font-size:14px;font-weight:600}
+  .daycell .d2{font-size:11px;color:var(--ink-2);margin-top:2px}
+  .daycell.on{background:var(--ink);color:#fff}
+  .daycell.on .d2{color:#cfcfcf}
+  .daycell.off{background:var(--fill);border-color:var(--fill);color:var(--ink-3);cursor:not-allowed;opacity:.7}
+  .daycell.off .d1,.daycell.off .d2{color:var(--ink-3)}
+  .legend2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--ink-2);margin:2px 16px 0;line-height:1}
+  .legend2 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-left:6px}
+  .legend2 .dot.ok{background:var(--ink)}
+  .legend2 .dot.off{background:var(--ink-3)}
+  .kv{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--fill);font-size:12px}
+  .kv .k{color:var(--ink-2)}
+  /* v6.2: 项目场次表格 + 更改名额 + 我的预约取消 */
+  .ptabs{display:flex;gap:8px;padding:12px 16px 4px;overflow-x:auto}
+  .ptab{border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12px;white-space:nowrap;cursor:pointer;background:#fff;color:var(--ink-2);flex:0 0 auto}
+  .ptab.on{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .sdate{font-size:13px;font-weight:600;padding:12px 14px 8px}
+  .shead,.srow{display:grid;grid-template-columns:1.25fr 1fr .85fr 1.45fr;align-items:center;padding:9px 14px;border-top:1px solid var(--fill);font-size:12px}
+  .shead{color:var(--ink-3);font-size:11px;border-top:0;padding:4px 14px 8px}
+  .srow .tm{font-weight:600;font-size:13px}
+  .srow .ops{display:flex;gap:6px;justify-content:flex-end}
+  .btn.xs{width:auto;padding:6px 9px;font-size:11px;border-radius:8px}
+  .badge.expired{border-style:dashed;color:var(--ink-3);border-color:var(--line)}
+  .card.dim{opacity:.55}
+  .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center}
+  .modal{width:300px;background:#fff;border-radius:16px;padding:20px 18px}
+  .modal .mt{font-size:16px;font-weight:600}
+  .modal .mb{font-size:13px;color:var(--ink-2);margin-top:10px;line-height:1.6}
+  .modal .macts{display:flex;gap:10px;margin-top:18px}
+  .modal .macts .btn{flex:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <h1>预约小程序 · 设计系统</h1>
+    <div class="sub">黑白极简 v6.2 · 项目场次 + 我的预约</div>
+    <div class="role">
+      <button data-role="customer" class="on">顾客</button>
+      <button data-role="owner">超级管理员</button>
+      <button data-role="manager">普通管理员</button>
+    </div>
+    <div class="grp">导航</div>
+    <div class="nav" id="nav"></div>
+    <div class="legend">
+      所有角色共用同一套黑白组件。<br/>
+      管理端仅在顾客界面基础上额外展示数据与操作。<br/>
+      状态靠描边/字重区分，不用彩色。
+    </div>
+  </aside>
+  <main class="stage">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen" id="screen"></div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ data ============ */
+const ICONS = {
+  coffee:'<svg viewBox="0 0 24 24"><path d="M5 9h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9Z"/><path d="M16 10h2.5a2 2 0 0 1 0 4H16"/><path d="M8 3v2M11 3v2"/></svg>',
+  sake:'<svg viewBox="0 0 24 24"><path d="M7 4h10l-1 7a4 4 0 0 1-8 0L7 4Z"/><path d="M9 18h6M12 14v4"/></svg>',
+  study:'<svg viewBox="0 0 24 24"><path d="M4 5.5A2 2 0 0 1 6 4h6v15H6a2 2 0 0 0-2 1.5V5.5Z"/><path d="M20 5.5A2 2 0 0 0 18 4h-6v15h6a2 2 0 0 1 2 1.5V5.5Z"/></svg>'
+};
+const state = {
+  role:'customer',
+  screen:'home',
+  selProject:'p1',
+  selDay:null,
+  calMonth:new Date(2026,7,1), // Aug 2026
+  calSel:[], // multi-select dates for batch bookable/close
+  bookingDay:null,
+  bookingSession:null,
+};
+const shop = { logo:'RESERVE', tag:'SLOW COFFEE · 预约制', intro:'一家以法兰绒滴滤与清酒品鉴为特色的预约制咖啡空间。请选择下方项目开始预约。' };
+const projects = [
+  { id:'p1', name:'法兰绒深烘咖啡预约', icon:'coffee', image:'法兰绒', intro:'每日限量法兰绒手冲深烘，安静的吧台座位。', published:true, needReview:false, dailyLimit:1, advanceDays:7, paused:false,
+    openDays:['2026-08-14','2026-08-15','2026-08-17','2026-08-18','2026-08-21'],
+    sched:{ '2026-08-14':[{id:'s1',start:'10:00',end:'11:30',cap:6,booked:2,paused:false},{id:'s2',start:'14:00',end:'15:30',cap:6,booked:6,paused:false}],
+            '2026-08-15':[{id:'s3',start:'10:00',end:'11:30',cap:4,booked:1,paused:false}],
+            '2026-08-17':[{id:'s6',start:'10:00',end:'11:30',cap:6,booked:0,paused:false,desc:'吧台座位'}],
+            '2026-08-18':[{id:'s7',start:'14:00',end:'15:30',cap:6,booked:0,paused:false,desc:''}],
+            '2026-08-21':[] } },
+  { id:'p2', name:'清酒品鉴预约', icon:'sake', image:'清酒', intro:'主理人带领的清酒小酌，每晚一场。', published:true, needReview:true, dailyLimit:1, advanceDays:14, paused:false,
+    openDays:['2026-08-14','2026-08-16','2026-08-19','2026-08-21'],
+    sched:{ '2026-08-14':[{id:'s4',start:'19:30',end:'21:00',cap:8,booked:3,paused:false}],
+            '2026-08-16':[{id:'s8',start:'19:30',end:'21:00',cap:8,booked:0,paused:false,desc:'吧台品鉴'}],
+            '2026-08-19':[], '2026-08-21':[] } },
+  { id:'p3', name:'法兰绒研习社预约', icon:'study', image:'研习', intro:'咖啡冲煮教学小班，需审核。', published:true, needReview:true, dailyLimit:2, advanceDays:30, paused:false,
+    openDays:['2026-08-16','2026-08-19','2026-08-22'],
+    sched:{ '2026-08-16':[{id:'s5',start:'13:00',end:'15:00',cap:10,booked:4,paused:false}],
+            '2026-08-19':[{id:'s9',start:'13:00',end:'15:00',cap:10,booked:0,paused:false,desc:'小班教学'}],
+            '2026-08-22':[] } },
+];
+const admins = [
+  { openid:'oX-owner-9f2a', role:'owner', note:'店主本人', inviter:'self', at:'2026-08-01' },
+  { openid:'oX-mgr-3b7c', role:'manager', note:'店长', inviter:'oX-owner-9f2a', at:'2026-08-03' },
+];
+const NOW_DEMO=new Date(2026,7,14,2,0); // 原型基准时间：用于自动判定「已过期」
+const mine = [
+  { project:'法兰绒深烘咖啡预约', date:'2026-08-16 周六', time:'10:00–11:30', party:2, status:'ok', needReview:false, end:'2026-08-16 11:30' },
+  { project:'清酒品鉴预约', date:'2026-08-15 周五', time:'19:30–21:00', party:1, status:'pending', needReview:true, end:'2026-08-15 21:00' },
+  { project:'法兰绒深烘咖啡预约', date:'2026-08-12 周二', time:'13:00–14:30', party:4, status:'cancelled', needReview:false, end:'2026-08-12 14:30' },
+  { project:'法兰绒研习社预约', date:'2026-08-10 周日', time:'13:00–15:00', party:1, status:'ok', needReview:true, end:'2026-08-10 15:00' },
+];
+// 实际显示状态：已取消固定；超过有效期的 ok/pending 自动判为「已过期」
+function effStatus(m){
+  if(m.status==='cancelled')return 'cancelled';
+  const end=new Date(m.end.replace(/-/g,'/'));
+  return end<NOW_DEMO?'expired':m.status;
+}
+// reservations for a session (with contact info for admin)
+function sessResv(pid,day,sid){
+  const map = {
+    'p1|2026-08-14|s1':[
+      {name:'拿铁小姐', phone:'138****2046', party:2, note:'靠窗', review:'ok'},
+      {name:'王先生', phone:'139****8810', party:1, note:'', review:'ok'},
+    ],
+    'p2|2026-08-14|s4':[
+      {name:'李雷', phone:'137****5521', party:2, note:'忌口清酒甜型', review:'pending'},
+      {name:'韩梅', phone:'136****3092', party:1, note:'', review:'pending'},
+      {name:'赵敏', phone:'135****7714', party:1, note:'', review:'ok'},
+    ],
+  };
+  return map[pid+'|'+day+'|'+sid]||[];
+}
+
+/* ============ helpers ============ */
+const $ = s=>document.querySelector(s);
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600);}
+function project(){return projects.find(p=>p.id===state.selProject);}
+function fmtDate(d){const w='日一二三四五六';return `${d.getMonth()+1}月${d.getDate()}日 周${w[d.getDay()]}`;}
+function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+/* ============ nav ============ */
+const NAV = {
+  customer:[
+    {id:'home',t:'首页'},
+    {id:'booking',t:'预约 · 选日期/场次'},
+    {id:'confirm',t:'确认预约'},
+    {id:'mine',t:'我的预约'},
+  ],
+  owner:[
+    {id:'hub',t:'管理台（超级管理员）'},
+    {id:'home_config',t:'首页配置（logo/图/文）'},
+    {id:'project_list',t:'项目管理'},
+    {id:'project_config',t:'项目配置（日历+场次）'},
+    {id:'project_sessions',t:'项目场次（改名额/暂停）'},
+    {id:'view',t:'查看预约人'},
+    {id:'review',t:'审核'},
+    {id:'admins',t:'管理员管理（微信）'},
+    {id:'export',t:'数据导出'},
+  ],
+  manager:[
+    {id:'hub',t:'管理台（普通管理员）'},
+    {id:'project_sessions',t:'项目场次（改名额/暂停）'},
+    {id:'view',t:'查看预约人'},
+  ],
+};
+function renderNav(){
+  const nav=$('#nav');nav.innerHTML='';
+  NAV[state.role].forEach(n=>{
+    const b=document.createElement('button');
+    b.innerHTML=`<span class="dot"></span>${n.t}`;
+    if(n.id===state.screen)b.classList.add('on');
+    b.onclick=()=>{state.screen=n.id;if(n.id==='project_config'||n.id==='project_view'){}render();};
+    nav.appendChild(b);
+  });
+}
+function setRole(r){state.role=r;state.screen=NAV[r][0].id;document.querySelectorAll('.role button').forEach(b=>b.classList.toggle('on',b.dataset.role===r));render();}
+
+/* ============ screens ============ */
+function S(){
+  const p=project();
+  switch(state.screen){
+    case 'home': return home();
+    case 'booking': return booking();
+    case 'confirm': return confirm_();
+    case 'mine': return mine_();
+    case 'hub': return hub();
+    case 'home_config': return homeConfig();
+    case 'project_list': return projectList();
+    case 'project_config': return projectConfig();
+    case 'project_sessions': return projectSessions();
+    case 'view': return view();
+    case 'review': return review();
+    case 'admins': return adminsScreen();
+    case 'export': return dataExport();
+    default: return home();
+  }
+}
+function topBar(title,back,right){
+  const b = back?`<div class="back" onclick="goBack()">‹</div>`:`<div class="back"></div>`;
+  const r = right?`<div class="r">${right}</div>`:'';
+  return `<div class="top">${b}<div class="ttl">${title}</div>${r}</div>`;
+}
+function goBack(){ if(state.screen!=='home'&&state.screen!=='hub'){ /* simple */ } }
+
+/* ---- customer: home ---- */
+function home(){
+  const cards = projects.filter(p=>p.published).map(p=>`
+    <div class="pcard" onclick="openBooking('${p.id}')">
+      <div class="ico lg">${ICONS[p.icon]}</div>
+      <div class="meta"><div class="nm">${p.name}</div><div class="ds">${p.intro}</div>
+      <div class="ft">${p.needReview?'需审核 · ':''}提前 ${p.advanceDays} 天可约 · 每人每日 ${p.dailyLimit} 次</div></div>
+      <div class="go">›</div>
+    </div>`).join('');
+  return `${topBar('预约','')}
+    <div class="hero">
+      <div class="img"><div class="logo">${shop.logo}</div><div class="tag">${shop.tag}</div></div>
+      <div class="txt"><h2>${shop.logo} · 预约制空间</h2><p>${shop.intro}</p></div>
+    </div>
+    <div class="sec">选择预约项目</div>
+    ${cards}`;
+}
+function openBooking(id){state.selProject=id;state.screen='booking';state.bookingDay=null;state.bookingSession=null;render();}
+
+/* ---- customer: booking ---- */
+function booking(){
+  const p=project();
+  // static two rows (14 days = 2 weeks), no drag/scroll
+  const base=new Date(2026,7,13);
+  const days=[];for(let i=0;i<14;i++){const d=new Date(base);d.setDate(base.getDate()+i);days.push(d);}
+  const w='日一二三四五六';
+  const dayBar=days.map(d=>{
+    const y=ymd(d);
+    const open=p.openDays.includes(y);          // 可约 / 不可约
+    const sel=state.bookingDay===y?'on':'';
+    if(open){
+      return `<div class="daycell ${sel}" onclick="pickDay('${y}')"><div class="d1">${d.getMonth()+1}/${d.getDate()}</div><div class="d2">周${w[d.getDay()]}</div></div>`;
+    }
+    // 不可约：置灰 + 禁用，不可选中
+    return `<div class="daycell off" aria-disabled="true"><div class="d1">${d.getMonth()+1}/${d.getDate()}</div><div class="d2">周${w[d.getDay()]}</div></div>`;
+  }).join('');
+  let grid=`<div class="legend2"><span class="dot ok"></span>可预约（可选）<span class="dot off"></span>不可预约（置灰禁用）</div>
+            <div class="note">请选择上方可预约日期查看场次。</div>`;
+  if(state.bookingDay){
+    const list=(p.sched[state.bookingDay]||[]);
+    if(!list.length){grid=`<div class="legend2"><span class="dot ok"></span>可预约（可选）<span class="dot off"></span>不可预约（置灰禁用）</div><div class="note">该日已开放预约，但暂未设置场次，请联系店家。</div>`;}
+    else grid=`<div class="legend2"><span class="dot ok"></span>可预约（可选）<span class="dot off"></span>不可预约（置灰禁用）</div>`+list.map(s=>{
+      const full=s.booked>=s.cap, paused=s.paused;
+      const cls=full?'full':(paused?'paused':'ok');
+      const label=full?'已满':(paused?'已暂停':'剩 '+(s.cap-s.booked)+'/'+s.cap);
+      const dis=(full||paused)?'disabled':'';
+      return `<div class="card tap" style="cursor:${dis?'default':'pointer'}" ${dis?'':`onclick="pickSession('${s.id}')"`}>
+        <div class="row between"><div style="font-size:15px;font-weight:600">${s.start} – ${s.end}</div>
+        <span class="badge ${cls}">${label}</span></div>
+        <div class="sm muted" style="margin-top:6px">${paused?'本场已暂停预约':(full?'人数已满，不可预约':'点击选择该场次')}</div>
+      </div>`;
+    }).join('');
+  }
+  return `${topBar(p.name,'','')}
+    <div class="daygrid">${dayBar}</div>
+    <div class="sec">可约场次</div>
+    ${grid}`;
+}
+function pickDay(y){ if(!project().openDays.includes(y))return; state.bookingDay=y;state.bookingSession=null;render();}
+function pickSession(sid){state.bookingSession=sid;state.screen='confirm';render();}
+
+/* ---- customer: confirm ---- */
+function confirm_(){
+  const p=project();const s=p.sched[state.bookingDay].find(x=>x.id===state.bookingSession);
+  return `${topBar('确认预约','')}
+    <div class="pad">
+      <div class="card">
+        <div class="row" style="gap:12px"><div class="ico">${ICONS[p.icon]}</div>
+        <div><div style="font-weight:600">${p.name}</div><div class="sm muted">${state.bookingDay} · ${s.start}–${s.end}</div></div></div>
+      </div>
+      <div class="label" style="margin-top:16px">到场人数</div>
+      <div class="stepper"><button onclick="step(-1)">−</button><div class="v" id="party">2</div><button onclick="step(1)">+</button></div>
+      <div class="label" style="margin-top:16px">称呼</div>
+      <input class="field" value="拿铁小姐" />
+      <div class="label" style="margin-top:14px">手机号（用于预约通知）</div>
+      <input class="field" value="138****2046" />
+      <div class="label" style="margin-top:14px">备注（可选）</div>
+      <input class="field" placeholder="如：靠窗、忌口等" />
+      <label class="row" style="gap:10px;margin-top:16px;cursor:pointer">
+        <div class="switch on" id="subSw"><i></i></div>
+        <div class="sm">接收预约结果微信通知（订阅消息）</div>
+      </label>
+    </div>
+    <div style="padding:0 16px 20px"><button class="btn" onclick="submitBooking()">提交预约</button></div>`;
+}
+function step(n){const v=$('#party');let x=Math.max(1,(+v.textContent)+n);v.textContent=x;}
+function submitBooking(){
+  const p=project();
+  toast(p.needReview?'已提交，等待审核（微信通知）':'预约成功（微信通知已发送）');
+  setTimeout(()=>{state.screen='mine';render();},900);
+}
+
+/* ---- customer: mine (四态：待审核/预约成功/已取消/已过期 + 取消二次确认) ---- */
+function mine_(){
+  const map={
+    ok:['预约成功','ok'],
+    pending:['待审核','paused'],
+    cancelled:['已取消','full'],
+    expired:['已过期','expired'],
+  };
+  const rows=mine.map((m,i)=>{
+    const st=effStatus(m);
+    const [t,c]=map[st];
+    const canCancel=(st==='ok'||st==='pending'); // 仅待审核 / 预约成功可取消
+    const action=canCancel
+      ? `<button class="btn ghost sm" style="margin-top:10px" onclick="cancelConfirm(${i})">取消预约</button>`
+      : `<div class="xs muted" style="margin-top:8px">${st==='expired'?'已过有效期，不可取消':'该预约已取消'}</div>`;
+    return `<div class="card ${st==='expired'||st==='cancelled'?'dim':''}">
+      <div class="row between"><div style="font-weight:600">${m.project}</div><span class="badge ${c}">${t}</span></div>
+      <div class="sm muted" style="margin-top:6px">${m.date} · ${m.time} · ${m.party} 人</div>
+      ${m.needReview&&m.status==='pending'?'<div class="xs" style="margin-top:6px;color:var(--ink-3)">审核通过后微信通知你</div>':''}
+      ${action}
+    </div>`;
+  }).join('');
+  return `${topBar('我的预约','')}
+    <div class="note">可主动取消「待审核 / 预约成功」的预约；超过有效期的预约将自动显示为「已过期」，不可取消。</div>
+    ${rows||'<div class="note">暂无预约</div>'}`;
+}
+// 取消二次确认弹窗
+function cancelConfirm(i){
+  const m=mine[i];
+  const mask=document.createElement('div');mask.className='modal-mask';
+  mask.innerHTML=`<div class="modal">
+    <div class="mt">取消预约</div>
+    <div class="mb">确认取消「${m.project} · ${m.date} ${m.time}」？取消后名额将释放，且不可恢复。</div>
+    <div class="macts">
+      <button class="btn ghost" onclick="this.closest('.modal-mask').remove()">再想想</button>
+      <button class="btn" onclick="confirmCancel(${i})">确认取消</button>
+    </div>
+  </div>`;
+  document.body.appendChild(mask);
+}
+function confirmCancel(i){
+  const m=mine[i];
+  m.status='cancelled';
+  releaseSlot(m); // 释放该场次已占名额
+  document.querySelectorAll('.modal-mask').forEach(x=>x.remove());
+  render();
+  toast('已取消预约，名额已释放');
+}
+// 将预约对应的场次 booked -1（最佳努力，找不到则跳过）
+function releaseSlot(m){
+  const ymdStr=m.date.slice(0,10);
+  const parts=m.time.split('–'); // en dash
+  const st=parts[0],en=parts[1];
+  const p=projects.find(x=>x.name===m.project);
+  if(!p)return;
+  const s=(p.sched[ymdStr]||[]).find(x=>x.start===st&&x.end===en);
+  if(s&&s.booked>0)s.booked--;
+}
+
+/* ---- admin hub ---- */
+function hub(){
+  const isOwner=state.role==='owner';
+  const stats=`<div class="stat">
+    <div class="b"><div class="n">12</div><div class="l">今日预约</div></div>
+    <div class="b"><div class="n">3</div><div class="l">待审核</div></div>
+    <div class="b"><div class="n">6</div><div class="l">可约场次</div></div>
+  </div>`;
+  let menu='';
+  if(isOwner){
+    menu=`<div class="menu">
+      <div class="mi" onclick="go('home_config')"><div class="ico">${ICONS.study}</div><div><div class="t">首页配置</div><div class="d">修改 logo / 图片 / 文字介绍</div></div><div class="a">›</div></div>
+      <div class="mi" onclick="go('project_list')"><div class="ico">${ICONS.coffee}</div><div><div class="t">项目管理</div><div class="d">新建 / 配置 / 发布预约项目</div></div><div class="a">›</div></div>
+      <div class="mi" onclick="go('project_sessions')"><div class="ico">${ICONS.coffee}</div><div><div class="t">项目场次</div><div class="d">改名额 / 暂停场次（表格视图）</div></div><div class="a">›</div></div>
+      <div class="mi" onclick="go('review')"><div class="ico">${ICONS.sake}</div><div><div class="t">审核</div><div class="d">需审核项目的预约审批</div></div><div class="a">›</div></div>
+      <div class="mi" onclick="go('admins')"><div class="ico">${ICONS.study}</div><div><div class="t">管理员管理</div><div class="d">微信授权超级/普通管理员</div></div><div class="a">›</div></div>
+    </div>`;
+  }else{
+    menu=`<div class="menu">
+      <div class="mi" onclick="go('project_sessions')"><div class="ico">${ICONS.coffee}</div><div><div class="t">项目场次</div><div class="d">查看 / 改名额 / 暂停场次</div></div><div class="a">›</div></div>
+    </div>`;
+  }
+  const extra = isOwner?`<div class="menu" style="margin-top:8px">
+      <div class="mi" onclick="go('view')"><div class="ico">${ICONS.sake}</div><div><div class="t">查看预约人</div><div class="d">含联系方式，可拨号</div></div><div class="a">›</div></div>
+    </div>`:`<div class="menu" style="margin-top:8px">
+      <div class="mi" onclick="go('view')"><div class="ico">${ICONS.sake}</div><div><div class="t">查看预约人</div><div class="d">含联系方式，可拨号</div></div><div class="a">›</div></div>
+    </div>`;
+  return `${topBar(isOwner?'管理台':'管理台（普通）','')}
+    ${stats}${menu}${extra}
+    <div class="note">普通管理员：查看预约信息、控制可预约场次（更改单场名额 / 暂停场次），无项目配置、审核、授权、发布权限。</div>`;
+}
+function go(id){state.screen=id;render();}
+
+/* ---- admin: home config (editable logo/image/intro) ---- */
+function homeConfig(){
+  return `${topBar('首页配置','')}
+    <div class="sec">首页展示内容（保存后同步到顾客端首页）</div>
+    <div class="card">
+      <div class="label">Logo 文字</div>
+      <input class="field" id="fLogo" value="${shop.logo}" />
+      <div class="label" style="margin-top:14px">顶部标签</div>
+      <input class="field" id="fTag" value="${shop.tag}" />
+      <div class="label" style="margin-top:14px">首页头图</div>
+      <div class="hero" style="margin:0"><div class="img"><div class="logo">${shop.logo}</div><div class="tag">${shop.tag}</div></div></div>
+      <div class="row" style="margin-top:10px;gap:8px">
+        <button class="btn ghost sm" onclick="toast('请选择图片（上传至云存储）')">更换图片</button>
+        <button class="btn ghost sm" onclick="toast('可用文字色/背景调整')">样式</button>
+      </div>
+      <div class="label" style="margin-top:14px">文字介绍</div>
+      <textarea class="field" id="fIntro" rows="3" style="resize:none;font-family:var(--font)">${shop.intro}</textarea>
+    </div>
+    <div style="padding:0 16px 20px"><button class="btn" onclick="saveHome()">保存首页配置</button></div>`;
+}
+function saveHome(){
+  shop.logo=$('#fLogo').value;shop.tag=$('#fTag').value;shop.intro=$('#fIntro').value;
+  toast('已保存，首页已更新');render();
+}
+
+/* ---- admin: project list ---- */
+function projectList(){
+  const rows=projects.map(p=>`
+    <div class="pcard" onclick="state.selProject='${p.id}';state.screen='project_config';render();">
+      <div class="ico">${ICONS[p.icon]}</div>
+      <div class="meta"><div class="nm">${p.name}</div>
+      <div class="ds">${p.needReview?'需审核':'免审核'} · 提前${p.advanceDays}天 · 每日${p.dailyLimit}次 ${p.paused?'· 已暂停':''}</div></div>
+      <div style="text-align:right"><span class="badge ${p.published?'ok':'full'}">${p.published?'已发布':'草稿'}</span><div class="go" style="margin-top:6px">›</div></div>
+    </div>`).join('');
+  return `${topBar('项目管理','')}
+    <div class="sec">预约项目（点击进入配置）</div>
+    ${rows}
+    <div style="padding:0 16px 20px"><button class="btn ghost" onclick="toast('新建预约项目：名称/图标/简介')">+ 新建预约项目</button></div>`;
+}
+
+/* ---- admin: project config (calendar + sessions + global + publish) ---- */
+function projectConfig(){
+  const p=project();
+  const m=state.calMonth;
+  const y=m.getFullYear(),mo=m.getMonth();
+  const first=new Date(y,mo,1),startDow=first.getDay();
+  const daysInMo=new Date(y,mo+1,0).getDate();
+  let cells='';
+  for(let i=0;i<startDow;i++)cells+=`<div class="d dim"></div>`;
+  for(let d=1;d<=daysInMo;d++){
+    const date=new Date(y,mo,d);const key=ymd(date);
+    const open=p.openDays.includes(key);           // 可约 / 不可约
+    const picked=state.calSel.includes(key)?'pick':'';
+    const cls=open?'open':'off';
+    const st=open?'可约':'休';
+    const has=(p.sched[key]&&p.sched[key].length);
+    const cnt=open&&has?`<div class="cnt">${p.sched[key].length}场</div>`:'';
+    cells+=`<div class="d ${cls} ${picked}" onclick="toggleCalSel('${key}')">${d}<div class="st">${st}</div>${cnt}</div>`;
+  }
+  // batch toolbar
+  const selN=state.calSel.length;
+  const dis = selN===0 ? 'disabled' : '';
+  const bartools=`<div class="bartools">
+    <div class="row"><div style="font-weight:600">批量设置可约日期</div>
+      <div class="seln">已选 <b>${selN}</b> 天 · 选中=可约，未选=不可约（顾客端不可选且不展示）</div></div>
+    <div class="acts">
+      <button class="btn" ${dis} onclick="batchOpen()">批量开放选中</button>
+      <button class="btn ghost" ${dis} onclick="batchClose()">批量关闭预约</button>
+    </div>
+    ${selN>0?`<div class="selclear"><span class="cnt">已选 ${selN} 天，确认后可批量生效</span><button class="btn ghost sm" onclick="clearSel()">清除选择</button></div>`:'<div class="seln" style="margin-top:10px;color:var(--ink-3)">点选上方日期即可批量开放或关闭预约。</div>'}
+  </div>`;
+  // session editor: only when exactly one day selected
+  let editor='<div class="note">点击日历中的某一天（可约/不可约均可点选）。选中单天可配置场次；多选可批量开放或关闭预约。</div>';
+  if(selN===1){
+    const day=state.calSel[0];
+    const list=p.sched[day]||[];
+    const sessHtml=list.map((s)=>`
+      <div class="sess">
+        <div class="row between">
+          <div>
+            <div class="xs muted">场次时间</div>
+            <div class="tm">${s.start} – ${s.end}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn ghost sm" onclick="openSessionSheet('${day}','${s.id}')">编辑</button>
+            <button class="btn ghost sm" onclick="toggleSessionPause('${day}','${s.id}')">${s.paused?'恢复':'暂停'}</button>
+          </div>
+        </div>
+        ${s.desc?`<div class="xs muted" style="margin-top:8px">说明：${s.desc}</div>`:''}
+        <div class="cap"><span class="sm muted">人数上限 ${s.cap} · 已约 ${s.booked}</span>
+          <span class="tag-soft">${s.paused?'已暂停':'可预约'}</span></div>
+      </div>`).join('');
+    editor=`<div class="card">
+      <div class="row between"><div style="font-weight:600">${day}</div>
+        <button class="btn ghost sm" onclick="openSessionSheet('${day}',null)">+ 场次</button></div>
+      ${sessHtml||'<div class="xs muted" style="margin-top:8px">当天暂无场次，点「+ 场次」添加</div>'}
+      <div class="divider"></div>
+      <button class="btn ghost" onclick="openCopySheet('${day}')">复制当天设置…</button>
+    </div>`;
+  } else if(selN>1){
+    editor='<div class="note">已选 '+selN+' 天。点击上方「批量开放选中 / 批量关闭预约」即可批量设置；点选单天可配置该天场次。</div>';
+  }
+  // global settings
+  const global=`<div class="card">
+    <div class="label">项目全局设定</div>
+    <div class="row between" style="padding:8px 0"><span>需要审核预约</span>
+      <div class="switch ${p.needReview?'on':''}" onclick="toggleNeed(this)"><i></i></div></div>
+    <div class="row between" style="padding:8px 0"><span>暂停 / 开放预约</span>
+      <div class="switch ${p.paused?'':''}" onclick="togglePause(this)"><i></i></div></div>
+    <div class="row between" style="padding:8px 0"><span>每日用户预约次数上限</span>
+      <div class="stepper"><button onclick="event.stopPropagation();toast('每日上限 -1')">−</button><div class="v">${p.dailyLimit}</div><button onclick="event.stopPropagation();toast('每日上限 +1')">+</button></div></div>
+    <div class="row between" style="padding:8px 0"><span>提前可预约天数</span>
+      <div class="stepper"><button onclick="event.stopPropagation();toast('提前天数 -1')">−</button><div class="v">${p.advanceDays}</div><button onclick="event.stopPropagation();toast('提前天数 +1')">+</button></div></div>
+  </div>`;
+  return `${topBar(p.name,'','')}
+    <div class="sec">可预约日期（展开日历 · 点选设置）</div>
+    <div class="legend2" style="margin-bottom:8px"><span class="dot ok"></span>可约（已选中）</div>
+    <div class="cal">
+      <div class="ch"><span onclick="prevMonth()">‹</span><b>${y}年${mo+1}月</b><span onclick="nextMonth()">›</span></div>
+      <div class="wd"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+      <div class="grid">${cells}</div>
+    </div>
+    ${bartools}
+    ${editor}
+    ${global}
+    <div style="padding:0 16px 20px;display:flex;gap:10px">
+      <button class="btn ghost" onclick="toast('已存为草稿')">保存草稿</button>
+      <button class="btn" onclick="publishProject('${p.id}')">发布到首页</button>
+    </div>`;
+}
+function selDay(k){state.selDay=k;render();}
+function toggleCalSel(k){
+  const i=state.calSel.indexOf(k);
+  if(i>=0)state.calSel.splice(i,1); else state.calSel.push(k);
+  render();
+}
+function batchOpen(){
+  const p=project();let n=0;
+  state.calSel.forEach(k=>{ if(!p.openDays.includes(k)){p.openDays.push(k);n++;} });
+  toast('已开放选中 '+state.calSel.length+' 天'+(n?'（新增 '+n+' 天）':''));
+  render();
+}
+function batchClose(){
+  const p=project();const set=new Set(state.calSel);
+  if(set.size===0){toast('请先选中要关闭的日期');return;}
+  // 保护：已有人预约的日期不可取消（关闭）其当日预约
+  const blocked=[...set].filter(k=>dayHasBookings(p,k));
+  const okDays=[...set].filter(k=>!dayHasBookings(p,k));
+  if(blocked.length){
+    // 仅关闭「无预约」的选中日期；有预约的日期保留并提示，不取消
+    p.openDays=p.openDays.filter(d=>!okDays.includes(d));
+    toast('该日期已有人预约，无法取消当日预约：'+blocked.join('、'));
+    render();return;
+  }
+  p.openDays=p.openDays.filter(d=>!set.has(d));   // 关闭 = 移出可约集合（顾客端不可选、不展示）
+  toast('已关闭 '+set.size+' 天的预约');
+  render();
+}
+// 某天是否存在已预约（booked>0）的场次
+function dayHasBookings(p,day){return (p.sched[day]||[]).some(s=>s.booked>0);}
+function clearSel(){state.calSel=[];render();}
+function prevMonth(){state.calMonth=new Date(state.calMonth.getFullYear(),state.calMonth.getMonth()-1,1);render();}
+function nextMonth(){state.calMonth=new Date(state.calMonth.getFullYear(),state.calMonth.getMonth()+1,1);render();}
+function toggleNeed(el){el.classList.toggle('on');project().needReview=el.classList.contains('on');}
+function togglePause(el){el.classList.toggle('on');project().paused=!el.classList.contains('on');}
+function publishProject(id){const p=projects.find(x=>x.id===id);p.published=true;toast('已发布到首页：'+p.name);render();}
+/* ---- session add/edit sheet: define time range + capacity + description + pause ---- */
+function openSessionSheet(day,sid){
+  const p=project();
+  const s = sid ? p.sched[day].find(x=>x.id===sid) : null;
+  const isEdit = !!s;
+  const mask=document.createElement('div');mask.className='sheet-mask';
+  mask.innerHTML=`<div class="sheet">
+    <div class="hd"><b>${isEdit?'编辑场次':'添加场次'}</b><div class="x" onclick="this.closest('.sheet-mask').remove()">×</div></div>
+    <div class="label">开始时间</div>
+    <input class="field" id="ssStart" type="time" value="${s?s.start:'10:00'}" />
+    <div class="label" style="margin-top:12px">结束时间</div>
+    <input class="field" id="ssEnd" type="time" value="${s?s.end:'11:30'}" />
+    <div class="label" style="margin-top:12px">人数上限</div>
+    <input class="field" id="ssCap" type="number" min="1" value="${s?s.cap:6}" style="text-align:center" />
+    <div class="label" style="margin-top:12px">场次描述（可选）</div>
+    <input class="field" id="ssDesc" placeholder="如：吧台座位 / 包间" value="${s?s.desc||'':''}" />
+    <div style="margin-top:16px"><button class="btn" onclick="saveSession('${day}','${sid||''}')">${isEdit?'保存修改':'添加场次'}</button></div>
+  </div>`;
+  document.body.appendChild(mask);
+}
+function saveSession(day,sid){
+  const p=project();
+  const start=$('#ssStart').value, end=$('#ssEnd').value, cap=Math.max(1,+$('#ssCap').value||6), desc=$('#ssDesc').value.trim();
+  if(!start||!end){toast('请填写开始与结束时间');return;}
+  if(!p.sched[day])p.sched[day]=[];
+  if(sid){const s=p.sched[day].find(x=>x.id===sid);s.start=start;s.end=end;s.cap=cap;s.desc=desc;}
+  else{p.sched[day].push({id:'s'+Date.now(),start,end,cap,booked:0,paused:false,desc});}
+  if(!p.openDays.includes(day))p.openDays.push(day);   // 添加场次即视为可约
+  document.querySelectorAll('.sheet-mask').forEach(m=>m.remove());
+  if(!state.calSel.includes(day))state.calSel=[day];
+  render();
+  toast(sid?'已保存场次':'已添加场次：'+start+'–'+end);
+}
+function toggleSessionPause(day,sid){
+  const p=project();const s=p.sched[day].find(x=>x.id===sid);
+  s.paused=!s.paused;render();toast(s.paused?'已暂停该场次':'已恢复该场次');
+}
+/* ---- copy day settings via popup sheet ---- */
+function openCopySheet(day){
+  const mask=document.createElement('div');mask.className='sheet-mask';
+  mask.innerHTML=`<div class="sheet">
+    <div class="hd"><b>复制 ${day} 的设置</b><div class="x" onclick="this.closest('.sheet-mask').remove()">×</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+      <button class="btn ghost" onclick="copyDayTo('${day}','month')">复制到当月</button>
+      <button class="btn ghost" onclick="copyDayTo('${day}','nextMonth')">复制到下月</button>
+      <button class="btn ghost" onclick="copyDayTo('${day}','nextWeek')">复制到下周</button>
+      <button class="btn ghost" onclick="copyDayTo('${day}','all')">复制到全部月份</button>
+    </div>
+  </div>`;
+  document.body.appendChild(mask);
+}
+function copyDayTo(day,target){
+  const label={month:'当月',nextMonth:'下月',nextWeek:'下周',all:'全部月份'}[target];
+  document.querySelectorAll('.sheet-mask').forEach(m=>m.remove());
+  toast('已复制当天设置到：'+label);
+}
+
+/* ---- admin: 项目场次（超级/普通管理员共用 · 表格视图 + 更改名额） ---- */
+function projectSessions(){
+  const p=project();
+  // 项目切换（管理员可能管多个项目）
+  const tabs=projects.map(pr=>`<div class="ptab ${pr.id===p.id?'on':''}" onclick="state.selProject='${pr.id}';render()">${pr.name}</div>`).join('');
+  const w='日一二三四五六';
+  const days=Object.keys(p.sched).sort();
+  // 汇总：可约日期 / 开放场次 / 剩余名额
+  let openDays=0,openSess=0,remain=0;
+  days.forEach(dk=>{(p.sched[dk]||[]).forEach(s=>{openDays=Math.max(openDays,1);if(!s.paused){openSess++;remain+=Math.max(0,s.cap-s.booked);}});});
+  const summary=`<div class="stat">
+    <div class="b"><div class="n">${days.length}</div><div class="l">日期数</div></div>
+    <div class="b"><div class="n">${openSess}</div><div class="l">开放场次</div></div>
+    <div class="b"><div class="n">${remain}</div><div class="l">剩余名额</div></div></div>`;
+  let body='';
+  if(!days.length){ body='<div class="note">该项目暂无场次数据。</div>'; }
+  days.forEach(dk=>{
+    const list=p.sched[dk]||[];
+    const dt=new Date(dk.replace(/-/g,'/'));
+    const dateLabel=`${dt.getMonth()+1}月${dt.getDate()}日 周${w[dt.getDay()]}`;
+    const rows=list.map(s=>{
+      const remaining=s.cap-s.booked;
+      const full=remaining<=0;
+      let st,stCls;
+      if(s.paused){st='已暂停';stCls='paused';}
+      else if(full){st='已满';stCls='full';}
+      else{st='可预约';stCls='ok';}
+      const capBtn=`<button class="btn ghost xs" onclick="changeCapSheet('${dk}','${s.id}')">改名额</button>`;
+      const pauseBtn=`<button class="btn ghost xs" onclick="toggleSessionPause('${dk}','${s.id}')">${s.paused?'恢复':'暂停'}</button>`;
+      return `<div class="srow">
+        <div class="tm">${s.start}–${s.end}</div>
+        <div>${s.paused?'—':(full?'<b>已满</b>':'剩 '+remaining+'/'+s.cap)}</div>
+        <div><span class="badge ${stCls}">${st}</span></div>
+        <div class="ops">${capBtn}${pauseBtn}</div>
+      </div>`;
+    }).join('');
+    body+=`<div class="card" style="padding:0;overflow:hidden">
+      <div class="sdate">${dateLabel} <span class="xs muted">· ${list.length} 场</span></div>
+      <div class="shead"><span>时间段</span><span>可约名额</span><span>状态</span><span style="text-align:right">操作</span></div>
+      ${rows}
+    </div>`;
+  });
+  return `${topBar('项目场次','')}
+    <div class="ptabs">${tabs}</div>
+    ${summary}
+    <div class="sec">场次明细（按日期 · 单场次可改名额）</div>
+    ${body}
+    <div class="note">「改名额」仅对所选日期该场次生效，不影响其他日期或其他场次。满场 / 已暂停场次也可调高名额以备后用；名额不可低于已预约人数。</div>`;
+}
+/* ---- 更改预约名额：底部弹层，单场次设置新名额 ---- */
+function changeCapSheet(day,sid){
+  const p=project();const s=p.sched[day].find(x=>x.id===sid);
+  const remaining=s.cap-s.booked;
+  const mask=document.createElement('div');mask.className='sheet-mask';
+  mask.innerHTML=`<div class="sheet">
+    <div class="hd"><b>更改预约名额</b><div class="x" onclick="this.closest('.sheet-mask').remove()">×</div></div>
+    <div class="card" style="margin:0">
+      <div class="kv"><span class="k">项目</span><span>${p.name}</span></div>
+      <div class="kv"><span class="k">日期</span><span>${day}</span></div>
+      <div class="kv"><span class="k">场次</span><span>${s.start} – ${s.end}</span></div>
+      <div class="kv"><span class="k">已预约</span><span>${s.booked} 人</span></div>
+    </div>
+    <div class="label" style="margin-top:16px">新名额（人）</div>
+    <div class="stepper" style="justify-content:center;margin-top:6px">
+      <button onclick="stepCap('${day}','${sid}',-1)">−</button>
+      <div class="v" id="capV">${s.cap}</div>
+      <button onclick="stepCap('${day}','${sid}',1)">+</button>
+    </div>
+    <div class="note" id="capNote" style="margin:10px 0 0">调整后还可预约 <b id="capRem">${remaining}</b> 人。该调整仅对 ${day} ${s.start}–${s.end} 这一场次生效，不影响其他日期或其他场次。</div>
+    <div class="xs muted" style="margin-top:8px;text-align:center">名额不能低于已预约人数（${s.booked} 人）。降低名额不会移除已预约顾客。</div>
+    <div style="margin-top:16px"><button class="btn" id="capSave" onclick="saveCap('${day}','${sid}')">保存修改</button></div>
+  </div>`;
+  document.body.appendChild(mask);
+}
+function stepCap(day,sid,delta){
+  const p=project();const s=p.sched[day].find(x=>x.id===sid);
+  let v=Math.max(s.booked,(+$('#capV').textContent)+delta); // 下限 = 已预约人数
+  $('#capV').textContent=v;
+  $('#capRem').textContent=v-s.booked;
+}
+function saveCap(day,sid){
+  const p=project();const s=p.sched[day].find(x=>x.id===sid);
+  const newCap=+$('#capV').textContent;
+  if(newCap<s.booked){toast('名额不能低于已预约人数');return;}
+  s.cap=newCap;
+  document.querySelectorAll('.sheet-mask').forEach(m=>m.remove());
+  render();
+  toast(`已将 ${day} ${s.start}–${s.end} 名额改为 ${newCap}（还可预约 ${newCap-s.booked} 人）`);
+}
+
+/* ---- admin: view reservations (with contact, dial) ---- */
+function view(){
+  // pick first project + day + session that has data
+  const pid='p1',day='2026-08-14',sid='s1';
+  const list=sessResv(pid,day,sid);
+  const p=projects.find(x=>x.id===pid);
+  const rows=list.map((r,i)=>`
+    <div class="person" onclick="showPerson('${pid}','${day}','${sid}',${i})">
+      <div class="nm">${r.name} <span class="tag-soft">${r.party}人</span> ${r.review==='pending'?'<span class="badge paused">待审</span>':''}</div>
+      <div class="ln">${day} · ${p.sched[day].find(s=>s.id===sid).start}–${p.sched[day].find(s=>s.id===sid).end}</div>
+      <div class="ph">☎ ${r.phone}</div>
+    </div>`).join('');
+  return `${topBar('查看预约人','')}
+    <div class="sec">法兰绒深烘咖啡预约 · 8月14日 10:00–11:30（${list.length}人）</div>
+    ${rows}
+    <div class="note">点击某人查看详情并可一键拨打预留电话（wx.makePhoneCall）。</div>`;
+}
+function showPerson(pid,day,sid,i){
+  const r=sessResv(pid,day,sid)[i];const p=projects.find(x=>x.id===pid);
+  const mask=document.createElement('div');mask.className='sheet-mask';
+  mask.innerHTML=`<div class="sheet">
+    <div class="hd"><b>预约人详情</b><div class="x" onclick="this.closest('.sheet-mask').remove()">×</div></div>
+    <div class="detail">
+      <div class="kv"><span class="k">姓名</span><span>${r.name}</span></div>
+      <div class="kv"><span class="k">电话</span><span>${r.phone}</span></div>
+      <div class="kv"><span class="k">人数</span><span>${r.party} 人</span></div>
+      <div class="kv"><span class="k">项目</span><span>${p.name}</span></div>
+      <div class="kv"><span class="k">日期场次</span><span>${day} ${p.sched[day].find(s=>s.id===sid).start}–${p.sched[day].find(s=>s.id===sid).end}</span></div>
+      <div class="kv"><span class="k">备注</span><span>${r.note||'—'}</span></div>
+      <div class="kv"><span class="k">审核</span><span>${r.review==='ok'?'已通过':(r.review==='pending'?'待审核':'未通过')}</span></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn" onclick="dial('${r.phone}')">📞 拨打电话</button></div>
+  </div>`;
+  document.body.appendChild(mask);
+}
+function dial(phone){toast('调用 wx.makePhoneCall：'+phone);}
+
+/* ---- admin: review ---- */
+function review(){
+  const items=[
+    {p:'清酒品鉴预约',d:'2026-08-15 周五 19:30',n:'李雷',party:2,phone:'137****5521',note:'忌口清酒甜型'},
+    {p:'法兰绒研习社预约',d:'2026-08-16 周日 13:00',n:'陈静',party:1,phone:'135****2288',note:''},
+  ];
+  const rows=items.map(it=>`
+    <div class="card">
+      <div class="row between"><div style="font-weight:600">${it.n}</div><span class="badge paused">待审核</span></div>
+      <div class="sm muted" style="margin-top:6px">${it.p} · ${it.d} · ${it.party}人</div>
+      <div class="sm muted" style="margin-top:2px">☎ ${it.phone} ${it.note?'· '+it.note:''}</div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn ghost" style="flex:1" onclick="toast('已拒绝')">拒绝</button>
+        <button class="btn" style="flex:1" onclick="toast('已通过（微信通知用户）')">通过</button>
+      </div>
+    </div>`).join('');
+  return `${topBar('审核','')}${rows}`;
+}
+
+/* ---- admin: admins (wechat openid authorization) ---- */
+function adminsScreen(){
+  const rows=admins.map(a=>`
+    <div class="card">
+      <div class="row between"><div><div style="font-weight:600">${a.role==='owner'?'超级管理员':'普通管理员'}</div>
+      <div class="xs muted">微信 OpenID：${a.openid}</div>
+      <div class="xs muted">${a.note} · 授权人 ${a.inviter==='self'?'系统':'微信'+a.inviter.slice(0,8)} · ${a.at}</div></div>
+      <span class="badge ok">${a.role==='owner'?'全部权限':'查看/控场'}</span></div>
+      ${a.role!=='owner'?'<div style="margin-top:10px"><button class="btn ghost sm" onclick="toast(\'已移除该管理员\')">移除</button></div>':''}
+    </div>`).join('');
+  return `${topBar('管理员管理','')}
+    <div class="sec">授权基于微信 OpenID（用户首次进入管理端时校验）</div>
+    ${rows}
+    <div class="card">
+      <div class="label">新增普通管理员（填写对方微信 OpenID）</div>
+      <input class="field" placeholder="oX-mgr-xxxxxxxx" />
+      <div class="xs muted" style="margin-top:6px">实际流程：店员在管理端「申请成为管理员」→ 店主在此审批通过即授权。</div>
+    </div>
+    <div style="padding:0 16px 20px"><button class="btn" onclick="toast('已发送授权邀请')">添加管理员</button></div>`;
+}
+
+/* ---- admin: data export (by date: reservations + visit stats) ---- */
+function dataExport(){
+  const visit={users:128, newUsers:42, pv:560}; // 小程序点击访问用户统计（示例）
+  const rows=[];
+  projects.forEach(p=>{Object.keys(p.sched).forEach(d=>{
+    p.sched[d].forEach(s=>{
+      sessResv(p.id,d,s.id).forEach(r=>{
+        rows.push({date:d,proj:p.name,name:r.name,phone:r.phone,party:r.party,status:r.review==='pending'?'待审核':'已通过'});
+      });
+    });
+  });});
+  const tbl=rows.map(r=>`
+    <div class="kv"><span class="muted" style="width:78px;flex:0 0 auto">${r.date}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.proj}</span>
+      <span style="width:54px;text-align:right">${r.name}</span>
+      <span class="muted" style="width:84px;text-align:right">${r.phone}</span></div>`).join('');
+  return `${topBar('数据导出','')}
+    <div class="sec">小程序访问统计（点击访问用户）</div>
+    <div class="stat"><div class="b"><div class="n">${visit.users}</div><div class="l">访问用户</div></div>
+      <div class="b"><div class="n">${visit.newUsers}</div><div class="l">新用户</div></div>
+      <div class="b"><div class="n">${visit.pv}</div><div class="l">点击 PV</div></div></div>
+    <div class="sec">按日期导出预约数据</div>
+    <div class="card">
+      <div class="row" style="gap:10px">
+        <div style="flex:1"><div class="label">开始日期</div><input class="field" type="date" value="2026-08-01"/></div>
+        <div style="flex:1"><div class="label">结束日期</div><input class="field" type="date" value="2026-08-31"/></div>
+      </div>
+      <div style="margin-top:14px"><button class="btn" onclick="toast('已导出 CSV：含预约信息 + 访问统计')">导出 CSV</button></div>
+    </div>
+    <div class="sec">预约明细（${rows.length} 条）</div>
+    <div class="card" style="padding:12px">${tbl||'<div class="xs muted">该区间暂无预约数据</div>'}</div>`;
+}
+
+/* ============ render ============ */
+function render(){
+  renderNav();
+  $('#screen').innerHTML=S();
+  $('#screen').scrollTop=0;
+}
+document.querySelectorAll('.role button').forEach(b=>b.onclick=()=>setRole(b.dataset.role));
+render();
+</script>
+</body>
+</html>

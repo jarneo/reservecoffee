@@ -1,0 +1,10 @@
+# 本地缓存 / 工具数据（不入库）
+.workbuddy/
+node_modules/
+
+# 日志
+*.log
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
