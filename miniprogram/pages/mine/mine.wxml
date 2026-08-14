@@ -1,4 +1,17 @@
 <view class="page">
+  <view wx:if="{{role==='owner' || role==='manager'}}" class="card" style="margin-bottom:20rpx">
+    <view class="sec">我的身份</view>
+    <view class="row between" style="margin-top:6rpx">
+      <view class="sm">当前角色</view>
+      <view class="badge {{role==='owner'?'ok':(role==='manager'?'paused':'')}}">{{role==='owner'?'超级管理员':(role==='manager'?'普通管理员':'普通用户')}}</view>
+    </view>
+    <view class="sm" style="margin-top:12rpx">我的 openid：</view>
+    <view class="row between" style="margin-top:6rpx;align-items:flex-start">
+      <view class="sm muted" style="word-break:break-all;flex:1;line-height:1.5">{{openid || '加载中…'}}</view>
+      <button class="btn ghost xs" style="margin-left:12rpx;flex:none" bindtap="copyOpenid">复制</button>
+    </view>
+  </view>
+
   <view wx:if="{{list.length===0}}" class="note">暂无预约</view>
   <view wx:for="{{list}}" wx:key="_id" class="card">
     <view class="row between">

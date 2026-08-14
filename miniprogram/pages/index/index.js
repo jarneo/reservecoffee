@@ -5,8 +5,11 @@ Page({
   data: { homepage: {}, projects: [], role: 'none' },
 
   onShow() {
-    this.setData({ role: app.globalData.role })
     this.load()
+    // 重新拉取角色，避免 onLaunch 异步未返回时拿到过期的 'none' 导致按钮不显示
+    app.refreshRole().then(r => {
+      this.setData({ role: (r && r.role) || 'none' })
+    })
   },
 
   load() {

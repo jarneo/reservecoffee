@@ -9,9 +9,28 @@ const MAP = {
 }
 
 Page({
-  data: { list: [] },
+  data: { list: [], openid: '', role: 'none' },
 
-  onShow() { this.load() },
+  onShow() {
+    this.syncMe()
+    this.load()
+  },
+
+  // 同步当前用户身份（openid / 角色），供"复制 openid 给店主授权"使用
+  syncMe() {
+    const app = getApp()
+    app.refreshRole().then(() => {
+      this.setData({ openid: app.globalData.openid || '', role: app.globalData.role || 'none' })
+    }).catch(() => {})
+  },
+
+  copyOpenid() {
+    if (!this.data.openid) return wx.showToast({ title: 'openid 未加载', icon: 'none' })
+    wx.setClipboardData({
+      data: this.data.openid,
+      success: () => wx.showToast({ title: '已复制 openid', icon: 'success' })
+    })
+  },
 
   load() {
     call('listMyReservations')

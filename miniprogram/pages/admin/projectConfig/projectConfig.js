@@ -1,5 +1,5 @@
-const { call } = require('../../utils/cloud')
-const guard = require('../../components/adminGuard/adminGuard.js')
+const { call } = require('../../../utils/cloud')
+const guard = require('../../../components/adminGuard/adminGuard.js')
 
 function parseTemplate(text) {
   return text.split('\n').map(s => s.trim()).filter(Boolean).map(s => {

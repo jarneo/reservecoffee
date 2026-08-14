@@ -1,5 +1,5 @@
-const { call } = require('../../utils/cloud')
-const guard = require('../../components/adminGuard/adminGuard.js')
+const { call } = require('../../../utils/cloud')
+const guard = require('../../../components/adminGuard/adminGuard.js')
 
 Page({
   behaviors: [guard],

@@ -11,7 +11,22 @@
   </view>
 
   <view class="card">
-    <view class="sec">新增管理员</view>
+    <view class="sec">最近访问者（一键授权）</view>
+    <view wx:if="{{visitors.length===0}}" class="sm muted" style="padding:8rpx 0">暂无访问记录。请让对方用微信打开一次本小程序，其 openid 会出现在这里。</view>
+    <view wx:for="{{visitors}}" wx:key="openid" class="vrow">
+      <view class="vinfo">
+        <view class="sm" style="word-break:break-all">{{item.openid}}</view>
+        <view class="xs muted" style="margin-top:4rpx">最近访问：{{item.lastSeenText}}</view>
+      </view>
+      <view class="vbtns">
+        <button class="btn ghost xs" data-openid="{{item.openid}}" data-role="manager" bindtap="addVisitor">普通</button>
+        <button class="btn xs" data-openid="{{item.openid}}" data-role="owner" bindtap="addVisitor">超级</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="sec">新增管理员（手动填 openid）</view>
     <view class="field"><view class="label">被授权人 openid</view><input placeholder="微信 openid" value="{{openid}}" bindinput="onOpenid"/></view>
     <view class="field"><view class="label">角色</view>
       <view class="row">

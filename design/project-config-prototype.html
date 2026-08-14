@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>项目配置重构 · 演示原型</title>
+<style>
+  :root{
+    --espresso:#2b1d14; --coffee-700:#4a3424; --coffee-500:#7b5a3f; --coffee-300:#b89b80;
+    --cream:#f6efe4; --paper:#fffdf9; --line:#e7ddd0;
+    --accent:#c0843f; --accent-700:#a06a2c;
+    --ok:#2e7d57; --warn:#c9883f; --danger:#b5483a; --muted:#8a7a68; --ink:#2b1d14;
+    --r:14px; --r-sm:10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:#ece3d6; color:var(--ink); display:flex; justify-content:center; gap:28px; padding:28px; flex-wrap:wrap;}
+  .stage{display:flex; flex-direction:column; align-items:center; gap:14px;}
+  .stage h2{font-size:14px; letter-spacing:2px; color:var(--coffee-700); margin:0; font-weight:600;}
+
+  /* phone */
+  .phone{width:390px; height:780px; background:var(--cream); border-radius:38px; border:10px solid #1c140e;
+    box-shadow:0 24px 60px rgba(43,29,20,.28); position:relative; overflow:hidden; display:flex; flex-direction:column;}
+  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:26px; background:#1c140e; border-radius:0 0 16px 16px; z-index:30;}
+  .nav{height:46px; background:var(--coffee-700); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; letter-spacing:1px; position:relative; z-index:20;}
+  .tabs{display:flex; background:#fff; border-bottom:1px solid var(--line); overflow-x:auto; flex:none;}
+  .tabs button{border:none; background:none; padding:10px 12px; font-size:12.5px; color:var(--muted); white-space:nowrap; cursor:pointer; border-bottom:2px solid transparent;}
+  .tabs button.on{color:var(--coffee-700); border-bottom-color:var(--accent); font-weight:700;}
+  .screen{flex:1; overflow-y:auto; padding:14px; display:none;}
+  .screen.on{display:block;}
+  .screen::-webkit-scrollbar{width:0;}
+
+  /* components */
+  .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin-bottom:12px; box-shadow:0 2px 8px rgba(43,29,20,.04);}
+  .card.tap{cursor:pointer; transition:.15s;}
+  .card.tap:active{transform:scale(.99); background:#fbf6ee;}
+  .sec-title{font-size:13px; font-weight:700; color:var(--coffee-700); margin:2px 0 10px; display:flex; justify-content:space-between; align-items:center;}
+  .sec-title .hint{font-size:11px; color:var(--muted); font-weight:400;}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .between{justify-content:space-between;}
+  .muted{color:var(--muted);}
+  .sm{font-size:13px;} .xs{font-size:11.5px;} .bold{font-weight:700;} .mono{font-family:ui-monospace,Menlo,monospace; word-break:break-all;}
+
+  .badge{font-size:11px; padding:3px 9px; border-radius:999px; font-weight:600; white-space:nowrap;}
+  .b-pub{background:#e3f1ea; color:var(--ok);}
+  .b-off{background:#efe7db; color:var(--muted);}
+  .b-open{background:#e7f0ff; color:#2f6db0;}
+  .b-pause{background:#fbe9e4; color:var(--danger);}
+  .tag{font-size:10.5px; padding:2px 7px; border-radius:6px; background:#f1e8db; color:var(--coffee-700); margin-left:6px;}
+
+  .btn{border:none; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; background:var(--coffee-500); color:#fff; transition:.15s;}
+  .btn:active{transform:translateY(1px);}
+  .btn.primary{background:var(--accent);}
+  .btn.ghost{background:#fff; color:var(--coffee-700); border:1px solid var(--line);}
+  .btn.danger{background:#fff; color:var(--danger); border:1px solid #f0d2cb;}
+  .btn.block{width:100%; margin-top:6px;}
+  .btn.sm{padding:6px 10px; font-size:12px;}
+  .btn[disabled]{opacity:.45; cursor:not-allowed;}
+  .btn.live{box-shadow:0 0 0 3px rgba(192,132,63,.25);}
+
+  .switch{width:46px; height:27px; border-radius:999px; background:#d9cdbb; position:relative; transition:.2s; flex:none; cursor:pointer;}
+  .switch.on{background:var(--ok);}
+  .switch::after{content:""; position:absolute; top:3px; left:3px; width:21px; height:21px; border-radius:50%; background:#fff; transition:.2s;}
+  .switch.on::after{left:22px;}
+
+  .segment{display:flex; background:#f1e8db; border-radius:10px; padding:3px; gap:3px;}
+  .segment button{flex:1; border:none; background:none; padding:8px 0; font-size:12.5px; border-radius:8px; color:var(--coffee-700); cursor:pointer;}
+  .segment button.on{background:#fff; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
+  .stepper{display:flex; align-items:center; gap:0; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .stepper button{width:38px; height:38px; border:none; background:#fff; font-size:18px; color:var(--coffee-700); cursor:pointer;}
+  .stepper input{width:54px; border:none; text-align:center; font-size:14px; font-weight:700; color:var(--ink);}
+
+  .field input{width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px; margin-top:6px; background:#fff;}
+  .field label{font-size:13px; color:var(--coffee-700); font-weight:600;}
+
+  .check{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .check:last-child{border-bottom:none;}
+  .box{width:20px; height:20px; border-radius:6px; border:2px solid var(--coffee-300); flex:none; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;}
+  .box.on{background:var(--coffee-500); border-color:var(--coffee-500);}
+  .req{font-size:10px; color:var(--danger); margin-left:6px;}
+
+  /* calendar */
+  .cal{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center;}
+  .cal .d{font-size:11px; color:var(--muted); padding:4px 0;}
+  .cal .cell{aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:13px; border-radius:8px; cursor:pointer; position:relative;}
+  .cal .cell.sel{background:var(--accent); color:#fff; font-weight:700;}
+  .cal .cell.has::after{content:""; position:absolute; bottom:5px; width:5px; height:5px; border-radius:50%; background:var(--ok);}
+  .cal .cell.sel.has::after{background:#fff;}
+
+  /* sheet */
+  .mask{position:absolute; inset:0; background:rgba(20,12,8,.45); z-index:40; display:none;}
+  .mask.on{display:block;}
+  .sheet{position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:20px 20px 0 0; padding:18px 16px 24px; z-index:50; transform:translateY(100%); transition:.25s; max-height:84%; overflow-y:auto;}
+  .sheet.on{transform:translateY(0);}
+  .sheet h3{margin:0 0 4px; font-size:16px; color:var(--espresso);}
+  .sheet .sub{font-size:12px; color:var(--muted); margin-bottom:14px;}
+  .sheet .field-row{margin:16px 0;}
+  .sheet .field-row > .lbl{font-size:13px; font-weight:700; color:var(--coffee-700); margin-bottom:8px;}
+  .sheet-actions{display:flex; gap:10px; margin-top:18px;}
+  .sheet-actions .btn{flex:1;}
+
+  .pill{display:inline-block; font-size:11px; background:#f1e8db; color:var(--coffee-700); padding:3px 8px; border-radius:999px; margin:2px 4px 2px 0;}
+  .toast{position:absolute; bottom:90px; left:50%; transform:translateX(-50%); background:rgba(43,29,20,.92); color:#fff; padding:9px 16px; border-radius:999px; font-size:12.5px; z-index:60; opacity:0; transition:.2s; pointer-events:none; white-space:nowrap;}
+  .toast.on{opacity:1;}
+  .note{font-size:12px; color:var(--muted); text-align:center; padding:20px; line-height:1.7;}
+  .legend{font-size:11px; color:var(--muted); line-height:1.9; background:#fbf6ee; border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-top:6px;}
+  .proj-name{font-size:15px; font-weight:700;}
+  .del-confirm{font-size:12.5px; color:var(--muted); margin:6px 0 12px;}
+</style>
+</head>
+<body>
+
+<!-- ===================== 管理端演示 ===================== -->
+<div class="stage">
+  <h2>管理端 · 演示原型</h2>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="nav" id="navTitle">项目管理</div>
+    <div class="tabs" id="tabs">
+      <button data-s="manage" class="on">项目管理</button>
+      <button data-s="config">项目配置</button>
+      <button data-s="sessions">场次设定</button>
+      <button data-s="view">查看预约</button>
+    </div>
+
+    <!-- 1. 项目管理 -->
+    <section class="screen on" data-screen="manage">
+      <div class="row" style="margin-bottom:10px">
+        <div class="bold" style="font-size:14px">项目列表</div>
+        <button class="btn primary sm" onclick="toast('打开新建项目表单')">+ 新建</button>
+      </div>
+      <div id="projList"></div>
+      <div class="legend">状态说明：发布态（已发布 / 下架 / 删除）× 预约态（开放 / 暂停），两维独立。点击卡片主体进入项目配置；行内按钮实时切换状态（演示）。</div>
+    </section>
+
+    <!-- 2. 项目全局配置 -->
+    <section class="screen" data-screen="config">
+      <div class="card">
+        <div class="sec-title">① 项目时间设置 <span class="hint">置顶 · 最先配置</span></div>
+        <div class="sm muted">设定本项目整体可预约时间范围</div>
+        <div class="row" style="margin-top:10px">
+          <span class="sm">开放星期</span>
+          <div class="segment" style="flex:1; max-width:230px">
+            <button class="on">一二三四五</button><button>六日</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <span class="sm">开放月份</span>
+          <span class="xs muted">2026-08 ~ 2026-12</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><span class="sm" style="font-weight:600">提交后是否审核</span>
+          <div class="switch on" data-toggle></div></div>
+      </div>
+
+      <div class="card tap" onclick="openSheet('limit')">
+        <div class="row"><div><div class="sm" style="font-weight:600">预约次数限制</div>
+          <div class="xs muted" id="limitSummary">每天 · 2 次</div></div>
+          <span class="sm" style="color:var(--accent);font-weight:700">设置 ›</span></div>
+      </div>
+
+      <div class="card tap" onclick="openSheet('open')">
+        <div class="row"><div><div class="sm" style="font-weight:600">预约开放规则</div>
+          <div class="xs muted" id="openSummary">每天 · 提前 3 天</div></div>
+          <span class="sm" style="color:var(--accent);font-weight:700">设置 ›</span></div>
+      </div>
+
+      <div class="card tap" onclick="openSheet('deadline')">
+        <div class="row"><div><div class="sm" style="font-weight:600">预约截止规则</div>
+          <div class="xs muted" id="deadlineSummary">每天 · 场次前 2 小时</div></div>
+          <span class="sm" style="color:var(--accent);font-weight:700">设置 ›</span></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-title">提交预约信息设置</div>
+        <div class="xs muted" style="margin-bottom:4px">勾选预约人需填写项（姓名/手机为系统必填）</div>
+        <div id="fieldList"></div>
+        <button class="btn ghost sm block" onclick="addCustomField()">+ 新增可填写项</button>
+      </div>
+    </section>
+
+    <!-- 3. 场次设定 -->
+    <section class="screen" data-screen="sessions">
+      <div class="sec-title">选择日期 <span class="hint">蓝点为已排场次</span></div>
+      <div class="card">
+        <div class="cal" id="calHead"></div>
+        <div class="cal" id="cal"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ghost sm" onclick="toast('已批量开放所选日期')">批量开放</button>
+          <button class="btn ghost sm" onclick="toast('已批量关闭所选日期')">批量关闭</button>
+        </div>
+      </div>
+      <div class="sec-title">当日场次 <span class="hint" id="sessDate">08-15</span></div>
+      <div id="sessList"></div>
+      <button class="btn primary block" onclick="addSession()">+ 添加场次</button>
+    </section>
+
+    <!-- 4. 查看预约 -->
+    <section class="screen" data-screen="view">
+      <div class="sec-title">项目切换</div>
+      <div class="segment" id="projSwitch" style="margin-bottom:12px"></div>
+      <div id="resvList"></div>
+    </section>
+
+    <!-- sheets -->
+    <div class="mask" id="mask" onclick="closeSheet()"></div>
+
+    <!-- 次数限定 -->
+    <div class="sheet" id="sheet-limit">
+      <h3>次数限定方式</h3>
+      <div class="sub">预约次数限制</div>
+      <div class="field-row"><div class="lbl">设定周期</div>
+        <div class="segment" data-seg="limitPeriod">
+          <button class="on" data-v="day">每天</button><button data-v="week">每周</button>
+          <button data-v="month">每月</button><button data-v="forever">永久</button>
+        </div></div>
+      <div class="field-row"><div class="lbl">周期内可提交次数</div>
+        <div class="stepper"><button onclick="step('limitCount',-1)">−</button>
+          <input id="limitCount" value="2" readonly /><button onclick="step('limitCount',1)">+</button></div></div>
+      <div class="field-row row"><div><div class="lbl">管理员特权</div>
+        <div class="xs muted">管理员不受次数限制</div></div>
+        <div class="switch on" data-toggle></div></div>
+      <div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>
+        <button class="btn primary" onclick="saveLimit()">保存</button></div>
+    </div>
+
+    <!-- 预约开放规则 -->
+    <div class="sheet" id="sheet-open">
+      <h3>预约开放规则</h3>
+      <div class="sub">配置后可约日期范围（按提前天数）</div>
+      <div class="field-row"><div class="lbl">设定周期</div>
+        <div class="segment" data-seg="openPeriod">
+          <button class="on" data-v="day">每天</button><button data-v="week">每周</button>
+          <button data-v="month">每月</button><button data-v="forever">永久</button>
+        </div></div>
+      <div class="field-row"><div class="lbl">可提前天数（1–30）</div>
+        <div class="stepper"><button onclick="step('openDays',-1,1,30)">−</button>
+          <input id="openDays" value="3" readonly /><button onclick="step('openDays',1,1,30)">+</button></div></div>
+      <div class="field-row row"><div><div class="lbl">管理员特权</div>
+        <div class="xs muted">管理员不受提前天数限制</div></div>
+        <div class="switch on" data-toggle></div></div>
+      <div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>
+        <button class="btn primary" onclick="saveOpen()">保存</button></div>
+    </div>
+
+    <!-- 预约截止规则 -->
+    <div class="sheet" id="sheet-deadline">
+      <h3>预约截止规则</h3>
+      <div class="sub">逾期不可提交预约</div>
+      <div class="field-row"><div class="lbl">设定周期</div>
+        <div class="segment" data-seg="deadlinePeriod">
+          <button class="on" data-v="day">每天</button><button data-v="week">每周</button>
+          <button data-v="month">每月</button><button data-v="forever">永久</button>
+        </div></div>
+      <div class="field-row"><div class="lbl">场次开始前截止（小时）</div>
+        <div class="stepper"><button onclick="step('deadlineH',-1,0,48)">−</button>
+          <input id="deadlineH" value="2" readonly /><button onclick="step('deadlineH',1,0,48)">+</button></div></div>
+      <div class="field-row row"><div><div class="lbl">管理员特权</div>
+        <div class="xs muted">管理员不受截止限制</div></div>
+        <div class="switch on" data-toggle></div></div>
+      <div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>
+        <button class="btn primary" onclick="saveDeadline()">保存</button></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<!-- ===================== 用户端演示 ===================== -->
+<div class="stage">
+  <h2>用户端 · 演示原型</h2>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="nav" id="navTitle2">首次登录</div>
+    <div class="tabs" id="tabs2">
+      <button data-s="login" class="on">首次登录</button>
+      <button data-s="submit">提交预约</button>
+    </div>
+
+    <section class="screen on" data-screen="login">
+      <div class="note" style="padding-top:30px">欢迎来到<br/><b>二曜路8号咖啡和清酒</b></div>
+      <div class="card">
+        <div class="field"><label>昵称</label><input placeholder="如：小林" /></div>
+        <div class="field" style="margin-top:12px"><label>头像</label>
+          <div class="row" style="margin-top:8px">
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--coffee-300);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px">☕</div>
+            <button class="btn ghost sm" onclick="toast('选择头像')">选择头像</button>
+          </div></div>
+      </div>
+      <button class="btn primary block" onclick="toast('已保存资料')">保存</button>
+      <div class="note"><span style="color:var(--accent);text-decoration:underline" onclick="toast('已跳过资料设置')">跳过</span></div>
+    </section>
+
+    <section class="screen" data-screen="submit">
+      <div class="card">
+        <div class="sec-title">法兰绒深烘咖啡预约</div>
+        <div class="xs muted">08-15 · 14:00 · 2 人</div>
+      </div>
+      <div class="card">
+        <div class="field"><label>姓名 <span style="color:var(--danger)">*</span></label><input placeholder="必填" id="fName" /></div>
+        <div class="field" style="margin-top:12px"><label>手机号 <span style="color:var(--danger)">*</span></label>
+          <div class="row" style="margin-top:6px"><input placeholder="必填 · 微信校验" id="fPhone" style="flex:1"/>
+            <button class="btn ghost sm" onclick="wxVerify()" style="margin-left:8px">微信校验</button></div></div>
+        <div class="field" style="margin-top:12px"><label>微信号</label><input placeholder="选填" /></div>
+        <div class="field" style="margin-top:12px"><label>备注</label><input placeholder="自定义项" /></div>
+      </div>
+      <button class="btn primary block" onclick="submitForm()">提交预约</button>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ---------- 导航 ---------- */
+const titles={manage:'项目管理',config:'项目全局配置',sessions:'场次设定',view:'查看预约',login:'首次登录',submit:'提交预约'};
+function bindTabs(tabsId,navId){
+  document.querySelectorAll('#'+tabsId+' button').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('#'+tabsId+' button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      const s=b.dataset.s;
+      document.querySelectorAll('.screen').forEach(sc=>sc.classList.remove('on'));
+      document.querySelector(`.screen[data-screen="${s}"]`).classList.add('on');
+      const nav=document.getElementById(navId); if(nav) nav.textContent=titles[s]||'';
+    };
+  });
+}
+bindTabs('tabs','navTitle'); bindTabs('tabs2','navTitle2');
+
+/* ---------- toast ---------- */
+let tt; function toast(m){const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),1400);}
+
+/* ---------- 开关 ---------- */
+document.querySelectorAll('[data-toggle]').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
+
+/* ---------- 分段 ---------- */
+document.querySelectorAll('[data-seg]').forEach(seg=>{
+  seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');});
+});
+
+/* ---------- 步进 ---------- */
+function step(id,d,min=1,max=99){const el=document.getElementById(id); let v=parseInt(el.value)+d; v=Math.max(min,Math.min(max,v)); el.value=v;}
+
+/* ---------- sheets ---------- */
+function openSheet(k){document.getElementById('mask').classList.add('on'); document.getElementById('sheet-'+k).classList.add('on');}
+function closeSheet(){document.getElementById('mask').classList.remove('on'); document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));}
+const pname={day:'每天',week:'每周',month:'每月',forever:'永久'};
+function saveLimit(){const p=document.querySelector('[data-seg="limitPeriod"] .on').dataset.v;
+  document.getElementById('limitSummary').textContent=pname[p]+' · '+document.getElementById('limitCount').value+' 次'; closeSheet(); toast('已保存次数限制');}
+function saveOpen(){const p=document.querySelector('[data-seg="openPeriod"] .on').dataset.v;
+  document.getElementById('openSummary').textContent=pname[p]+' · 提前 '+document.getElementById('openDays').value+' 天'; closeSheet(); toast('已保存开放规则');}
+function saveDeadline(){const p=document.querySelector('[data-seg="deadlinePeriod"] .on').dataset.v;
+  document.getElementById('deadlineSummary').textContent=pname[p]+' · 场次前 '+document.getElementById('deadlineH').value+' 小时'; closeSheet(); toast('已保存截止规则');}
+
+/* ---------- 项目管理列表 ---------- */
+const projects=[
+  {name:'法兰绒深烘咖啡预约', pub:true, booking:true},
+  {name:'清酒品鉴预约', pub:true, booking:false},
+  {name:'法兰绒研习社预约', pub:false, booking:true},
+];
+function renderProjects(){
+  const box=document.getElementById('projList'); box.innerHTML='';
+  projects.forEach((p,i)=>{
+    const el=document.createElement('div'); el.className='card';
+    const pubBadge=p.pub?'<span class="badge b-pub">已发布</span>':'<span class="badge b-off">下架</span>';
+    const bookBadge=p.booking?'<span class="badge b-open">开放预约</span>':'<span class="badge b-pause">暂停预约</span>';
+    el.innerHTML=`
+      <div class="card tap" style="padding:0;margin:0;border:none;box-shadow:none" onclick="enterConfig('${p.name}')">
+        <div class="row between"><div class="proj-name">${p.name}</div><div>${pubBadge}${bookBadge}</div></div>
+      </div>
+      <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap">
+        ${p.pub?'<button class="btn ghost sm" onclick="togglePub('+i+')">下架</button>':'<button class="btn primary sm live" onclick="togglePub('+i+')">发布</button>'}
+        ${p.booking?'<button class="btn ghost sm" onclick="toggleBook('+i+')">暂停预约</button>':'<button class="btn sm" style="background:#e7f0ff;color:#2f6db0" onclick="toggleBook('+i+')">开放预约</button>'}
+        <button class="btn danger sm" onclick="del('+i+')">删除</button>
+      </div>`;
+    box.appendChild(el);
+  });
+}
+function enterConfig(n){toast('进入「'+n+'」配置'); switchTo('config');}
+function switchTo(s){document.querySelector('#tabs button[data-s="'+s+'"]').click();}
+function togglePub(i){projects[i].pub=!projects[i].pub; renderProjects(); toast(projects[i].pub?'已发布':'已下架');}
+function toggleBook(i){projects[i].booking=!projects[i].booking; renderProjects(); toast(projects[i].booking?'已开放预约':'已暂停预约');}
+function del(i){if(confirm('确认删除「'+projects[i].name+'」？')){projects.splice(i,1); renderProjects(); toast('已删除');}}
+renderProjects();
+
+/* ---------- 提交信息字段 ---------- */
+const fields=[{k:'姓名',req:true,on:true},{k:'手机',req:true,on:true},{k:'微信号',req:false,on:true}];
+function renderFields(){const box=document.getElementById('fieldList'); box.innerHTML='';
+  fields.forEach((f,i)=>{const el=document.createElement('div'); el.className='check';
+    el.innerHTML=`<div class="box ${f.on?'on':''}" onclick="toggleField(${i})">${f.on?'✓':''}</div>
+      <div style="flex:1"><span class="sm">${f.k}</span>${f.req?'<span class="req">必填</span>':''}</div>`;
+    box.appendChild(el);});}
+function toggleField(i){if(fields[i].req){toast('必填项不可取消'); return;} fields[i].on=!fields[i].on; renderFields();}
+function addCustomField(){const n=prompt('新增可填写项名称：'); if(n){fields.push({k:n,req:false,on:true}); renderFields();}}
+renderFields();
+
+/* ---------- 日历 ---------- */
+const WD=['日','一','二','三','四','五','六']; const calHead=document.getElementById('calHead');
+WD.forEach(d=>{const e=document.createElement('div'); e.className='d'; e.textContent=d; calHead.appendChild(e);});
+const cal=document.getElementById('cal'); let sel=14;
+const hasSet=new Set([3,8,14,20,26]);
+for(let d=1;d<=30;d++){const c=document.createElement('div'); c.className='cell'+(d===sel?' sel':'')+(hasSet.has(d)?' has':''); c.textContent=d;
+  c.onclick=()=>{document.querySelectorAll('.cal .cell').forEach(x=>x.classList.remove('sel')); c.classList.add('sel'); sel=d; renderSessions();};
+  cal.appendChild(c);}
+function renderSessions(){document.getElementById('sessDate').textContent='08-'+String(sel).padStart(2,'0');
+  const box=document.getElementById('sessList'); box.innerHTML='';
+  if(!hasSet.has(sel)){box.innerHTML='<div class="note">当日暂无场次，点下方添加</div>'; return;}
+  const arr=[{s:'10:00',e:'11:30',m:8},{s:'14:00',e:'15:30',m:8}];
+  arr.forEach(se=>{const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`<div class="row between"><div class="bold">${se.s} – ${se.e}</div><span class="tag">满 ${se.m} 人</span></div>
+      <div class="row" style="margin-top:10px"><span class="xs muted">最大预约人数</span>
+      <div class="stepper"><button onclick="toast('−')">−</button><input value="${se.m}" readonly/><button onclick="toast('+')">+</button></div></div>`;
+    box.appendChild(el);});}
+renderSessions();
+function addSession(){hasSet.add(sel); const c=document.querySelector('.cal .cell:nth-child('+sel+')'); if(c)c.classList.add('has');
+  toast('已添加场次（演示）'); renderSessions();}
+
+/* ---------- 查看预约切换 ---------- */
+const projSwitch=document.getElementById('projSwitch');
+projects.forEach((p,i)=>{const b=document.createElement('button'); b.textContent=p.name.replace('预约',''); if(i===0)b.className='on';
+  b.onclick=()=>{projSwitch.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.className='on'; renderResv();};
+  projSwitch.appendChild(b);});
+function renderResv(){const box=document.getElementById('resvList'); box.innerHTML='';
+  const data=[{n:'王女士',p:'138****0021',t:'08-15 14:00',s:'已确认',c:'ok'},
+    {n:'陈先生',p:'139****7733',t:'08-15 10:00',s:'待审核',c:'paused'},
+    {n:'小林',p:'137****1190',t:'08-14 19:30',s:'已完成',c:'done'}];
+  data.forEach(r=>{const el=document.createElement('div'); el.className='card';
+    el.innerHTML=`<div class="row between"><div class="bold">${r.n}</div><span class="badge b-${r.c}">${r.s}</span></div>
+      <div class="xs muted" style="margin-top:6px">${r.t} · ${r.p}</div>`;
+    box.appendChild(el);});}
+renderResv();
+
+/* ---------- 用户端校验 ---------- */
+function wxVerify(){const v=document.getElementById('fPhone').value; if(/^1\d{10}$/.test(v)){toast('微信校验通过');}else toast('手机号格式不正确');}
+function submitForm(){const n=document.getElementById('fName').value.trim(), p=document.getElementById('fPhone').value.trim();
+  if(!n){toast('姓名必填'); return;} if(!/^1\d{10}$/.test(p)){toast('手机号必填且需微信校验'); return;} toast('提交成功');}
+</script>
+</body>
+</html>

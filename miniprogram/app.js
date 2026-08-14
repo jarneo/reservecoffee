@@ -1,6 +1,6 @@
 // app.js — 二曜路8号咖啡和清酒 · 预约小程序
 // 将下方 ENV_ID 替换为你的 CloudBase 环境 ID（云开发控制台获取）。
-const ENV_ID = 'your-env-id'
+const ENV_ID = 'cloud1-d8g9mhgxm32d2eac6'
 
 App({
   globalData: {
@@ -25,11 +25,11 @@ App({
 
   // 获取/刷新管理员角色（写入 globalData）
   refreshRole() {
-    return wx.cloud.callFunction({ name: 'getRole' })
-      .then(res => {
-        const r = (res && res.result) || {}
-        this.globalData.role = r.role || 'none'
-        this.globalData.openid = r.openid || ''
+    const { call } = require('./utils/cloud')
+    return call('getRole')
+      .then(r => {
+        this.globalData.role = (r && r.role) || 'none'
+        this.globalData.openid = (r && r.openid) || ''
         return r
       })
       .catch(() => ({ role: 'none' }))
