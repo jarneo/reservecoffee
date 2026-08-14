@@ -68,6 +68,7 @@
   .field{border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 12px;font-size:14px;width:100%;font-family:var(--font);color:var(--ink);background:#fff}
   .field:focus{outline:none;border-color:var(--ink)}
   .label{font-size:12px;color:var(--ink-2);margin-bottom:6px;display:block}
+  .ta{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;font-size:14px;font-family:var(--font);color:var(--ink);background:#fff;min-height:62px;box-sizing:border-box;resize:vertical;line-height:1.5}
   .divider{height:1px;background:var(--line);margin:14px 0}
   .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
   .stepper button{width:34px;height:34px;border:0;background:#fff;font-size:18px;cursor:pointer;color:var(--ink);font-family:var(--font)}
@@ -236,19 +237,19 @@ const state = {
 };
 const shop = { logo:'二曜路8号咖啡和清酒', tag:'SLOW COFFEE · 预约制', intro:'一家以法兰绒滴滤与清酒品鉴为特色的预约制咖啡空间。请选择下方项目开始预约。' };
 const projects = [
-  { id:'p1', name:'法兰绒深烘咖啡预约', icon:'coffee', image:'法兰绒', intro:'每日限量法兰绒手冲深烘，安静的吧台座位。', published:true, needReview:false, dailyLimit:1, advanceDays:7, paused:false, useSlotTemplate:false, slotTemplate:[],
+  { id:'p1', name:'法兰绒深烘咖啡预约', icon:'coffee', image:'法兰绒', intro:'每日限量法兰绒手冲深烘，安静的吧台座位。', published:true, needReview:false, dailyLimit:1, advanceDays:7, paused:false, useSlotTemplate:false, slotTemplate:[], smsEnabled:false, smsNotice:'',
     openDays:['2026-08-14','2026-08-15','2026-08-17','2026-08-18','2026-08-21'],
     sched:{ '2026-08-14':[{id:'s1',start:'10:00',end:'11:30',cap:6,booked:2,paused:false},{id:'s2',start:'14:00',end:'15:30',cap:6,booked:6,paused:false}],
             '2026-08-15':[{id:'s3',start:'10:00',end:'11:30',cap:4,booked:1,paused:false}],
             '2026-08-17':[{id:'s6',start:'10:00',end:'11:30',cap:6,booked:0,paused:false,desc:'吧台座位'}],
             '2026-08-18':[{id:'s7',start:'14:00',end:'15:30',cap:6,booked:0,paused:false,desc:''}],
             '2026-08-21':[] } },
-  { id:'p2', name:'清酒品鉴预约', icon:'sake', image:'清酒', intro:'主理人带领的清酒小酌，每晚一场。', published:true, needReview:true, dailyLimit:1, advanceDays:14, paused:false, useSlotTemplate:false, slotTemplate:[],
+  { id:'p2', name:'清酒品鉴预约', icon:'sake', image:'清酒', intro:'主理人带领的清酒小酌，每晚一场。', published:true, needReview:true, dailyLimit:1, advanceDays:14, paused:false, useSlotTemplate:false, slotTemplate:[], smsEnabled:false, smsNotice:'',
     openDays:['2026-08-14','2026-08-16','2026-08-19','2026-08-21'],
     sched:{ '2026-08-14':[{id:'s4',start:'19:30',end:'21:00',cap:8,booked:3,paused:false}],
             '2026-08-16':[{id:'s8',start:'19:30',end:'21:00',cap:8,booked:0,paused:false,desc:'吧台品鉴'}],
             '2026-08-19':[], '2026-08-21':[] } },
-  { id:'p3', name:'法兰绒研习社预约', icon:'study', image:'研习', intro:'咖啡冲煮教学小班，需审核。', published:true, needReview:true, dailyLimit:2, advanceDays:30, paused:false, useSlotTemplate:false, slotTemplate:[],
+  { id:'p3', name:'法兰绒研习社预约', icon:'study', image:'研习', intro:'咖啡冲煮教学小班，需审核。', published:true, needReview:true, dailyLimit:2, advanceDays:30, paused:false, useSlotTemplate:false, slotTemplate:[], smsEnabled:false, smsNotice:'',
     openDays:['2026-08-16','2026-08-19','2026-08-22'],
     sched:{ '2026-08-16':[{id:'s5',start:'13:00',end:'15:00',cap:10,booked:4,paused:false}],
             '2026-08-19':[{id:'s9',start:'13:00',end:'15:00',cap:10,booked:0,paused:false,desc:'小班教学'}],
@@ -673,6 +674,16 @@ function projectConfig(){
     <div class="row between" style="padding:8px 0"><span>使用固定时段模板</span>
       <div class="switch ${p.useSlotTemplate?'on':''}" onclick="toggleTemplate(this)"><i></i></div></div>
     ${p.useSlotTemplate?slotTemplateEditor():''}
+    <div class="divider"></div>
+    <div class="label">短信推送（预约成功后通知顾客）</div>
+    <div class="row between" style="padding:8px 0"><span>启用短信推送<span class="xs muted" style="margin-left:6px">仅本项目</span></span>
+      <div class="switch ${p.smsEnabled?'on':''}" onclick="toggleSms(this)"><i></i></div></div>
+    <div class="xs muted" style="padding:0 0 6px">两种状态发送：预约成功 / 待审核（需审项目）</div>
+    ${p.smsEnabled?`<div style="margin-top:6px">
+      <div class="label">注意事项（短信内容，≤30 字）</div>
+      <textarea class="ta" placeholder="如：请提前 10 分钟到店，迟到名额不保留" oninput="setSmsNotice(this)" maxlength="30">${p.smsNotice||''}</textarea>
+      <div class="xs muted" style="margin-top:4px">短信将携带：称呼 · 项目 · 状态 · 预约日期 · 场次 · 上述注意事项</div>
+    </div>`:''}
   </div>`;
   return `${topBar(p.name,'','')}
     <div class="sec">可预约日期（展开日历 · 点选设置）</div>
@@ -815,6 +826,13 @@ function addTpl(){
 }
 function delTpl(i){const p=project();p.slotTemplate.splice(i,1);render();}
 function applyTpl(s,e){const a=$('#ssStart'),b=$('#ssEnd');if(a)a.value=s;if(b)b.value=e;}
+/* ---- 短信推送（每项目独立开关 + 注意事项） ---- */
+function toggleSms(el){
+  el.classList.toggle('on');
+  const p=project();p.smsEnabled=el.classList.contains('on');
+  render();
+}
+function setSmsNotice(el){const p=project();p.smsNotice=el.value;} // 不重渲染，避免输入时失焦
 /* ---- 提前预约天数 1–30 边界 ---- */
 function stepAdv(n){
   const p=project();

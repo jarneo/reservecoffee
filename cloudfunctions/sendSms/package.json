@@ -1,5 +1,5 @@
 {
-  "name": "reviewReservation",
+  "name": "sendSms",
   "version": "1.0.0",
   "description": "reservecoffee cloud function",
   "main": "index.js",

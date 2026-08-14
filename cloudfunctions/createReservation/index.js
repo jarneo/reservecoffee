@@ -1,5 +1,6 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
 const { db, _, COL, TPL, ok, fail, wxCtx, addDays, sendSubscribe } = require('./lib')
+const { sendReservationSms } = require('./sms')
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -75,6 +76,17 @@ exports.main = async (event) => {
       templateId: needReview ? TPL.reserveReview : TPL.reserveSuccess,
       data: {}, page: 'pages/mine/mine'
     })
+
+    // 短信推送（每项目独立开关）：免审→预约成功；需审→待审核
+    if (p.smsEnabled) {
+      const smsStatus = needReview ? 'pending' : 'confirmed'
+      sendReservationSms({
+        db, phone, name: name.trim(), project: p.name,
+        date, time: `${session.start}–${session.end}`,
+        status: smsStatus, notice: p.smsNotice
+      }).catch(() => {})
+    }
+
     return ok({ id: add._id, status: reservation.status, review: reservation.review })
   } catch (e) {
     await transaction.rollback().catch(() => {})

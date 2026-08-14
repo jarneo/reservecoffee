@@ -1,5 +1,6 @@
 // reviewReservation — 审核通过/拒绝（owner）
 const { db, COL, TPL, ok, fail, wxCtx, getRole, sendSubscribe } = require('./lib')
+const { sendReservationSms } = require('./sms')
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -36,6 +37,20 @@ exports.main = async (event) => {
       }
     }
     await transaction.commit()
+
+    // 审核通过 → 短信通知「预约成功」（每项目独立开关）
+    if (decision === 'approve') {
+      const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
+      const p = pRes.data
+      if (p && p.smsEnabled) {
+        sendReservationSms({
+          db, phone: r.phone, name: r.name, project: p.name,
+          date: r.date, time: `${r.sessionStart}–${r.sessionEnd}`,
+          status: 'confirmed', notice: p.smsNotice
+        }).catch(() => {})
+      }
+    }
+
     await sendSubscribe({
       openid: r.openid, templateId: TPL.reviewResult,
       data: {}, page: 'pages/mine/mine'
