@@ -1,0 +1,38 @@
+/* pages/shareMenu/shareMenu — 公众号专属菜单页样式（复用全局令牌） */
+.hero {
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
+  text-align: center;
+}
+.h-name { font-size: 36rpx; font-weight: 600; color: var(--ink); }
+.h-tag { font-size: 22rpx; letter-spacing: 2rpx; color: var(--brand); margin-top: 10rpx; }
+.h-intro { font-size: 24rpx; color: var(--ink-2); margin-top: 14rpx; line-height: 1.6; }
+
+.sec-title {
+  font-size: 26rpx; font-weight: 600; color: var(--ink);
+  margin: 8rpx 4rpx 16rpx;
+}
+
+.dish { display: flex; align-items: stretch; }
+.dish-img {
+  width: 160rpx; height: 160rpx; border-radius: 12rpx; overflow: hidden;
+  background: var(--fill); margin-right: 20rpx; flex: none;
+}
+.dish-img .img { width: 100%; height: 100%; display: block; }
+.dish-img .ph {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--ink-3); font-size: 22rpx; border: 1rpx dashed var(--line);
+}
+.dish-info { flex: 1; min-width: 0; }
+
+.stars { color: var(--brand); font-size: 24rpx; letter-spacing: 2rpx; }
+
+.rev { display: block; }
+.note {
+  background: #fff; border: 1rpx solid var(--line); border-radius: 16rpx;
+  padding: 28rpx 24rpx; color: var(--ink-3); font-size: 24rpx; text-align: center;
+}
+.foot { text-align: center; margin: 28rpx 0 12rpx; }

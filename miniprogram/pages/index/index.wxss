@@ -1,7 +1,15 @@
 .hero { background:#fff; border:1rpx solid var(--line); border-radius:16rpx; padding:40rpx 28rpx; margin-bottom:24rpx; }
+.hero .hero-img { width:100%; height:auto; display:block; border-radius:12rpx; margin-bottom:18rpx; background:var(--fill); }
 .brand-row { display:flex; align-items:center; }
 .brand-row .brand-text { font-size:34rpx; font-weight:700; margin-left:12rpx; letter-spacing:1rpx; }
 .hero .tag { font-size:22rpx; color:var(--ink-3); margin-top:10rpx; letter-spacing:2rpx; }
 .hero .intro { font-size:26rpx; color:var(--ink-2); margin-top:16rpx; line-height:1.6; }
 .sec-title { font-size:26rpx; color:var(--ink-3); margin:8rpx 4rpx 16rpx; }
 .note { color:var(--ink-3); font-size:26rpx; text-align:center; padding:40rpx; }
+
+/* 店铺菜单（首页内联） */
+.menu-card { display:flex; gap:20rpx; background:#fff; border:1rpx solid var(--line); border-radius:16rpx; padding:20rpx; margin-bottom:16rpx; }
+.menu-img { width:160rpx; height:160rpx; border-radius:12rpx; flex:none; background:var(--fill); }
+.menu-img.ph { display:flex; align-items:center; justify-content:center; color:var(--ink-3); font-size:22rpx; border:1rpx dashed var(--line); }
+.menu-info { flex:1; min-width:0; display:flex; flex-direction:column; }
+.menu-price { font-weight:600; font-size:28rpx; }

@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="row between" style="padding:8rpx 4rpx 16rpx">
+    <view class="bold">场次模版</view>
+    <view class="btn sm" bindtap="openNew">+ 新增模版</view>
+  </view>
+
+  <view wx:for="{{list}}" wx:key="_id" class="card">
+    <view class="row between"><view class="bold">{{item.name}}</view><view class="badge">{{item.slots.length}} 场</view></view>
+    <view wx:for="{{item.slots}}" wx:for-item="s" wx:key="index" class="kv">
+      <view>{{s.start}} – {{s.end}}</view><view class="muted">限 {{s.max}} 人</view>
+    </view>
+    <view class="ops" style="margin-top:10rpx">
+      <button class="btn ghost sm" bindtap="openEdit" data-id="{{item._id}}">编辑</button>
+      <button class="btn ghost sm" bindtap="del" data-id="{{item._id}}">删除</button>
+    </view>
+  </view>
+  <view wx:if="{{list.length===0}}" class="note">暂无模版，点右上角新增。</view>
+  <view class="note">模版全 admin 共享，可在「项目配置 → 每日场次 → 模版」中套用。</view>
+
+  <view class="modal-mask" wx:if="{{showEditor}}" bindtap="closeEditor">
+    <view class="modal" catchtap="noop">
+      <view class="modal-t">{{editId?'编辑':'新增'}}模版</view>
+      <view class="field"><view class="label">模版名称</view><input value="{{form.name}}" bindinput="onName" placeholder="如：平日双场"/></view>
+      <view wx:for="{{form.slots}}" wx:for-item="s" wx:key="index" class="slot-row">
+        <picker mode="time" value="{{s.start}}" bindchange="onStart" data-i="{{index}}"><view class="picker">{{s.start}}</view></picker>
+        <text class="dash">–</text>
+        <picker mode="time" value="{{s.end}}" bindchange="onEnd" data-i="{{index}}"><view class="picker">{{s.end}}</view></picker>
+        <input class="cap" type="number" value="{{s.max}}" bindinput="onMax" data-i="{{index}}"/>
+        <text class="rm" wx:if="{{form.slots.length>1}}" catchtap="removeSlot" data-i="{{index}}">✕</text>
+      </view>
+      <view class="opt" bindtap="addSlot"><view>+ 添加时段</view></view>
+      <view class="row" style="gap:12rpx;margin-top:16rpx">
+        <button class="btn ghost block" bindtap="closeEditor">取消</button>
+        <button class="btn block" bindtap="save">保存模版</button>
+      </view>
+    </view>
+  </view>
+</view>

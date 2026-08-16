@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二曜路8号 · 预约小程序 · 全量需求原型 second-design</title>
+<style>
+  /* ============ 设计语言：严格对齐已发布版 / v2 原型 ============ */
+  :root{
+    --ink:#1A1A1A; --ink-2:#555; --ink-3:#999;
+    --line:#E7E7E7; --fill:#F5F5F5; --fill-2:#FAFAFA;
+    --brand:#7A5230;          /* 棕色：仅点缀（logo 点 / 品牌字 / 标签），不做背景 */
+    --orange:#E8833A;         /* 今天橘色圈，仅此一处用彩色 */
+    --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#EDEDED;font-family:-apple-system,"PingFang SC","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);
+       display:flex;justify-content:center;padding:24px;gap:32px;flex-wrap:wrap}
+  /* 手机外框 */
+  .phone{width:390px;background:var(--fill-2);border:1px solid #ddd;border-radius:38px;overflow:hidden;
+         box-shadow:0 12px 40px rgba(0,0,0,.12);display:flex;flex-direction:column;height:840px}
+  .statusbar{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px;color:var(--ink)}
+  .navbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+          background:#fff;border-bottom:1px solid var(--line)}
+  .navbar .t{font-weight:600;font-size:16px}
+  .navbar .bk,.navbar .rt{font-size:15px;color:var(--ink-2);min-width:44px}
+  .navbar .rt{text-align:right}
+  .screen{flex:1;overflow-y:auto;background:var(--fill);padding:16px}
+  .screen::-webkit-scrollbar{width:0}
+  /* 通用卡片/文字 */
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .sec{font-weight:600;font-size:14px;margin-bottom:10px}
+  .sec.sm{font-size:12px;color:var(--ink-3);font-weight:500;margin:4px 2px 8px}
+  .row{display:flex;align-items:center}
+  .between{justify-content:space-between}
+  .col{display:flex;flex-direction:column}
+  .muted{color:var(--ink-3);font-size:12px}
+  .sm{font-size:12px}.xs{font-size:11px}
+  .bold{font-weight:600}
+  .brand-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--brand);margin-right:6px;vertical-align:middle}
+  .brand-text{color:var(--brand)}
+  /* 按钮 */
+  .btn{display:inline-flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;
+       border:1px solid var(--ink);border-radius:10px;padding:9px 16px;font-size:13px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .btn.sm{padding:6px 12px;font-size:12px}
+  .btn.block{width:100%;margin-top:6px}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  /* 徽标：靠描边/字重/填充，不引入彩色 */
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--ink-2)}
+  .badge.ok{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .badge.paused{border-style:dashed;color:var(--ink-3)}
+  .badge.full{background:var(--fill);color:var(--ink-3)}
+  .badge.draft{background:var(--fill);color:var(--ink-3);border-color:var(--line)}
+  .badge.shelf{color:var(--ink-3);border-style:dashed}
+  .badge.review{color:var(--ink-2)}
+  .badge.done{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+  /* chip */
+  .chip{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;cursor:pointer}
+  .chip.on{border-color:var(--ink);font-weight:600}
+  /* 卡片列表项 / 菜单 */
+  .item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:none}
+  .menu .mi{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+  .menu .mi:last-child{border-bottom:none}
+  .menu .ma{color:var(--ink-3)}
+  .menu .mt{font-weight:500}
+  /* 表单 */
+  .field{padding:10px 0;border-bottom:1px solid var(--line)}
+  .field:last-child{border-bottom:none}
+  .field .label{font-size:11px;color:var(--ink-3);margin-bottom:4px}
+  .field input,.field textarea{width:100%;border:none;font-size:13px;outline:none;background:transparent;font-family:inherit}
+  .switch{position:relative;width:42px;height:24px;background:var(--line);border-radius:999px;transition:.2s;flex:none}
+  .switch.on{background:var(--ink)}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}
+  .switch.on::after{left:20px}
+  /* 日历（复用已发布版逻辑 + 最新多选交互） */
+  .cal{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px}
+  .cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cal-title{font-weight:600;font-size:13px}
+  .cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .cal-week{margin-bottom:5px}
+  .cw{text-align:center;font-size:11px;color:var(--ink-3)}
+  .cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:9px;font-size:12px;cursor:pointer;position:relative}
+  .cell.empty{border:none;cursor:default}
+  /* 未选中=灰色（禁用观感）；选中（开放）=黑边高亮；今天=橘圈 */
+  .cell:not(.open):not(.empty){background:var(--fill);color:var(--ink-3)}
+  .cell.open{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .cell.today:not(.open)::after{content:"";position:absolute;inset:3px;border:2px solid var(--orange);border-radius:7px}
+  .cell.today:not(.open){color:var(--orange);font-weight:600}
+  .legend{display:flex;align-items:center;font-size:10px;color:var(--ink-3);margin-top:8px;flex-wrap:wrap;gap:3px}
+  .legend .dot{width:9px;height:9px;border-radius:50%;margin-right:3px}
+  .legend .dot.open{background:#fff;border:2px solid var(--ink);margin-left:10px}
+  .legend .dot.gray{background:var(--fill);border:2px solid var(--line);margin-left:10px}
+  .legend .dot.today{background:#fff;border:2px solid var(--orange);margin-left:10px}
+  /* 每日场次块 */
+  .dayblock{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
+  .dayblock .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+  .dayblock .dh .dt{font-weight:600;font-size:13px}
+  .sess{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+  .sess .st{font-size:13px}
+  .sess .sc{font-size:11px;color:var(--ink-2)}
+  .ops{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .ops .btn{margin:0}
+  .note{color:var(--ink-3);text-align:center;padding:20px;font-size:12px}
+  .empty-sess{color:var(--ink-3);font-size:12px;padding:8px 0}
+  /* 底部弹出层（sheet） */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;z-index:50}
+  .mask.show{display:flex}
+  .sheet{background:#fff;width:100%;max-width:390px;margin:0 auto;border-radius:20px 20px 0 0;padding:18px 16px 26px;animation:up .22s ease}
+  @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  .sheet .sh{font-weight:600;font-size:15px;text-align:center;margin-bottom:14px}
+  .sheet .opt{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px}
+  .sheet .opt:last-of-type{border-bottom:none}
+  .sheet .opt .sub{font-size:11px;color:var(--ink-3)}
+  .sheet .cancel{margin-top:12px;text-align:center;padding:13px;color:var(--ink-2);font-size:14px;background:var(--fill);border-radius:12px;cursor:pointer}
+  .sheet .seg{display:flex;gap:8px;margin:6px 0 12px;flex-wrap:wrap}
+  .sheet .seg .chip{cursor:pointer}
+  .sheet input.t,.sheet input[type=time],.sheet input[type=number],.sheet input[type=date]{border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;width:100%;font-family:inherit;outline:none;box-sizing:border-box}
+  .sheet .grp{margin-bottom:14px}
+  .sheet .grp .gl{font-size:12px;color:var(--ink-3);margin-bottom:6px}
+  .sheet .ck{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+  .sheet .ck:last-child{border-bottom:none}
+  .sheet .ck .req{font-size:10px;color:var(--ink-3);margin-left:6px}
+  .time2{display:flex;align-items:center;gap:8px}
+  .time2 input{font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px;width:90px;text-align:center;font-family:inherit;outline:none}
+  /* 屏幕中央弹层（modal，用于添加场次） */
+  .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:60;display:none;align-items:center;justify-content:center}
+  .modal-mask.show{display:flex}
+  .modal{width:300px;background:#fff;border-radius:16px;padding:20px 18px;animation:pop .18s ease}
+  @keyframes pop{from{transform:scale(.94);opacity:.5}to{transform:scale(1);opacity:1}}
+  .modal .mt{font-size:16px;font-weight:600}
+  .modal .mb{font-size:12px;color:var(--ink-2);margin-top:10px;line-height:1.6}
+  .modal .macts{display:flex;gap:10px;margin-top:18px}
+  .modal .macts .btn{flex:1}
+  /* 店铺菜单 / 评价（与首页风格统一：白卡、黑字、棕色仅点缀） */
+  .prod-img{width:56px;height:56px;border-radius:12px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none}
+  .stars{display:inline-flex;gap:3px;font-size:18px;color:var(--line);line-height:1}
+  .stars .on{color:var(--brand)}
+  .stars.lg{font-size:24px}
+  .rev{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .rev:first-of-type{border-top:none;padding-top:0}
+  .rev .av{width:32px;height:32px;border-radius:50%;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+  .rev .rt{font-size:11px;color:var(--ink-3)}
+
+  /* 标签 / tab / kv / 角色切换 */
+  .pill{font-size:10px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;padding:1px 7px;margin-left:6px}
+  .tag-brand{color:var(--brand);border-color:var(--brand)}
+  .tag-ok{color:var(--ink);border-color:var(--ink)}
+  .tab{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+  .tab .tb{flex:1;text-align:center;padding:9px;font-size:12px;cursor:pointer}
+  .tab .tb.on{background:var(--ink);color:#fff}
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .kv:last-child{border-bottom:none}
+  .center{text-align:center}
+  /* 角色选择 / hero / 头像 / 登录 */
+  .rolecard{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px;cursor:pointer;background:#fff}
+  .rolecard:active{border-color:var(--ink)}
+  .rolecard .ic{width:40px;height:40px;border-radius:10px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .rolecard .nm{font-weight:600;font-size:14px}
+  .rolecard .ds{font-size:11px;color:var(--ink-3);margin-top:2px}
+  .hero{margin-bottom:12px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:#fff}
+  .hero .img{height:140px;background:linear-gradient(135deg,#26211c,#3d3026);display:flex;align-items:center;justify-content:center;color:#fff;flex-direction:column;gap:6px}
+  .hero .img .logo{font-size:20px;font-weight:700;letter-spacing:1px;color:#fff;position:relative}
+  .hero .img .logo::after{content:'';position:absolute;right:-13px;top:3px;width:8px;height:8px;border-radius:50%;background:var(--brand)}
+  .hero .img .tag{font-size:11px;opacity:.85;letter-spacing:1px;color:var(--brand)}
+  .hero .img.hero-photo{background:var(--fill);border:1px dashed var(--line);color:var(--ink-3);gap:8px}
+  .hero .img.hero-photo .hp-t{font-size:13px;color:var(--ink-2)}
+  .hero .img.hero-photo .tag{color:var(--brand)}
+  .hero .txt{padding:14px}
+  .hero .txt h2{font-size:17px;font-weight:700;margin-bottom:4px}
+  .hero .txt p{font-size:13px;color:var(--ink-2);line-height:1.6}
+  .avatar-row{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:2px solid var(--line);cursor:pointer}
+  .avatar.on{border-color:var(--ink)}
+  .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .stepper button{width:34px;height:34px;border:0;background:#fff;font-size:18px;cursor:pointer;color:var(--ink);font-family:inherit}
+  .stepper .v{min-width:38px;text-align:center;font-size:15px;font-weight:600}
+  .fld{border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;margin-bottom:10px}
+  .fld:focus{border-color:var(--ink)}
+  .verify{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .verify .ok{color:var(--ink);font-size:11px;font-weight:600}
+  .person{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  .person .nm{font-size:14px;font-weight:600}
+  .person .ln{font-size:12px;color:var(--ink-2);margin-top:3px}
+  .person .ph{font-size:12px;color:var(--ink);margin-top:3px;font-weight:600}
+  .detail .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .detail .kv .k{color:var(--ink-2)}
+  .toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1}
+
+  /* 图片上传 / 介绍图片（与真实小程序一致：菜品是图片，非图标） */
+  .tip{font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5}
+  .up{width:100%;height:120px;border:1px dashed var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;background:var(--fill);cursor:pointer;overflow:hidden;margin-bottom:4px}
+  .up img{width:100%;height:100%;object-fit:cover}
+  .prod-img img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+  .prod-img .ph{font-size:11px;color:var(--ink-3)}
+  .prod-logo{width:44px;height:44px;border-radius:10px;background:rgba(122,82,48,.08);display:flex;align-items:center;justify-content:center;color:var(--brand);font-size:11px;flex:none}
+  .prod-logo img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+  .prod-logo .ph{font-size:11px;color:var(--brand)}
+  /* 介绍图片画廊（顾客端 cBooking，日历上方） */
+  .intro-stack{display:flex;flex-direction:column;gap:12px;padding:4px 0 8px}
+  .intro-item{width:100%;border-radius:12px;overflow:hidden;background:var(--fill);border:1px solid var(--line)}
+  .intro-img{width:100%;height:auto;border-radius:12px;display:block;background:var(--fill)}
+  .intro-cap{font-size:11px;color:var(--ink-2);margin-top:4px;padding:0 2px}
+  .intro-ph{border:1px dashed var(--brand);border-radius:12px;height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--brand);font-size:13px;background:var(--fill-2)}
+  .intro-ph .t{font-weight:600;margin-bottom:4px}
+  .intro-ph .d{font-size:11px;color:var(--ink-3);padding:0 10px;text-align:center}
+  /* 介绍图片管理（aConfig） */
+  .img-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .img-cell{width:84px;height:84px;border-radius:12px;overflow:hidden;position:relative;border:1px solid var(--line)}
+  .img-thumb{width:100%;height:100%;object-fit:cover;display:block}
+  /* 店铺主图 + 介绍（顾客端 cBooking 头部 / aConfig 配置） */
+  .hero{margin-bottom:14px}
+  .hero-img{width:100%;height:auto;border-radius:12px;display:block;background:var(--fill)}
+  .hero-desc{margin-top:12px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;font-size:13px;line-height:1.7;color:var(--ink-2);white-space:pre-wrap}
+  .cover-row{display:flex;align-items:center;gap:16px}
+  .cover-img{width:120px;height:120px;object-fit:cover;border-radius:12px;background:var(--fill);border:1px solid var(--line);flex:none}
+  .cover-ph{width:120px;height:120px;border:1px dashed var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;background:var(--fill);flex:none}
+  .cover-acts{display:flex;flex-direction:column;gap:10px}
+  .ta{width:100%;min-height:120px;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;line-height:1.6;background:#fff;color:var(--ink);resize:vertical;font-family:inherit}
+  .img-mask{position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0;transition:.15s}
+  .img-cell:hover .img-mask,.img-cell:active .img-mask{opacity:1}
+  .img-btns{display:flex;gap:8px}
+  .img-move{display:flex;gap:8px}
+  .img-btn{color:#fff;font-size:11px;background:rgba(0,0,0,.45);padding:2px 8px;border-radius:999px;cursor:pointer}
+  .img-add{width:84px;height:84px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;cursor:pointer}
+  .img-caps{margin-top:10px}
+</style>
+</head>
+<body>
+
+<!-- 手机 -->
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>📶 ☀ 100%</span></div>
+  <div class="navbar">
+    <div class="bk" onclick="navBack()">〈</div>
+    <div class="t" id="navTitle">二曜路8号</div>
+    <div class="rt" id="navRight"></div>
+  </div>
+  <div class="screen" id="screen"></div>
+</div>
+
+<!-- 底部弹出层 -->
+<div class="mask" id="mask" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+<!-- 屏幕中央弹层（添加场次） -->
+<div class="modal-mask" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== 数据（演示用） ===================== */
+const today = new Date();
+const Y = today.getFullYear(), M = today.getMonth()+1;
+const pad = n => String(n).padStart(2,'0');
+const ymd = (y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
+const TODAY = ymd(Y,M,today.getDate());
+
+const state = {
+  role:'customer',         // customer | owner | manager
+  project:null,
+  month:M, year:Y,
+  viewProject:null,       // 查看预约默认项目
+  cust:null,              // 顾客资料 {nick, avatar}
+  bookingDay:null,
+  bookingSession:null,
+  party:2,
+  myResv:[
+    {project:'法兰绒深烘咖啡预约',date:ymd(Y,M,18),time:'10:00–11:30',party:2,status:'ok'},
+    {project:'清酒品鉴预约',date:ymd(Y,M,15),time:'19:30–21:00',party:1,status:'pending'}
+  ]
+};
+
+const projects = [
+  { id:'p1', name:'法兰绒深烘咖啡预约', published:true, paused:false, deleted:false,
+    openDays:[ymd(Y,M,8),ymd(Y,M,9),ymd(Y,M,10),ymd(Y,M,15),ymd(Y,M,16),ymd(Y,M,18)],
+    sessions:{
+      [ymd(Y,M,8)]:[{start:'10:00',end:'11:30',max:8},{start:'14:00',end:'15:30',max:8}],
+      [ymd(Y,M,9)]:[{start:'10:00',end:'11:30',max:8}],
+      [ymd(Y,M,15)]:[{start:'10:00',end:'11:30',max:8,booked:3,status:'open'},{start:'14:00',end:'15:30',max:8,booked:8,status:'paused'}],
+      [ymd(Y,M,18)]:[{start:'10:00',end:'11:30',max:8}]
+    },
+    introImages:[{url:"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='192'><rect width='300' height='192' fill='%23FAFAFA'/><rect x='6' y='6' width='288' height='180' fill='none' stroke='%237A5230' stroke-dasharray='6 5' rx='12'/><text x='150' y='92' font-size='20' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>预约须知</text><text x='150' y='118' font-size='12' fill='%23999' text-anchor='middle' font-family='sans-serif'>请准时到店 · 提前取消</text></svg>", caption:'预约须知：请准时到店，如需取消请提前在「我的预约」操作', sort:0}],
+    image:"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'><rect width='400' height='300' fill='%23EDE6DD'/><text x='200' y='145' font-size='20' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>店铺实景 / 菜单主图</text><text x='200' y='172' font-size='13' fill='%23999' text-anchor='middle' font-family='sans-serif'>（演示图，管理端可替换）</text></svg>",
+    intro:'预约制咖啡空间 · 法兰绒滴滤。我们只做预约制手冲，选用深烘法兰绒滴滤，安静的空间适合慢享一杯。请按预约时间到场。',
+    g:{ needReview:true, paused:false, smsEnabled:true, smsNotice:'到店请报预约手机号',
+        limit:{period:'每天',count:2,adminFree:true},
+        open:{type:'提前天数',adv:3},
+        cutoff:{type:'场次前',hours:2},
+        fields:['name','phone','wechat'] }
+  },
+  { id:'p2', name:'手冲单品咖啡预约', published:false, paused:false, deleted:false,
+    openDays:[ymd(Y,M,12),ymd(Y,M,13)], sessions:{}, introImages:[],
+    g:{needReview:false,paused:false,smsEnabled:false,smsNotice:'',limit:{period:'每天',count:1,adminFree:true},
+       open:{type:'提前天数',adv:1},cutoff:{type:'当日',time:'18:00'},fields:['name','phone']} },
+  { id:'p3', name:'周末清酒品鉴', published:true, paused:true, deleted:false,
+    openDays:[ymd(Y,M,20),ymd(Y,M,15)], sessions:{[ymd(Y,M,15)]:[{start:'19:30',end:'21:00',max:12,booked:5,status:'open'}]}, introImages:[],
+    g:{needReview:true,paused:true,smsEnabled:false,smsNotice:'',limit:{period:'每周',count:3,adminFree:true},
+       open:{type:'提前天数',adv:5},cutoff:{type:'场次前',hours:4},fields:['name','phone','wechat']} }
+];
+
+const templates = [
+  { id:'t1', name:'平日双场', slots:[{start:'10:00',end:'11:30',max:8},{start:'14:00',end:'15:30',max:8}] },
+  { id:'t2', name:'周末单场', slots:[{start:'15:00',end:'17:00',max:12}] }
+];
+
+/* 店铺菜单（产品）演示数据；reviews 与产品关联。image 为图片URL（真实小程序上传到云存储），空则用 emoji 占位 */
+const products = [
+  { id:'m1', name:'法兰绒深烘手冲', emoji:'☕', image:'', price:38, desc:'法兰绒滤布慢萃，醇厚回甘，带坚果与可可调性。', status:'on',
+    reviews:[
+      {id:'r1',nick:'拿铁小姐',avatar:'🦊',rating:5,text:'味道很稳，老板冲得很用心，回甘明显。',at:'3天前',pinned:true},
+      {id:'r2',nick:'老王',avatar:'🐻',rating:4,text:'偏苦一点，配块蛋糕刚好。',at:'1周前',pinned:false}
+    ]},
+  { id:'m2', name:'燕麦拿铁', emoji:'🥛', image:'', price:32, desc:'燕麦奶替代，顺滑低负担，微甜不腻。', status:'on',
+    reviews:[ {id:'r3',nick:'小满',avatar:'🌿',rating:5,text:'乳糖不耐星人狂喜，香气够。',at:'2天前',pinned:false} ]},
+  { id:'m3', name:'周末清酒特调', emoji:'🍶', image:'', price:58, desc:'限定清酒调饮，微醺小酌，仅周末供应。', status:'off',
+    reviews:[] }
+];
+
+const fieldCatalog = [
+  {k:'name',label:'姓名',req:true,lock:true},
+  {k:'phone',label:'手机号',req:true,lock:true},
+  {k:'wechat',label:'微信号',req:false,lock:false},
+  {k:'note',label:'备注',req:false,lock:false},
+  {k:'gender',label:'性别',req:false,lock:false},
+  {k:'age',label:'年龄',req:false,lock:false},
+  {k:'companion',label:'同行人员',req:false,lock:false}
+];
+
+const visitors = [ // 最近访问者（一键授权数据源）
+  {openid:'oX-visitor-aa11', at:'刚刚'},
+  {openid:'oX-visitor-bb22', at:'2分钟前'}
+];
+const admins = [
+  {openid:'o4VIyxnS7Td7zUC1-O3cz9sSUKFU', role:'owner', note:'店主本人'},
+  {openid:'oX-mgr-3b7c', role:'manager', note:'店长'}
+];
+/* 普通管理员被授权的项目范围（演示用）；超级管理员看全部 */
+const mgrProjects = ['p1','p3'];
+
+/* ===================== 路由 ===================== */
+const stack = [];
+function nav(html, title, right){ stack.push({html,title,right}); render(html,title,right); }
+function navBack(){ if(stack.length>1){ stack.pop(); const prev=stack[stack.length-1]; render(prev.html,prev.title,prev.right);} else { render(stack[0].html,stack[0].title,stack[0].right);} }
+function render(html,title,right){
+  document.getElementById('screen').innerHTML = html;
+  document.getElementById('navTitle').textContent = title||'';
+  document.getElementById('navRight').innerHTML = right||'';
+  document.getElementById('screen').scrollTop = 0;
+  if(stack.length){ const t=stack[stack.length-1]; t.html=html; t.title=title; t.right=right; }
+}
+
+/* ===================== 通用组件 ===================== */
+function badge(p){
+  if(p.deleted) return '<span class="badge full">已删除</span>';
+  if(!p.published) return '<span class="badge draft">未发布</span>';
+  if(p.paused) return '<span class="badge shelf">暂停预约</span>';
+  return '<span class="badge ok">已发布</span>';
+}
+function pubState(p){ if(p.deleted)return'已删除'; if(!p.published)return'未发布'; return'已发布'; }
+function bookState(p){ return p.paused ? '暂停预约' : '开放预约'; }
+function toast(m){ const o=document.getElementById('toast'); o.textContent=m; o.classList.add('show'); clearTimeout(o._t); o._t=setTimeout(()=>o.classList.remove('show'),1500); }
+
+/* ===================== 入口：角色选择 ===================== */
+function landing(){
+  const html = `
+    <div class="hero">
+      <div class="img"><div class="logo">二曜路8号</div><div class="tag">SLOW COFFEE · 预约制</div></div>
+      <div class="txt"><h2>预约小程序 · 全量原型</h2><p>选择身份进入对应界面（顾客 / 超级管理员 / 普通管理员）。</p></div>
+    </div>
+    <div class="sec">选择身份</div>
+    <div class="rolecard" onclick="enter('customer')"><div class="ic">☕</div><div><div class="nm">顾客</div><div class="ds">浏览项目、预约、我的预约</div></div><div class="ma" style="margin-left:auto;color:var(--ink-3)">›</div></div>
+    <div class="rolecard" onclick="enter('owner')"><div class="ic">⭐</div><div><div class="nm">超级管理员</div><div class="ds">全部管理权限（含发布/授权）</div></div><div class="ma" style="margin-left:auto;color:var(--ink-3)">›</div></div>
+    <div class="rolecard" onclick="enter('manager')"><div class="ic">🛡️</div><div><div class="nm">普通管理员</div><div class="ds">当日场次管理 / 查看预约（无配置权限）</div></div><div class="ma" style="margin-left:auto;color:var(--ink-3)">›</div></div>
+    <div class="note">本原型覆盖「项目管理 / 配置 / 场次 / 模版 / 查看预约 / 审核 / 管理员」与「顾客登录 / 预约 / 我的预约」全量需求。</div>`;
+  stack.length=0; nav(html,'二曜路8号');
+}
+function enter(role){
+  state.role=role;
+  if(role==='customer'){
+    if(!state.cust){ return cLogin(()=>cHome()); }
+    return cHome();
+  }
+  return hub();
+}
+
+/* ===================== 顾客端 ===================== */
+function cHome(){
+  const cards = projects.filter(p=>p.published && !p.paused).map(p=>`
+    <div class="card" onclick="cBooking('${p.id}')">
+      <div class="row between"><div class="row"><span class="brand-dot"></span><span class="bold">${p.name}</span></div></div>
+      <div class="row" style="margin-top:8px"><div class="btn sm" style="pointer-events:none">预约</div></div>
+    </div>`).join('');
+  const menuCards = products.filter(p=>p.status==='on').map(pr=>`
+    <div class="card tap" onclick="cProduct('${pr.id}')">
+      <div class="row" style="gap:12px;align-items:flex-start">
+        <div class="prod-img">${pr.image?`<img src="${pr.image}">`:'<span class="ph">图片</span>'}</div>
+        <div class="col" style="flex:1">
+          <div class="row between"><div class="bold">${pr.name}</div><div class="bold brand-text">¥${pr.price}</div></div>
+          <div class="xs muted" style="margin-top:4px">${pr.desc}</div>
+          <div class="xs muted" style="margin-top:6px">查看评价 (${pr.reviews.length}) ›</div>
+        </div>
+      </div>
+    </div>`).join('') || '<div class="note">暂无可展示的店铺菜单。</div>';
+  const featured = projects.find(p=>p.published && !p.paused) || projects[0];
+  const html = `    ${heroBlock(featured)}
+    <div class="sec">选择预约项目</div>
+    ${cards}
+    <div class="sec" style="margin-top:16px">店铺菜单</div>
+    ${menuCards}
+    <button class="btn ghost block" onclick="cMine()">我的预约</button>
+    <div class="note">当前身份：顾客${state.cust?'（'+state.cust.nick+'）':''}</div>`;
+  nav(html,'预约');
+}
+function cLogin(next){
+  state._afterLogin = (typeof next==='function') ? next : null;
+  const avs=['🦊','🐻','🐱','🐼','☕','🌿'];
+  const html = `<div class="sec">首次登录 · 设置资料</div>
+    <div class="card">
+      <div class="field"><div class="label">昵称</div><input id="lk" placeholder="如：拿铁小姐" value=""></div>
+      <div class="field"><div class="label">选择头像</div>
+        <div class="avatar-row" id="avs">
+          ${avs.map((a,i)=>`<div class="avatar ${i===0?'on':''}" data-i="${i}" onclick="pickAv(this)">${a}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn ghost" style="flex:1" onclick="skipLogin()">跳过</button>
+      <button class="btn" style="flex:1" onclick="saveLogin()">保存</button>
+    </div>
+    <div class="note">昵称与头像用于预约展示，可跳过稍后补填。</div>`;
+  nav(html,'设置资料');
+}
+function pickAv(el){ [...el.parentNode.children].forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+function skipLogin(){ state.cust={nick:'微信用户',avatar:'☕'}; const cb=state._afterLogin; state._afterLogin=null; cb?cb():cHome(); }
+function saveLogin(){
+  const nick=document.getElementById('lk').value.trim()||'微信用户';
+  const av=document.querySelector('#avs .avatar.on'); const avatar=av?av.textContent:'☕';
+  state.cust={nick,avatar}; toast('已保存：'+nick);
+  const cb=state._afterLogin; state._afterLogin=null; cb?cb():cHome();
+}
+function cBooking(pid){
+  const p=projects.find(x=>x.id===pid);
+  const base=new Date(Y,M-1,1);
+  const days=[]; for(let i=1;i<=new Date(Y,M,0).getDate();i++) days.push(ymd(Y,M,i));
+  const maxDate=new Date(TODAY); maxDate.setDate(maxDate.getDate()+p.g.open.adv);
+  const dayBar=days.map(d=>{
+    const open=p.openDays.includes(d) && d<=ymd(maxDate.getFullYear(),maxDate.getMonth()+1,maxDate.getDate());
+    if(open) return `<div class="cell open ${state.bookingDay===d?'sel':''}" onclick="cPickDay('${pid}','${d}')">${+d.split('-')[2]}</div>`;
+    return `<div class="cell empty-look" style="background:var(--fill);color:var(--ink-3);border-radius:9px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px">${+d.split('-')[2]}</div>`;
+  }).join('');
+  let grid=`<div class="note">请选择上方可预约日期查看场次。</div>`;
+  if(state.bookingDay){
+    const list=(p.sessions[state.bookingDay]||[]);
+    if(!list.length) grid=`<div class="note">该日已开放预约，但暂未设置场次，请联系店家。</div>`;
+    else grid=list.map(s=>`
+      <div class="card tap" style="cursor:pointer" onclick="cPickSession('${pid}','${state.bookingDay}','${s.start}')">
+        <div class="row between"><div style="font-weight:600">${s.start} – ${s.end}</div><span class="badge ok">可约</span></div>
+        <div class="xs muted" style="margin-top:6px">点击选择该场次</div>
+      </div>`).join('');
+  }
+  const html=`<div class="card row between tap" onclick="cHome()"><div class="bold">${p.name}</div><div class="muted">换项目 ›</div></div>
+    ${introBlock(p)}
+    <div class="cal"><div class="cal-title" style="margin-bottom:8px">选择日期（可约日期高亮）</div>
+      <div class="cal-grid">${dayBar}</div></div>
+    <div class="legend"><span class="dot open"></span>可预约<span class="dot gray"></span>不可预约</div>
+    <div class="sec" style="margin-top:14px">可约场次</div>
+    ${grid}`;
+  nav(html,p.name);
+}
+function introBlock(p){
+  const list=(p.introImages||[]).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
+  if(!list.length){
+    return `<div class="intro-ph"><div class="t">预约须知</div><div class="d">请准时到店，如需取消请提前在「我的预约」中操作。</div></div>`;
+  }
+  return `<div class="intro-stack">${list.map(it=>`
+    <div class="intro-item" data-url="${it.url}" onclick="previewIntro(this.dataset.url)">
+      <img class="intro-img" src="${it.url}">
+      ${it.caption?`<div class="intro-cap">${it.caption}</div>`:''}
+    </div>`).join('')}</div>`;
+}
+function previewIntro(url){ openModal(`<div class="mt">介绍图片</div><div class="mb" style="text-align:center"><img src="${url}" style="max-width:100%;border-radius:12px"></div><div class="macts"><button class="btn" onclick="closeModal()">关闭</button></div>`); }
+function heroBlock(p){
+  const img=p.image, intro=p.intro;
+  if(!img && !intro) return '';
+  return `<div class="hero">
+    ${img?`<img class="hero-img" src="${img}">`:''}
+    ${intro?`<div class="hero-desc">${intro}</div>`:''}
+  </div>`;
+}
+function cPickDay(pid,d){ state.bookingDay=d; cBooking(pid); }
+function cPickSession(pid,d,s){ state.bookingSession={pid,day:d,start:s}; cConfirm(); }
+function cConfirm(){
+  const {pid,day,start}=state.bookingSession; const p=projects.find(x=>x.id===pid);
+  const s=(p.sessions[day]||[]).find(x=>x.start===start);
+  const html=`<div class="sec">确认预约</div>
+    <div class="card">
+      <div class="row between"><div class="bold">${p.name}</div></div>
+      <div class="xs muted" style="margin-top:4px">${day} · ${s.start}–${s.end}</div>
+    </div>
+    <div class="card">
+      <div class="field"><div class="label">到场人数</div>
+        <div class="stepper"><button onclick="stepParty(-1)">−</button><div class="v" id="party">${state.party}</div><button onclick="stepParty(1)">+</button></div></div>
+      <div class="field"><div class="label">姓名 <span class="pill">必填</span></div><input id="fName" placeholder="如：拿铁小姐"></div>
+      <div class="field"><div class="label">手机号 <span class="pill">必填</span></div><input id="fPhone" placeholder="11 位手机号" inputmode="numeric">
+        <div class="verify"><button class="btn ghost sm" onclick="verifyPhone()">微信校验</button><span class="ok" id="vok" style="display:none">✓ 已校验</span></div></div>
+      <div class="field"><div class="label">微信号 <span class="pill">选填</span></div><input id="fWechat" placeholder="选填"></div>
+      <div class="field"><div class="label">备注 <span class="pill">选填</span></div><input id="fNote" placeholder="如：靠窗、忌口"></div>
+    </div>
+    <button class="btn block" onclick="cSubmit('${pid}','${day}','${start}')">提交预约</button>
+    <div class="tip">提交后若「预约成功」将自动向您发送短信通知（需店家在「项目配置」开启短信通知）。</div>`;
+  nav(html,'确认预约');
+}
+function stepParty(n){ const v=document.getElementById('party'); v.textContent=Math.max(1,(+v.textContent)+n); }
+function verifyPhone(){ const v=document.getElementById('fPhone').value.trim();
+  if(/^1\d{10}$/.test(v)){ document.getElementById('vok').style.display='inline'; toast('微信校验通过'); }
+  else toast('手机号格式不正确'); }
+function cSubmit(pid,day,start){
+  const name=document.getElementById('fName').value.trim();
+  const phone=document.getElementById('fPhone').value.trim();
+  if(!name) return toast('请填写姓名');
+  if(!/^1\d{10}$/.test(phone)) return toast('请填写正确的手机号');
+  const p=projects.find(x=>x.id===pid);
+  state.myResv.unshift({project:p.name,date:day,time:`${start}–${(p.sessions[day]||[]).find(x=>x.start===start).end}`,party:state.party,status:p.g.needReview?'pending':'ok'});
+  toast(p.g.needReview?'已提交，等待审核（微信通知）':'预约成功（微信通知已发送）');
+  setTimeout(cMine,700);
+}
+function cMine(){
+  const map={ok:['预约成功','ok'],pending:['待审核','paused'],cancelled:['已取消','full']};
+  const rows=state.myResv.map((m,i)=>{
+    const [t,c]=map[m.status]||['',''];
+    const can=m.status==='ok'||m.status==='pending';
+    return `<div class="card">
+      <div class="row between"><div class="bold">${m.project}</div><span class="badge ${c}">${t}</span></div>
+      <div class="xs muted" style="margin-top:6px">${m.date} · ${m.time} · ${m.party} 人</div>
+      ${can?`<button class="btn ghost sm" style="margin-top:8px" onclick="cCancel(${i})">取消预约</button>`:`<div class="xs muted" style="margin-top:6px">该预约不可取消</div>`}
+    </div>`;
+  }).join('');
+  nav(`<div class="sec">我的预约</div>${rows||'<div class="note">暂无预约</div>'}<div class="note">可取消「待审核 / 预约成功」的预约。</div>`,'我的预约');
+}
+function cCancel(i){
+  openModal(`<div class="mt">取消预约</div><div class="mb">确认取消该预约？取消后名额将释放，且不可恢复。</div>
+    <div class="macts"><button class="btn ghost" onclick="closeModal()">再想想</button><button class="btn" onclick="doCancel(${i})">确认取消</button></div>`);
+}
+function doCancel(i){ state.myResv[i].status='cancelled'; closeModal(); cMine(); toast('已取消，名额已释放'); }
+
+/* ---- 店铺菜单 / 评价（顾客端） ---- */
+function starStr(n){ let s=''; for(let i=1;i<=5;i++) s+=`<span class="${i<=n?'on':''}">★</span>`; return s; }
+function cProduct(pid){
+  const pr=products.find(x=>x.id===pid);
+  const revHTML = pr.reviews.filter(r=>!r.hidden).length ? pr.reviews.filter(r=>!r.hidden).map(r=>`
+    <div class="rev">
+      <div class="av">${r.avatar}</div>
+      <div class="col" style="flex:1">
+        <div class="row between"><div class="bold" style="font-size:13px">${r.nick}</div><div class="rt">${r.at}</div></div>
+        <div class="stars" style="pointer-events:none;margin:3px 0">${starStr(r.rating)}</div>
+        <div class="xs" style="margin-top:2px">${r.text}</div>
+      </div>
+    </div>`).join('')
+    : '<div class="note">暂无评价，来当第一个吧。</div>';
+  const html=`
+    <div class="card">
+      <div class="row" style="gap:12px;align-items:flex-start">
+        <div class="prod-img">${pr.image?`<img src="${pr.image}">`:'<span class="ph">图片</span>'}</div>
+        <div class="col" style="flex:1">
+          <div class="row between"><div class="bold">${pr.name}</div><div class="bold brand-text">¥${pr.price}</div></div>
+          <div class="xs muted" style="margin-top:4px">${pr.desc}</div>
+        </div>
+      </div>
+    </div>
+    <div class="sec" style="margin-top:4px">用户评价 (${pr.reviews.filter(r=>!r.hidden).length})</div>
+    ${revHTML}
+    <div class="card" style="margin-top:10px">
+      <div class="sec">发表评价</div>
+      ${ state.cust ? `
+      <div class="field"><div class="label">评分</div><div class="stars lg" id="rstars">
+        ${[1,2,3,4,5].map(i=>`<span data-i="${i}" onclick="setRate(${i})" class="${i<=(state._rate||5)?'on':''}">★</span>`).join('')}
+      </div></div>
+      <div class="field"><div class="label">评价内容</div><textarea id="rtext" placeholder="说说你的体验…" rows="3" class="fld" style="height:64px"></textarea></div>
+      <button class="btn block" onclick="postReview('${pr.id}')">提交评价</button>`
+      : `<div class="note">请先登录后发表评价。</div><button class="btn ghost block" onclick="cLogin(()=>cProduct('${pr.id}'))">去登录</button>` }
+    </div>`;
+  nav(html, pr.name);
+}
+function setRate(i){ state._rate=i; document.querySelectorAll('#rstars span').forEach(s=>s.classList.toggle('on', +s.dataset.i<=i)); }
+function postReview(pid){
+  const pr=products.find(x=>x.id===pid);
+  const text=document.getElementById('rtext').value.trim();
+  if(!text) return toast('请输入评价内容');
+  const rating=state._rate||5;
+  pr.reviews.unshift({id:'r'+Date.now(), nick:state.cust.nick, avatar:state.cust.avatar, rating, text, at:'刚刚'});
+  state._rate=5;
+  toast('评价已提交'); cProduct(pid);
+}
+
+/* ===================== 管理端 · 管理台 ===================== */
+function hub(){
+  const isOwner=state.role==='owner';
+  const menus = isOwner
+    ? [['aProjects','项目管理'],['aConfig','项目配置（时间/场次）'],['aCover','首图及介绍'],['aTemplates','场次模版'],['aProducts','店铺菜单管理'],['aReviews','评价管理'],['aDaily','当日场次管理'],['aView','查看预约'],['aReview','审核'],['aAdmins','管理员'],['aSms','短信通知配置']]
+    : [['aProducts','店铺菜单管理'],['aReviews','评价管理'],['aDaily','当日场次管理'],['aView','查看预约'],['aReview','审核']];
+  const html = `<div class="card">
+      <div class="row between"><div class="bold">管理台</div>
+      <span class="badge ${isOwner?'ok':'review'}">${isOwner?'超级管理员':'普通管理员'}</span></div>
+    </div>
+    <div class="card menu">
+      ${menus.map(m=>`<div class="mi" onclick="${m[0]}()"><div class="mt">${m[1]}</div><div class="ma">›</div></div>`).join('')}
+    </div>
+    <button class="btn ghost block" onclick="landing()">退出（切换身份）</button>`;
+  nav(html,'管理台');
+}
+
+/* ---- 项目管理 ---- */
+function aProjects(){
+  const html = `<div class="row between" style="margin-bottom:8px">
+      <div class="bold">预约项目</div>
+      <div class="btn sm" onclick="aNewProject()">+ 新建</div>
+    </div>
+    ${projects.map(p=>`
+      <div class="card" onclick="aConfig('${p.id}')">
+        <div class="row between">
+          <div class="row"><span class="brand-dot"></span><span class="bold">${p.name}</span></div>
+          ${badge(p)}
+        </div>
+        <div class="xs muted" style="margin-top:6px">${pubState(p)} · ${bookState(p)} · 可约日 ${p.openDays.length} 天</div>
+        <div class="ops" onclick="event.stopPropagation()">
+          ${ p.published
+              ? `<button class="btn ghost sm" onclick="aUnpublish('${p.id}')">下架</button>`
+              : `<button class="btn sm" onclick="aPublish('${p.id}')">发布</button>` }
+          <button class="btn ghost sm" onclick="aToggleBooking('${p.id}')">${p.paused?'开放预约':'暂停预约'}</button>
+          ${ !p.deleted ? `<button class="btn ghost sm" onclick="aConfirmDelete('${p.id}')">删除</button>` : `<span class="badge full">已删除</span>` }
+        </div>
+      </div>`).join('')}
+    <div class="note">点击卡片 → 项目配置（时间/场次/全局设定）。未发布高亮「发布」；已发布显示「下架」。下架后顾客端不可见；暂停预约后顾客端可见但不可下单。</div>`;
+  nav(html,'项目管理');
+}
+function aPublish(id){ const p=projects.find(x=>x.id===id); p.published=true; toast('已发布：'+p.name); aProjects(); }
+function aUnpublish(id){ const p=projects.find(x=>x.id===id); p.published=false; toast('已下架：'+p.name); aProjects(); }
+function aToggleBooking(id){ const p=projects.find(x=>x.id===id); p.paused=!p.paused; aProjects(); }
+function aConfirmDelete(id){ openModal(`<div class="mt">删除项目</div><div class="mb">将标记为「已删除」（可恢复），不影响历史预约记录。</div>
+  <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="aDoDelete('${id}')">确认删除</button></div>`); }
+function aDoDelete(id){ const p=projects.find(x=>x.id===id); p.deleted=true; closeModal(); aProjects(); toast('已软删除'); }
+
+/* 新建预约项目：弹窗表单 → 写入 projects → 进入配置 */
+function aNewProject(){
+  openModal(`<div class="mt">新建预约项目</div>
+    <div class="mb">
+      <div class="grp"><div class="gl">项目名称 *</div><input class="t" id="np_name" maxlength="20" placeholder="如：法兰绒深烘咖啡预约"></div>
+      <div class="grp" style="margin-top:12px"><div class="gl">项目介绍（可选，≤300字）</div><textarea class="ta" id="np_intro" maxlength="300" placeholder="一句话描述这个预约项目"></textarea></div>
+    </div>
+      <div class="tip">新建后为「草稿」状态，默认关闭审核 / 短信；可在项目配置里设置时间与场次后再发布。</div>
+    <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveNewProject()">创建</button></div>`);
+  setTimeout(()=>{ const el=document.getElementById('np_name'); if(el) el.focus(); },30);
+}
+function saveNewProject(){
+  const name=(document.getElementById('np_name').value||'').trim();
+  const intro=(document.getElementById('np_intro').value||'').trim();
+  if(!name){ toast('请填写项目名称'); return; }
+  const maxN=projects.map(p=>parseInt((p.id||'').replace('p',''),10)||0).reduce((a,b)=>Math.max(a,b),0);
+  const id='p'+(maxN+1);
+  projects.push({ id, name, published:false, paused:false, deleted:false,
+    openDays:[], sessions:{}, introImages:[],
+    image:'', intro,
+    g:{ needReview:false, paused:false, smsEnabled:false, smsNotice:'',
+        limit:{period:'每天',count:1,adminFree:true},
+        open:{type:'提前天数',adv:1},
+        cutoff:{type:'当日',time:'18:00'},
+        fields:['name','phone'] } });
+  closeModal();
+  toast('已创建：'+name);
+  aConfig(id);
+}
+
+/* ---- 项目配置：时间设置 + 场次 + 全局设定 ---- */
+function aConfig(id){
+  if(id) state.project=projects.find(p=>p.id===id);
+  if(!state.project) state.project=projects[0];
+  const p=state.project;
+  const html = `
+    <div class="card row between tap" onclick="aPickProject()">
+      <div class="bold">${p.name}</div><div class="muted">切换 ›</div>
+    </div>
+
+    <!-- 介绍图片：上传 / 替换 / 删除 / 排序 / 说明 -->
+    <div class="card">
+      <div class="sec row between"><div>介绍图片（预约页展示）</div><div class="muted">${(p.introImages||[]).length}/9</div></div>
+      <div class="img-grid">
+        ${introManageCells(p)}
+        ${(p.introImages||[]).length<9?`<div class="img-add" onclick="introAdd()">＋<div class="xs muted">添加</div></div>`:''}
+      </div>
+      ${ (p.introImages||[]).length ? `<div class="img-caps">${introCaps(p)}<button class="btn block" onclick="saveIntroCaps()">保存说明文字</button></div>` : '' }
+      <div class="tip">图片存于云存储，删除会同步清理云文件，避免孤儿文件。</div>
+    </div>
+
+    <!-- ① 项目时间设置：日历多选 -->
+    <div class="card">
+      <div class="sec">项目时间设置 <span class="pill tag-brand">最先配置</span></div>
+      <div class="xs muted" style="margin-bottom:8px">点击日期切换「可约 / 不可约」（支持多选）；灰色=未选，黑边=已开放；橘圈=今天。</div>
+      ${calHTML(p)}
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn ghost sm" onclick="batchAll(true)">本月全开</button>
+        <button class="btn ghost sm" onclick="batchAll(false)">本月全关</button>
+      </div>
+      <div class="legend">
+        <span class="dot open"></span>已开放
+        <span class="dot gray"></span>未开放
+        <span class="dot today"></span>今天
+      </div>
+    </div>
+
+    <!-- ② 已选开放日期 → 向下展示每日场次块 -->
+    <div class="sec" style="margin:14px 2px 8px">已开放日期 · 场次（${p.openDays.length}）</div>
+    ${dayBlocksHTML(p)}
+
+    <!-- ③ 全局设定（由「全部设定」迁移） -->
+    <div class="card" style="margin-top:14px">
+      <div class="sec">全局设定</div>
+      <div class="field row between"><div class="label">提交后是否审核</div><div class="switch ${p.g.needReview?'on':''}" onclick="sw('needReview')"></div></div>
+      <div class="field row between tap" onclick="sheetLimit()"><div class="label">预约次数限制</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.limit.period} · ${p.g.limit.count} 次${p.g.limit.adminFree?' · 管理员不限':''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetOpen()"><div class="label">预约开放规则</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.open.type} ${p.g.open.adv?p.g.open.adv+'天':p.g.open.time||''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetCutoff()"><div class="label">预约截止规则</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.cutoff.type} ${p.g.cutoff.hours?p.g.cutoff.hours+'小时':p.g.cutoff.time||''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetFields()"><div class="label">提交预约信息设置</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.fields.length} 项</span><span class="muted">›</span></div></div>
+      <div class="field row between"><div class="label">开启短信通知（预约成功时推送）</div><div class="switch ${p.g.smsEnabled?'on':''}" onclick="gSms()"></div></div>
+      <div class="field"><div class="label">短信注意事项（可选，填入模板变量）</div><textarea id="smsNote" rows="2" class="fld" style="height:56px" oninput="onSmsNotice(this)">${p.g.smsNotice||''}</textarea></div>
+    </div>
+    <button class="btn block" onclick="aSave()">保存</button>
+    <div class="note">时间设置 / 场次 / 全局设定 已合并到本页；发布与下架在「项目管理」。</div>`;
+  nav(html,'项目配置');
+}
+
+/* ---- 首图及介绍：独立配置页（从管理台「首图及介绍」进入） ---- */
+function aCover(){
+  if(!state.project) state.project=projects[0];
+  const p=state.project;
+  const html = `
+    <div class="note">此页配置的「店铺主图」与「店铺介绍」将展示在顾客预约页顶部（首图 + 文字介绍区）。</div>
+
+    <div class="card">
+      <div class="sec">店铺主图 &amp; 介绍（预约页头部展示）</div>
+      <div class="cover-row">
+        ${p.image?`<img class="cover-img" src="${p.image}">`:`<div class="cover-ph">未设置主图</div>`}
+        <div class="cover-acts">
+          <button class="btn sm" onclick="coverPick()">上传/替换</button>
+          ${p.image?`<button class="btn sm ghost" onclick="coverClear()">删除</button>`:''}
+        </div>
+      </div>
+      <div class="tip">建议宽 750px 竖图，单张 ≤1MB；将作为预约页顶部头图。</div>
+      <div class="field" style="margin-top:14px">
+        <div class="label">店铺介绍（预约页展示，≤300字）</div>
+        <textarea id="pintro" class="ta" maxlength="300" placeholder="如：预约制咖啡空间，法兰绒滴滤……">${p.intro||''}</textarea>
+      </div>
+      <button class="btn block" style="margin-top:14px" onclick="saveCoverIntro()">保存主图与介绍</button>
+    </div>`;
+  nav(html,'首图及介绍');
+}
+function aPickProject(){
+  openSheet(`<div class="sh">切换项目</div>${projects.map(p=>`<div class="opt" onclick="chooseProject('${p.id}')"><div>${p.name}</div><div class="sub">${pubState(p)}</div></div>`).join('')}<div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function chooseProject(id){ closeSheet(); aConfig(id); }
+function sw(key){ const p=state.project; if(key==='needReview')p.g.needReview=!p.g.needReview; aConfig(); }
+function gSms(){ const p=state.project; p.g.smsEnabled=!p.g.smsEnabled; aConfig(); }
+function onSmsNotice(el){ if(state.project) state.project.g.smsNotice=el.value; }
+function aSave(){
+  const p=state.project; if(!p) return;
+  toast(p.published ? '已保存' : '项目已进入草稿');
+  setTimeout(()=>aProjects(), 700);   // 保存后自动退回项目管理页，无需手动回退
+}
+
+/* 介绍图片管理（上传 / 替换 / 删除 / 排序 / 说明） */
+function introManageCells(p){
+  const list=(p.introImages||[]);
+  return list.map((it,i)=>`
+    <div class="img-cell">
+      <img class="img-thumb" src="${it.url}">
+      <div class="img-mask">
+        <div class="img-btns"><span class="img-btn" onclick="introReplace(${i})">替换</span><span class="img-btn" onclick="introDelete(${i})">删除</span></div>
+        <div class="img-move"><span class="img-btn" onclick="introMove(${i},-1)">↑</span><span class="img-btn" onclick="introMove(${i},1)">↓</span></div>
+      </div>
+    </div>`).join('');
+}
+function introCaps(p){
+  return (p.introImages||[]).map((it,i)=>`<div class="field"><div class="label">第 ${i+1} 张说明（可选）</div><input id="icap${i}" value="${it.caption||''}" placeholder="如：店内环境 / 出品特写"></div>`).join('');
+}
+function introAdd(){
+  const p=state.project; if((p.introImages||[]).length>=9) return toast('最多 9 张');
+  if(!p.introImages) p.introImages=[];
+  p.introImages.push({url:"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='200' height='200' fill='%23EDE6DD'/><text x='100' y='108' font-size='14' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>已上传图片</text></svg>", caption:'', sort:p.introImages.length});
+  toast('已添加（演示图片）'); aConfig();
+}
+function introReplace(i){ const p=state.project; const it=p.introImages[i]; if(!it)return; it.url="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='200' height='200' fill='%23EDE6DD'/><text x='100' y='108' font-size='14' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>已替换图片</text></svg>"; aConfig(); toast('已替换'); }
+function introDelete(i){ const p=state.project; if(!p.introImages||!p.introImages[i])return; openModal(`<div class="mt">删除介绍图片</div><div class="mb">将同步清理云存储文件，避免孤儿文件。</div><div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="doIntroDelete(${i})">删除</button></div>`); }
+function doIntroDelete(i){ const p=state.project; p.introImages.splice(i,1); closeModal(); aConfig(); toast('已删除'); }
+function introMove(i,d){ const p=state.project; const a=p.introImages; const j=i+d; if(!a||j<0||j>=a.length) return; const t=a[i]; a[i]=a[j]; a[j]=t; a.forEach((x,k)=>x.sort=k); aConfig(); }
+function saveIntroCaps(){ const p=state.project; (p.introImages||[]).forEach((it,i)=>{ const el=document.getElementById('icap'+i); if(el) it.caption=el.value; }); toast('说明已保存'); }
+function coverPick(){ const p=state.project; const el=document.getElementById('pintro'); if(el) p.intro=el.value; p.image="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'><rect width='400' height='300' fill='%23EDE6DD'/><text x='200' y='145' font-size='20' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>店铺实景 / 菜单主图</text><text x='200' y='172' font-size='13' fill='%23999' text-anchor='middle' font-family='sans-serif'>（演示图，管理端可替换）</text></svg>"; aCover(); toast('已设置主图（演示）'); }
+function coverClear(){ const p=state.project; const el=document.getElementById('pintro'); if(el) p.intro=el.value; p.image=''; aCover(); toast('已删除主图'); }
+function saveCoverIntro(){ const p=state.project; const el=document.getElementById('pintro'); if(el) p.intro=el.value; toast('已保存介绍'); }
+
+/* 日历渲染 */
+function calHTML(p){
+  const y=state.year,m=state.month;
+  const first=new Date(y,m-1,1).getDay();
+  const days=new Date(y,m,0).getDate();
+  let cells='';
+  for(let i=0;i<first;i++) cells+=`<div class="cell empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const k=ymd(y,m,d);
+    const open=p.openDays.includes(k);
+    const isToday=k===TODAY;
+    cells+=`<div class="cell ${open?'open':''} ${isToday?'today':''}" onclick="toggleDate('${k}')">${d}</div>`;
+  }
+  return `<div class="cal">
+    <div class="cal-hd">
+      <div class="btn ghost sm" onclick="calMove(-1)">‹</div>
+      <div class="cal-title">${y} 年 ${m} 月</div>
+      <div class="btn ghost sm" onclick="calMove(1)">›</div>
+    </div>
+    <div class="cal-week">${['日','一','二','三','四','五','六'].map(w=>`<div class="cw">${w}</div>`).join('')}</div>
+    <div class="cal-grid">${cells}</div>
+  </div>`;
+}
+function calMove(d){ let m=state.month+d,y=state.year; if(m<1){m=12;y--;} if(m>12){m=1;y++;} state.month=m; state.year=y; aConfig(); }
+function toggleDate(k){ const p=state.project; const i=p.openDays.indexOf(k); if(i>=0)p.openDays.splice(i,1); else p.openDays.push(k); aConfig(); }
+function batchAll(on){ const p=state.project; const y=state.year,m=state.month;
+  const all=[]; for(let d=1;d<=new Date(y,m,0).getDate();d++) all.push(ymd(y,m,d));
+  if(on){ all.forEach(d=>{ if(!p.openDays.includes(d)) p.openDays.push(d); }); }
+  else { p.openDays=p.openDays.filter(d=>!d.startsWith(ymd(y,m,1).slice(0,7))); }
+  aConfig(); toast(on?'本月已全开':'本月已全关');
+}
+
+/* 每日场次块（仅展示已开放日期） */
+function dayBlocksHTML(p){
+  if(!p.openDays.length) return '<div class="note">尚未选择开放日期，点上方日历添加。</div>';
+  const list=[...p.openDays].sort();
+  return list.map(k=>{
+    const sess=(p.sessions[k]||[]);
+    return `<div class="dayblock">
+      <div class="dh"><div class="dt">${k} <span class="badge ok">开放</span></div>
+        <div class="ops">
+          <button class="btn ghost sm" onclick="addSession('${k}')">+ 添加</button>
+          <button class="btn ghost sm" onclick="useTemplate('${k}')">模版</button>
+          <button class="btn ghost sm" onclick="copyDay('${k}')">复制</button>
+        </div>
+      </div>
+      ${ sess.length ? sess.map(s=>`<div class="sess"><div class="st">${s.start} – ${s.end}</div>
+          <div class="sc">限 ${s.max} 人</div></div>`).join('')
+        : `<div class="empty-sess">暂无场次，点「模版」快速套用</div>` }
+    </div>`;
+  }).join('');
+}
+/* 添加场次：屏幕中央弹层 */
+function addSession(k){
+  openModal(`<div class="mt">添加场次 · ${k}</div>
+    <div class="mb">设置时间段与最大预约人数（默认 8）。</div>
+    <div class="grp"><div class="label" style="font-size:12px;color:var(--ink-3)">时间段</div>
+      <div class="time2"><input type="time" id="ss" value="10:00"><span>–</span><input type="time" id="se" value="11:30"></div></div>
+    <div class="grp"><div class="label" style="font-size:12px;color:var(--ink-3)">最大预约人数（默认 8）</div>
+      <input type="number" id="smax" value="8"></div>
+    <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="doAddSession('${k}')">保存场次</button></div>`);
+}
+function doAddSession(k){
+  const s=document.getElementById('ss').value, e=document.getElementById('se').value, mx=+document.getElementById('smax').value||8;
+  if(!state.project.sessions[k]) state.project.sessions[k]=[];
+  state.project.sessions[k].push({start:s,end:e,max:mx});
+  closeModal(); aConfig(); toast('已添加场次');
+}
+function useTemplate(k){
+  openSheet(`<div class="sh">选用模版 · ${k}</div>
+    ${templates.map(t=>`<div class="opt" onclick="applyTemplate('${k}','${t.id}')"><div>${t.name}</div>
+      <div class="sub">${t.slots.length} 场 · ${t.slots[0].start}-${t.slots[0].end}</div></div>`).join('')}
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function applyTemplate(k,tid){ const t=templates.find(x=>x.id===tid); state.project.sessions[k]=t.slots.map(s=>({start:s.start,end:s.end,max:s.max})); closeSheet(); aConfig(); }
+function copyDay(k){
+  openSheet(`<div class="sh">复制 ${k} 的场次</div>
+    <div class="opt" onclick="doCopy('${k}','day')"><div>复制到指定某天</div><div class="sub">选择目标日期</div></div>
+    <div class="opt" onclick="doCopy('${k}','month')"><div>复制到本月所有开放日</div></div>
+    <div class="opt" onclick="doCopy('${k}','all')"><div>复制到全局所有开放日</div><div class="sub">本项目全周期</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function doCopy(k,mode){
+  const src=state.project.sessions[k]||[];
+  if(mode==='day'){
+    openSheet(`<div class="sh">选择目标日期</div>
+      <input type="date" class="t" id="cpyday" value="${k}">
+      <div class="opt" onclick="applyCopy('${k}')"><div>确认复制</div></div>
+      <div class="cancel" onclick="copyDay('${k}')">返回</div>`);
+    return;
+  }
+  if(mode==='month'){
+    state.project.openDays.forEach(d=>{ if(d.startsWith(ymd(state.year,state.month,1).slice(0,7))) state.project.sessions[d]=src.map(s=>({...s})); });
+  } else { state.project.openDays.forEach(d=>{ state.project.sessions[d]=src.map(s=>({...s})); }); }
+  closeSheet(); aConfig(); toast('已复制场次');
+}
+function applyCopy(k){ const tgt=document.getElementById('cpyday').value; state.project.sessions[tgt]=(state.project.sessions[k]||[]).map(s=>({...s})); if(!state.project.openDays.includes(tgt))state.project.openDays.push(tgt); closeSheet(); aConfig(); }
+
+/* 周期规则弹层：次数限制 / 开放规则 / 截止规则 */
+function sheetLimit(){
+  const g=state.project.g.limit;
+  openSheet(`<div class="sh">预约次数限制</div>
+    <div class="grp"><div class="gl">次数限定方式 · 设定周期</div><div class="seg" id="lp">
+      ${['每天','每周','每月','永久'].map(x=>`<span class="chip ${g.period===x?'on':''}" onclick="segPick('lp',this,'${x}')">${x}</span>`).join('')}
+    </div></div>
+    <div class="grp"><div class="gl">周期内可提交次数</div><input class="t" type="number" id="lc" value="${g.count}"></div>
+    <div class="ck"><div>管理员特权（不受次数限制）</div><div class="switch ${g.adminFree?'on':''}" onclick="swLimitFree()"></div></div>
+    <div class="opt" onclick="saveLimit()"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function swLimitFree(){ const sw=document.querySelector('#mask .switch'); sw.classList.toggle('on'); state.project.g.limit.adminFree=sw.classList.contains('on'); }
+function saveLimit(){ const p=state.project.g.limit; p.period=document.getElementById('lp').dataset.v||p.period; p.count=+document.getElementById('lc').value||1; closeSheet(); aConfig(); }
+function sheetOpen(){
+  const g=state.project.g.open;
+  openSheet(`<div class="sh">预约开放规则</div>
+    <div class="grp"><div class="gl">口径</div><div class="seg" id="ot">
+      ${['提前天数','指定日期'].map(x=>`<span class="chip ${g.type===x?'on':''}" onclick="segPick('ot',this,'${x}')">${x}</span>`).join('')}
+    </div></div>
+    <div class="grp"><div class="gl">可提前天数（1–30）</div><input class="t" type="number" id="oc" value="${g.adv||''}" placeholder="如 3"></div>
+    <div class="ck"><div>管理员特权（不受限制）</div><div class="switch on"></div></div>
+    <div class="opt" onclick="saveOpen()"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function saveOpen(){ const g=state.project.g.open; g.type=document.getElementById('ot').dataset.v||g.type; g.adv=+document.getElementById('oc').value||1; closeSheet(); aConfig(); }
+function sheetCutoff(){
+  const g=state.project.g.cutoff;
+  openSheet(`<div class="sh">预约截止规则</div>
+    <div class="grp"><div class="gl">口径</div><div class="seg" id="ct">
+      ${['场次前','当日'].map(x=>`<span class="chip ${g.type===x?'on':''}" onclick="segPick('ct',this,'${x}')">${x}</span>`).join('')}
+    </div></div>
+    <div class="grp"><div class="gl" id="ctlbl">${g.type==='场次前'?'提前小时数':'当日截止时间'}</div>
+      ${g.type==='场次前' ? `<input class="t" type="number" id="cv" value="${g.hours||''}" placeholder="如 2">` : `<input class="t" type="time" id="cv" value="${g.time||'18:00'}">`}</div>
+    <div class="ck"><div>管理员特权（不受限制）</div><div class="switch on"></div></div>
+    <div class="opt" onclick="saveCutoff()"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function saveCutoff(){ const g=state.project.g.cutoff; g.type=document.getElementById('ct').dataset.v||g.type;
+  if(g.type==='场次前') g.hours=+document.getElementById('cv').value||2; else g.time=document.getElementById('cv').value; closeSheet(); aConfig(); }
+function segPick(id,el,v){ document.getElementById(id).dataset.v=v; [...el.parentNode.children].forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+
+/* 提交预约信息设置 */
+function sheetFields(){
+  const p=state.project;
+  openSheet(`<div class="sh">提交预约信息设置</div>
+    <div class="xs muted" style="margin-bottom:8px">默认勾选姓名、手机；可新增必填项。带「不可取消」的为系统必填。</div>
+    ${fieldCatalog.map(f=>{
+      const on=p.g.fields.includes(f.k); const lock=f.lock;
+      return `<div class="ck"><div>${f.label}${f.req?'<span class="req">必填·不可取消</span>':''}</div>
+        ${lock?`<div class="switch on" style="opacity:.5"></div>`
+              :`<div class="switch ${on?'on':''}" onclick="toggleField('${f.k}',this)"></div>`}</div>`;
+    }).join('')}
+    <div class="note" style="padding:8px 0">可新增项：备注 / 性别 / 年龄 / 同行人员（已列于上方，开启即可收集）。</div>
+    <div class="opt" onclick="closeSheet()"><div>完成</div></div>`);
+}
+function toggleField(k,el){ el.classList.toggle('on'); const arr=state.project.g.fields; const i=arr.indexOf(k); if(i>=0)arr.splice(i,1); else arr.push(k); }
+
+/* ---- 场次模版（admin） ---- */
+function aTemplates(){
+  const html=`<div class="row between" style="margin-bottom:8px">
+      <div class="bold">场次模版</div>
+      <div class="btn sm" onclick="editTemplate()">+ 新增模版</div>
+    </div>
+    ${templates.map(t=>`
+      <div class="card">
+        <div class="row between"><div class="bold">${t.name}</div><span class="badge">${t.slots.length} 场</span></div>
+        ${t.slots.map(s=>`<div class="kv"><span>${s.start} – ${s.end}</span><span class="muted">限 ${s.max} 人</span></div>`).join('')}
+        <div class="ops"><button class="btn ghost sm" onclick="editTemplate('${t.id}')">编辑</button>
+          <button class="btn ghost sm" onclick="toast('已删除模版')">删除</button></div>
+      </div>`).join('')}
+    <div class="note">模版全 admin 共享，可在「项目配置 → 选用模版」中套用。</div>`;
+  nav(html,'场次模版');
+}
+function editTemplate(id){
+  const t=id?templates.find(x=>x.id===id):{name:'',slots:[{start:'10:00',end:'11:30',max:8}]};
+  openSheet(`<div class="sh">${id?'编辑':'新增'}模版</div>
+    <div class="grp"><div class="gl">模版名称</div><input class="t" id="tname" value="${t.name}"></div>
+    <div class="grp"><div class="gl">场次（默认 8 人/场）</div>
+      <div id="tslots">
+        ${t.slots.map(s=>`<div class="time2" style="margin-bottom:8px"><input type="time" class="tstart" value="${s.start}"><span>–</span><input type="time" class="tend" value="${s.end}"><input class="tcap" type="number" value="${s.max}" style="width:54px;margin-left:6px"></div>`).join('')}
+      </div>
+      <div class="opt" onclick="addTSlot()"><div>+ 添加场次</div></div>
+    </div>
+    <div class="opt" onclick="saveTemplate('${id||''}')"><div>保存模版</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function addTSlot(){ const c=document.getElementById('tslots'); const d=document.createElement('div');
+  d.className='time2'; d.style.marginBottom='8px';
+  d.innerHTML=`<input type="time" class="tstart" value="14:00"><span>–</span><input type="time" class="tend" value="15:30"><input class="tcap" type="number" value="8" style="width:54px;margin-left:6px">`;
+  c.appendChild(d); }
+function saveTemplate(id){
+  const name=document.getElementById('tname').value||'未命名模版';
+  const starts=[...document.querySelectorAll('.tstart')], ends=[...document.querySelectorAll('.tend')], caps=[...document.querySelectorAll('.tcap')];
+  const slots=starts.map((s,i)=>({start:s.value,end:ends[i].value,max:+caps[i].value||8}));
+  if(id){ const t=templates.find(x=>x.id===id); t.name=name; t.slots=slots; } else templates.push({id:'t'+Date.now(),name,slots});
+  closeSheet(); aTemplates();
+}
+
+/* ---- 查看预约人（默认法兰绒深烘） ---- */
+function aView(){
+  if(!state.viewProject) state.viewProject=projects[0];
+  const p=state.viewProject;
+  const demo=[
+    {name:'张女士',phone:'138****8021',party:2,review:'ok',day:ymd(Y,M,18),time:'10:00–11:30'},
+    {name:'李先生',phone:'139****3390',party:1,review:'pending',day:ymd(Y,M,8),time:'10:00–11:30'}
+  ];
+  const html=`<div class="card row between tap" onclick="aPickView()">
+      <div class="bold">${p.name}</div><div class="muted">切换 ›</div></div>
+    <div class="tab">
+      <div class="tb on">待审核</div><div class="tb">已通过</div><div class="tb">已取消</div>
+    </div>
+    ${demo.map((r,i)=>`
+      <div class="person" onclick="showPerson('${r.name}','${r.phone}','${r.party}','${r.review}','${r.day}','${r.time}')">
+        <div class="nm">${r.name} <span class="tag-soft">${r.party}人</span> ${r.review==='pending'?'<span class="badge paused">待审</span>':(r.review==='ok'?'<span class="badge ok">已确认</span>':'')}</div>
+        <div class="ln">${r.day} · ${r.time}</div>
+        <div class="ph">☎ ${r.phone}</div>
+      </div>`).join('')}
+    <div class="note">默认选中「法兰绒深烘咖啡预约」，点顶部可切换项目。</div>`;
+  nav(html,'查看预约');
+}
+function aPickView(){
+  openSheet(`<div class="sh">切换项目</div>${projects.map(p=>`<div class="opt" onclick="chooseView('${p.id}')"><div>${p.name}</div><div class="sub">${pubState(p)}</div></div>`).join('')}<div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function chooseView(id){ closeSheet(); state.viewProject=projects.find(p=>p.id===id); aView(); }
+function showPerson(name,phone,party,review,day,time){
+  openSheet(`<div class="sh">预约人详情</div>
+    <div class="detail">
+      <div class="kv"><span class="k">姓名</span><span>${name}</span></div>
+      <div class="kv"><span class="k">电话</span><span>${phone}</span></div>
+      <div class="kv"><span class="k">人数</span><span>${party} 人</span></div>
+      <div class="kv"><span class="k">日期场次</span><span>${day} ${time}</span></div>
+      <div class="kv"><span class="k">审核</span><span>${review==='ok'?'已通过':(review==='pending'?'待审核':'')}</span></div>
+    </div>
+    <div class="opt" onclick="dial('${phone}')"><div>📞 拨打电话</div></div>
+    <div class="cancel" onclick="closeSheet()">关闭</div>`);
+}
+function dial(phone){ toast('调用 wx.makePhoneCall：'+phone); }
+
+/* ---- 审核 ---- */
+function aReview(){
+  const items=[
+    {p:'清酒品鉴预约',d:ymd(Y,M,15)+' 19:30',n:'李雷',party:2,phone:'137****5521',note:'忌口清酒甜型'},
+    {p:'法兰绒深烘咖啡预约',d:ymd(Y,M,8)+' 10:00',n:'王先生',party:1,phone:'139****8810',note:''},
+  ];
+  const html=`<div class="sec">待审核预约</div>`+items.map(it=>`
+    <div class="card">
+      <div class="row between"><div class="bold">${it.n}</div><span class="badge paused">待审核</span></div>
+      <div class="xs muted" style="margin-top:6px">${it.p} · ${it.d} · ${it.party}人</div>
+      <div class="xs muted" style="margin-top:2px">☎ ${it.phone}${it.note?' · '+it.note:''}</div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn ghost" style="flex:1" onclick="toast('已拒绝')">拒绝</button>
+        <button class="btn" style="flex:1" onclick="toast('已通过（微信通知用户）')">通过</button>
+      </div>
+    </div>`).join('');
+  nav(html,'审核');
+}
+
+/* ---- 当日场次管理（owner / manager 共用，逻辑一致） ---- */
+/* manager 仅显示被授权项目；owner 显示全部项目。进入即展示今天（TODAY）的场次。 */
+function aDaily(){
+  const isOwner=state.role==='owner';
+  const list = isOwner ? projects : projects.filter(p=>mgrProjects.includes(p.id));
+  const sections = list.map(p=>{
+    const sess=(p.sessions[TODAY]||[]).map(s=>({...s, booked:s.booked||0, status:s.status||'open'}));
+    return {p,sess};
+  });
+  let body='';
+  sections.forEach(({p,sess})=>{
+    body += `<div class="card">
+      <div class="row between"><div class="row"><span class="brand-dot"></span><span class="bold">${p.name}</span></div>
+        <span class="badge ${!p.published?'draft':(p.paused?'shelf':'ok')}">${!p.published?'未发布':(p.paused?'暂停预约':'已发布')}</span></div>`;
+    if(!sess.length){
+      body += `<div class="empty-sess">今日（${TODAY}）暂无场次</div>`;
+    } else {
+      sess.forEach((s,idx)=>{
+        const open=s.status==='open';
+        body += `<div class="sess"><div class="col">
+            <div class="st">${s.start} – ${s.end}</div>
+            <div class="sc">已约 ${s.booked}/${s.max} 人</div>
+          </div>
+          <div class="row" style="gap:8px">
+            <span class="badge ${open?'ok':'paused'}">${open?'开放预约':'暂停预约'}</span>
+            <button class="btn ghost sm" onclick="dailyToggle('${p.id}',${idx})">${open?'暂停':'开放'}</button>
+            <button class="btn ghost sm" onclick="dailyCap('${p.id}',${idx})">人数</button>
+          </div></div>`;
+      });
+      body += `<button class="btn ghost sm" style="margin-top:8px" onclick="dailyAdd('${p.id}')">+ 增加场次</button>`;
+    }
+    body += `</div>`;
+  });
+  if(!sections.length) body='<div class="note">暂无可管理项目。</div>';
+  const html=`<div class="sec">当日场次管理 <span class="pill tag-brand">${TODAY}</span></div>
+    <div class="xs muted" style="margin-bottom:10px">${isOwner?'全部项目 · 可开放/暂停/调人数/加场次':'仅你被授权的项目 · 可开放/暂停/调人数/加场次'}</div>
+    ${body}
+    <div class="note">${isOwner?'超级管理员可对全部项目的当日场次做开放/暂停、人数与新增管理。':'普通管理员仅能管理其被授权项目的当日场次（不接触项目配置/发布）。'}</div>`;
+  nav(html,'当日场次管理');
+}
+function dailyToggle(pid,idx){
+  const p=projects.find(x=>x.id===pid); const s=(p.sessions[TODAY]||[])[idx];
+  if(!s) return;
+  s.status = s.status==='open' ? 'paused' : 'open';
+  aDaily(); toast(s.status==='open' ? '已开放预约' : '已暂停预约');
+}
+function dailyCap(pid,idx){
+  const p=projects.find(x=>x.id===pid); const s=(p.sessions[TODAY]||[])[idx];
+  openModal(`<div class="mt">调整可预约人数</div>
+    <div class="mb">${TODAY} · ${s.start}–${s.end}　当前已约 ${s.booked} 人</div>
+    <div style="text-align:center;margin-top:6px"><div class="stepper">
+      <button onclick="stepCap(-1)">−</button><div class="v" id="capv">${s.max}</div><button onclick="stepCap(1)">+</button>
+    </div></div>
+    <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveCap('${pid}',${idx})">保存</button></div>`);
+}
+function stepCap(n){ const v=document.getElementById('capv'); v.textContent=Math.max(1,(+v.textContent)+n); }
+function saveCap(pid,idx){
+  const p=projects.find(x=>x.id===pid); const s=(p.sessions[TODAY]||[])[idx];
+  const nv=+document.getElementById('capv').textContent||8;
+  if(s.booked>nv) return toast('新人数小于已约人数（'+s.booked+'），不可设置');
+  s.max=nv; closeModal(); aDaily(); toast('人数已更新');
+}
+function dailyAdd(pid){
+  openModal(`<div class="mt">增加今日场次 · ${TODAY}</div>
+    <div class="mb">为该项目今日新增一个场次。</div>
+    <div class="grp"><div class="label" style="font-size:12px;color:var(--ink-3)">时间段</div>
+      <div class="time2"><input type="time" id="ds" value="16:00"><span>–</span><input type="time" id="de" value="17:30"></div></div>
+    <div class="grp"><div class="label" style="font-size:12px;color:var(--ink-3)">最大预约人数（默认 8）</div>
+      <input type="number" id="dmax" value="8"></div>
+    <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="doDailyAdd('${pid}')">保存场次</button></div>`);
+}
+function doDailyAdd(pid){
+  const s=document.getElementById('ds').value,e=document.getElementById('de').value,mx=+document.getElementById('dmax').value||8;
+  const p=projects.find(x=>x.id===pid);
+  if(!p.sessions[TODAY]) p.sessions[TODAY]=[];
+  p.sessions[TODAY].push({start:s,end:e,max:mx,booked:0,status:'open'});
+  if(!p.openDays.includes(TODAY)) p.openDays.push(TODAY);
+  closeModal(); aDaily(); toast('已新增今日场次');
+}
+
+/* ---- 管理员（含一键授权 / 最近访问者） ---- */
+function aAdmins(){
+  const html=`<div class="sec">管理员</div>
+    ${admins.map(a=>`
+      <div class="card">
+        <div class="row between"><div><div class="bold">${a.role==='owner'?'超级管理员':'普通管理员'}</div>
+          <div class="xs muted">OpenID：${a.openid}</div><div class="xs muted">${a.note}</div></div>
+          <span class="badge ok">${a.role==='owner'?'全部权限':'查看/控场'}</span></div>
+        ${a.role!=='owner'?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="toast('已移除')">移除</button></div>`:''}
+      </div>`).join('')}
+    <div class="sec" style="margin-top:14px">最近访问者（一键授权）</div>
+    ${visitors.map(v=>`
+      <div class="card">
+        <div class="xs muted">${v.openid}</div>
+        <div class="xs muted" style="margin-top:2px">访问：${v.at}</div>
+        <div class="ops">
+          <button class="btn ghost sm" onclick="grant('${v.openid}','manager')">普通</button>
+          <button class="btn sm" onclick="grant('${v.openid}','owner')">超级</button>
+        </div>
+      </div>`).join('')}
+    <div class="sec" style="margin-top:14px">手动添加（填 OpenID）</div>
+    <div class="card"><input class="fld" id="newOpenid" placeholder="oX-mgr-xxxxxxxx">
+      <button class="btn block" onclick="grantManual()">授权为管理员</button></div>
+    <div class="note">「超级」= 超级管理员（可发布/授权）；「普通」= 普通管理员（查看/控场）。</div>`;
+  nav(html,'管理员');
+}
+function grant(openid,role){ toast(openid.slice(0,10)+'… 已授权为'+(role==='owner'?'超级管理员':'普通管理员')); }
+function grantManual(){ const v=document.getElementById('newOpenid').value.trim(); if(!v)return toast('请填写 OpenID'); toast('已授权：'+v.slice(0,10)+'…'); }
+
+/* ---- 短信通知配置（超级管理员：全店短信账号「钥匙」） ---- */
+let smsCfg = {signName:'法兰绒咖啡', templateId:'123456', smsSdkAppId:'1400000000', secretIdMask:'AKID****', hasSecret:true, noticeTemplate:''};
+function aSms(){
+  const c=smsCfg;
+  const html=`<div class="sec">短信通知配置 · 仅超级管理员</div>
+    <div class="card">
+      <div class="field"><div class="label">短信签名 SignName</div><input id="sSign" value="${c.signName}" placeholder="如：法兰绒咖啡"></div>
+      <div class="field"><div class="label">模板 ID TemplateId</div><input id="sTpl" value="${c.templateId}" placeholder="如：123456"></div>
+      <div class="field"><div class="label">SDK AppId</div><input id="sApp" value="${c.smsSdkAppId}" placeholder="如：1400000000"></div>
+      <div class="field"><div class="label">SecretId</div><input id="sId" placeholder="${c.secretIdMask?c.secretIdMask+'（已配置，留空不改）':'腾讯云 SecretId'}"></div>
+      <div class="field"><div class="label">SecretKey</div><input id="sKey" placeholder="${c.hasSecret?'已配置，留空不改':'腾讯云 SecretKey'}"></div>
+      <div class="field"><div class="label">通知正文模板（注意事项）</div><textarea id="sNote" rows="2" class="fld" style="height:56px">${c.noticeTemplate}</textarea></div>
+    </div>
+    <button class="btn block" onclick="saveSms()">保存短信配置</button>
+    <div class="tip">顾客预约并「预约成功」时自动推送短信；模板变量（称呼 / 项目 / 状态 / 日期 / 场次）由系统填充，此处仅填注意事项文案。每个项目的「开启短信通知」开关见「项目配置 → 全局设定」。</div>`;
+  nav(html,'短信通知配置');
+}
+function saveSms(){
+  smsCfg.signName=document.getElementById('sSign').value.trim();
+  smsCfg.templateId=document.getElementById('sTpl').value.trim();
+  smsCfg.smsSdkAppId=document.getElementById('sApp').value.trim();
+  const idv=document.getElementById('sId').value.trim(); if(idv) smsCfg.secretIdMask=idv.slice(0,4)+'****';
+  const keyv=document.getElementById('sKey').value.trim(); if(keyv) smsCfg.hasSecret=true;
+  smsCfg.noticeTemplate=document.getElementById('sNote').value.trim();
+  toast('短信配置已保存');
+}
+
+/* ---- 店铺菜单管理（admin：新增 / 编辑 / 上下架 / 删除） ---- */
+function aProducts(){
+  const html=`<div class="row between" style="margin-bottom:8px">
+      <div class="bold">店铺菜单</div>
+      <div class="btn sm" onclick="editProduct()">+ 新增产品</div>
+    </div>
+    ${products.map(p=>`
+      <div class="card">
+        <div class="row" style="gap:12px;align-items:flex-start">
+          <div class="prod-logo">${p.image?`<img src="${p.image}">`:'<span class="ph">图</span>'}</div>
+          <div class="col" style="flex:1">
+            <div class="row between"><div class="bold">${p.name}</div><span class="badge ${p.status==='on'?'ok':'draft'}">${p.status==='on'?'在售':'下架'}</span></div>
+            <div class="xs muted" style="margin-top:4px">¥${p.price} · ${p.desc}</div>
+            <div class="xs muted" style="margin-top:4px">评价 ${p.reviews.filter(r=>!r.hidden).length}</div>
+          </div>
+        </div>
+        <div class="ops" style="margin-top:10px">
+          <button class="btn ghost sm" onclick="editProduct('${p.id}')">编辑</button>
+          <button class="btn ghost sm" onclick="toggleProduct('${p.id}')">${p.status==='on'?'下架':'上架'}</button>
+          <button class="btn ghost sm" onclick="delProduct('${p.id}')">删除</button>
+        </div>
+      </div>`).join('')}
+    <div class="note">上架产品在顾客端首页「店铺菜单」展示；下架不可见。评价管理见「评价管理」。</div>`;
+  nav(html,'店铺菜单管理');
+}
+function toggleProduct(id){ const p=products.find(x=>x.id===id); p.status = p.status==='on'?'off':'on'; toast(p.status==='on'?'已上架':'已下架'); aProducts(); }
+function delProduct(id){ const p=products.find(x=>x.id===id); products.splice(products.indexOf(p),1); toast('已删除'); aProducts(); }
+let _curImg='';
+function editProduct(id){
+  const p=id?products.find(x=>x.id===id):{name:'',image:'',price:30,desc:''};
+  _curImg = p.image||'';
+  openSheet(`<div class="sh">${id?'编辑':'新增'}产品</div>
+    <div class="grp"><div class="gl">图片（菜品为图片，非图标）</div>
+      <div class="up" id="pup" onclick="fakeUp('pup')">${_curImg?`<img src="${_curImg}">`:'＋ 上传图片'}</div>
+    </div>
+    <div class="grp"><div class="gl">名称</div><input class="t" id="pname" value="${p.name}"></div>
+    <div class="grp"><div class="gl">价格（元）</div><input class="t" type="number" id="pprice" value="${p.price}"></div>
+    <div class="grp"><div class="gl">描述</div><textarea id="pdesc" class="fld" style="height:60px" rows="3">${p.desc}</textarea></div>
+    <div class="opt" onclick="saveProduct('${id||''}')"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function fakeUp(id){ // 演示：用占位图模拟已上传图片（真实小程序走 wx.chooseMedia → wx.cloud.uploadFile 存云存储）
+  _curImg="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'><rect width='300' height='200' fill='%23EDE6DD'/><text x='150' y='108' font-size='16' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>已上传图片</text></svg>";
+  const u=document.getElementById(id); u.innerHTML=`<img src="${_curImg}">`;
+}
+function saveProduct(id){
+  const name=document.getElementById('pname').value.trim()||'未命名';
+  const price=+document.getElementById('pprice').value||0;
+  const desc=document.getElementById('pdesc').value.trim();
+  if(id){ const p=products.find(x=>x.id===id); p.name=name; p.price=price; p.desc=desc; p.image=_curImg; }
+  else products.push({id:'m'+Date.now(),name,emoji:'☕',image:_curImg,price,desc,status:'on',reviews:[]});
+  closeSheet(); aProducts(); toast('已保存');
+}
+/* ---- 评价管理（admin：隐藏 / 删除） ---- */
+function aReviews(){
+  const all=[];
+  products.forEach(p=>p.reviews.forEach(r=>all.push({p,r})));
+  all.sort((a,b)=>(b.r.pinned?1:0)-(a.r.pinned?1:0));
+  const html=`<div class="sec">评价管理</div>
+    ${ all.length ? all.map(({p,r})=>`
+      <div class="card">
+        <div class="row between"><div class="row"><span class="brand-dot"></span><span class="bold" style="font-size:13px">${p.name}</span>${r.pinned?'<span class="badge ok" style="margin-left:6px">置顶</span>':''}</div>
+          <span class="badge ${r.hidden?'draft':'review'}">${r.hidden?'已隐藏':'显示中'}</span></div>
+        <div class="rev">
+          <div class="av">${r.avatar}</div>
+          <div class="col" style="flex:1">
+            <div class="row between"><div class="bold" style="font-size:13px">${r.nick}</div><div class="rt">${r.at}</div></div>
+            <div class="stars" style="pointer-events:none;margin:3px 0">${starStr(r.rating)}</div>
+            <div class="xs" style="margin-top:2px">${r.text}</div>
+          </div>
+        </div>
+        <div class="ops" style="margin-top:8px">
+          <button class="btn ghost sm" onclick="togglePin('${p.id}','${r.id}')">${r.pinned?'取消置顶':'置顶'}</button>
+          <button class="btn ghost sm" onclick="toggleReview('${p.id}','${r.id}')">${r.hidden?'显示':'隐藏'}</button>
+          <button class="btn ghost sm" onclick="delReview('${p.id}','${r.id}')">删除</button>
+        </div>
+      </div>`).join('')
+    : '<div class="note">暂无评价。</div>' }
+    <div class="note">可按菜品管理评价：置顶（优先展示）、隐藏（保留记录）、删除。置顶项排在最前。</div>`;
+  nav(html,'评价管理');
+}
+function togglePin(pid,rid){ const p=products.find(x=>x.id===pid); const r=p.reviews.find(x=>x.id===rid); r.pinned=!r.pinned; aReviews(); toast(r.pinned?'已置顶':'已取消置顶'); }
+function toggleReview(pid,rid){ const p=products.find(x=>x.id===pid); const r=p.reviews.find(x=>x.id===rid); r.hidden=!r.hidden; aReviews(); }
+function delReview(pid,rid){ const p=products.find(x=>x.id===pid); p.reviews=p.reviews.filter(x=>x.id!==rid); aReviews(); toast('已删除评价'); }
+
+/* ===================== 弹出层工具 ===================== */
+function openSheet(h){ document.getElementById('sheet').innerHTML=h; document.getElementById('mask').classList.add('show'); }
+function closeSheet(){ document.getElementById('mask').classList.remove('show'); }
+function openModal(h){ document.getElementById('modalBox').innerHTML=h; document.getElementById('modal').classList.add('show'); }
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+
+/* ===================== 启动 ===================== */
+landing();
+</script>
+</body>
+</html>

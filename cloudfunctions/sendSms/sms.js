@@ -35,7 +35,7 @@ async function sendReservationSms(o) {
   if (!cfg) return { skipped: true, reason: 'sms not configured' }
 
   const statusText = status === 'confirmed' ? '预约成功' : '待审核'
-  const noticeText = (notice && notice.trim()) || '请准时到店，如需取消请提前在「我的预约」操作'
+  const noticeText = (notice && notice.trim()) || (cfg && cfg.noticeTemplate && cfg.noticeTemplate.trim()) || '请准时到店，如需取消请提前在「我的预约」操作'
 
   let SmsClient
   try {

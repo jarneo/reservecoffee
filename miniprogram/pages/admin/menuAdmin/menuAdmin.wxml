@@ -1,0 +1,45 @@
+<view class="page">
+  <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onProjectPick">
+    <view class="card row between tap"><view class="bold">{{projectName || '选择项目'}}</view><view class="ma">切换 ›</view></view>
+  </picker>
+
+  <view class="row between" style="margin:4rpx 4rpx 12rpx">
+    <view class="sec">菜品（{{products.length}}）</view>
+    <view class="btn sm" bindtap="openNew">+ 新建</view>
+  </view>
+
+  <view wx:if="{{products.length===0}}" class="note">暂无菜品</view>
+  <view wx:for="{{products}}" wx:key="_id" class="card row between">
+    <view class="row">
+      <view class="thumb">
+        <image wx:if="{{item.imageUrl}}" class="img" src="{{item.imageUrl}}" mode="aspectFill"/>
+        <view wx:else class="ph">无图</view>
+      </view>
+      <view>
+        <view class="bold">{{item.name}}</view>
+        <view class="price">{{item.priceText}}</view>
+        <view class="badge {{item.status==='off'?'paused':'ok'}}" style="margin-top:6rpx">{{item.status==='off'?'已下架':'在售'}}</view>
+      </view>
+    </view>
+    <view class="ops">
+      <text class="ob" bindtap="openEdit" data-i="{{index}}">编辑</text>
+      <text class="ob" bindtap="toggleStatus" data-i="{{index}}">{{item.status==='off'?'上架':'下架'}}</text>
+      <text class="ob danger" bindtap="del" data-i="{{index}}">删除</text>
+    </view>
+  </view>
+
+  <view wx:if="{{showForm}}" class="card">
+    <view class="sec">{{editingId ? '编辑菜品' : '新建菜品'}}</view>
+    <view class="field"><view class="label">名称</view><input value="{{form.name}}" bindinput="onName" placeholder="菜品名称"/></view>
+    <view class="field"><view class="label">价格（元）</view><input type="digit" value="{{form.price}}" bindinput="onPrice" placeholder="0"/></view>
+    <view class="field"><view class="label">描述</view><textarea value="{{form.desc}}" bindinput="onDesc" placeholder="一句话介绍"/></view>
+    <view class="field row between"><view class="label">在售</view><switch checked="{{form.status}}" bindchange="onStatus"/></view>
+    <view class="field"><view class="label">图片</view>
+      <view class="up tap" bindtap="pickImage">
+        <image wx:if="{{form.imageUrl}}" class="up-img" src="{{form.imageUrl}}" mode="aspectFill"/>
+        <view wx:else class="up-ph">＋ 上传图片</view>
+      </view>
+    </view>
+    <button class="btn block" bindtap="save">保存</button>
+  </view>
+</view>

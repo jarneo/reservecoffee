@@ -14,6 +14,7 @@ exports.main = async () => {
     published: !!p.published,
     needReview: !!p.needReview,
     paused: !!p.paused,
+    deleted: !!p.deleted,
     openDays: p.openDays || []
   }))
   return ok({ list })

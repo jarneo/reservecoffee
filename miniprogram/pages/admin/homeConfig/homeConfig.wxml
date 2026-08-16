@@ -5,4 +5,16 @@
     <view class="field"><view class="label">首页简介</view><textarea value="{{form.intro}}" bindinput="on" data-k="intro"/></view>
   </view>
   <button class="btn block" bindtap="save">保存首页配置</button>
+
+  <view class="card">
+    <view class="sec">短信通知配置 · 仅超级管理员</view>
+    <view class="field"><view class="label">短信签名 SignName</view><input value="{{sms.signName}}" bindinput="onSms" data-k="signName" placeholder="如：法兰绒咖啡"/></view>
+    <view class="field"><view class="label">模板 ID TemplateId</view><input value="{{sms.templateId}}" bindinput="onSms" data-k="templateId" placeholder="如：123456"/></view>
+    <view class="field"><view class="label">SDK AppId</view><input value="{{sms.smsSdkAppId}}" bindinput="onSms" data-k="smsSdkAppId" placeholder="如：1400000000"/></view>
+    <view class="field"><view class="label">SecretId</view><input value="{{sms.secretId}}" bindinput="onSms" data-k="secretId" placeholder="{{sms.secretIdMask ? sms.secretIdMask + '（已配置，留空不改）' : '腾讯云 SecretId'}}"/></view>
+    <view class="field"><view class="label">SecretKey</view><input value="{{sms.secretKey}}" bindinput="onSms" data-k="secretKey" type="text" placeholder="{{sms.hasSecret ? '已配置，留空不改' : '腾讯云 SecretKey'}}"/></view>
+    <view class="field"><view class="label">通知正文模板（注意事项）</view><textarea value="{{sms.noticeTemplate}}" bindinput="onSms" data-k="noticeTemplate" placeholder="留空则用默认文案（请准时到店，如需取消请提前在「我的预约」操作）"/></view>
+    <view class="tip">顾客预约并「预约成功」时自动推送短信；模板变量（称呼/项目/状态/日期/场次）由系统填充，此处仅填注意事项文案。</view>
+  </view>
+  <button class="btn block" bindtap="saveSms">保存短信配置</button>
 </view>

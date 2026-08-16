@@ -1,441 +1,612 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>项目配置重构 · 演示原型</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二曜路8号 · 配置重构原型 v2（复刻已发布版视觉）</title>
 <style>
   :root{
-    --espresso:#2b1d14; --coffee-700:#4a3424; --coffee-500:#7b5a3f; --coffee-300:#b89b80;
-    --cream:#f6efe4; --paper:#fffdf9; --line:#e7ddd0;
-    --accent:#c0843f; --accent-700:#a06a2c;
-    --ok:#2e7d57; --warn:#c9883f; --danger:#b5483a; --muted:#8a7a68; --ink:#2b1d14;
-    --r:14px; --r-sm:10px;
+    --ink:#1A1A1A; --ink-2:#555; --ink-3:#999;
+    --line:#E7E7E7; --fill:#F5F5F5; --fill-2:#FAFAFA;
+    --brand:#7A5230;          /* 棕色：仅点缀，不做背景 */
+    --orange:#E8833A;         /* 今天橘色圈，仅此一处用彩色 */
+    --r:16px;
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  body{margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
-    background:#ece3d6; color:var(--ink); display:flex; justify-content:center; gap:28px; padding:28px; flex-wrap:wrap;}
-  .stage{display:flex; flex-direction:column; align-items:center; gap:14px;}
-  .stage h2{font-size:14px; letter-spacing:2px; color:var(--coffee-700); margin:0; font-weight:600;}
-
-  /* phone */
-  .phone{width:390px; height:780px; background:var(--cream); border-radius:38px; border:10px solid #1c140e;
-    box-shadow:0 24px 60px rgba(43,29,20,.28); position:relative; overflow:hidden; display:flex; flex-direction:column;}
-  .notch{position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:26px; background:#1c140e; border-radius:0 0 16px 16px; z-index:30;}
-  .nav{height:46px; background:var(--coffee-700); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; letter-spacing:1px; position:relative; z-index:20;}
-  .tabs{display:flex; background:#fff; border-bottom:1px solid var(--line); overflow-x:auto; flex:none;}
-  .tabs button{border:none; background:none; padding:10px 12px; font-size:12.5px; color:var(--muted); white-space:nowrap; cursor:pointer; border-bottom:2px solid transparent;}
-  .tabs button.on{color:var(--coffee-700); border-bottom-color:var(--accent); font-weight:700;}
-  .screen{flex:1; overflow-y:auto; padding:14px; display:none;}
-  .screen.on{display:block;}
-  .screen::-webkit-scrollbar{width:0;}
-
-  /* components */
-  .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin-bottom:12px; box-shadow:0 2px 8px rgba(43,29,20,.04);}
-  .card.tap{cursor:pointer; transition:.15s;}
-  .card.tap:active{transform:scale(.99); background:#fbf6ee;}
-  .sec-title{font-size:13px; font-weight:700; color:var(--coffee-700); margin:2px 0 10px; display:flex; justify-content:space-between; align-items:center;}
-  .sec-title .hint{font-size:11px; color:var(--muted); font-weight:400;}
-  .row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
-  .between{justify-content:space-between;}
-  .muted{color:var(--muted);}
-  .sm{font-size:13px;} .xs{font-size:11.5px;} .bold{font-weight:700;} .mono{font-family:ui-monospace,Menlo,monospace; word-break:break-all;}
-
-  .badge{font-size:11px; padding:3px 9px; border-radius:999px; font-weight:600; white-space:nowrap;}
-  .b-pub{background:#e3f1ea; color:var(--ok);}
-  .b-off{background:#efe7db; color:var(--muted);}
-  .b-open{background:#e7f0ff; color:#2f6db0;}
-  .b-pause{background:#fbe9e4; color:var(--danger);}
-  .tag{font-size:10.5px; padding:2px 7px; border-radius:6px; background:#f1e8db; color:var(--coffee-700); margin-left:6px;}
-
-  .btn{border:none; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; background:var(--coffee-500); color:#fff; transition:.15s;}
-  .btn:active{transform:translateY(1px);}
-  .btn.primary{background:var(--accent);}
-  .btn.ghost{background:#fff; color:var(--coffee-700); border:1px solid var(--line);}
-  .btn.danger{background:#fff; color:var(--danger); border:1px solid #f0d2cb;}
-  .btn.block{width:100%; margin-top:6px;}
-  .btn.sm{padding:6px 10px; font-size:12px;}
-  .btn[disabled]{opacity:.45; cursor:not-allowed;}
-  .btn.live{box-shadow:0 0 0 3px rgba(192,132,63,.25);}
-
-  .switch{width:46px; height:27px; border-radius:999px; background:#d9cdbb; position:relative; transition:.2s; flex:none; cursor:pointer;}
-  .switch.on{background:var(--ok);}
-  .switch::after{content:""; position:absolute; top:3px; left:3px; width:21px; height:21px; border-radius:50%; background:#fff; transition:.2s;}
-  .switch.on::after{left:22px;}
-
-  .segment{display:flex; background:#f1e8db; border-radius:10px; padding:3px; gap:3px;}
-  .segment button{flex:1; border:none; background:none; padding:8px 0; font-size:12.5px; border-radius:8px; color:var(--coffee-700); cursor:pointer;}
-  .segment button.on{background:#fff; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,.08);}
-
-  .stepper{display:flex; align-items:center; gap:0; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
-  .stepper button{width:38px; height:38px; border:none; background:#fff; font-size:18px; color:var(--coffee-700); cursor:pointer;}
-  .stepper input{width:54px; border:none; text-align:center; font-size:14px; font-weight:700; color:var(--ink);}
-
-  .field input{width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px; margin-top:6px; background:#fff;}
-  .field label{font-size:13px; color:var(--coffee-700); font-weight:600;}
-
-  .check{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
-  .check:last-child{border-bottom:none;}
-  .box{width:20px; height:20px; border-radius:6px; border:2px solid var(--coffee-300); flex:none; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;}
-  .box.on{background:var(--coffee-500); border-color:var(--coffee-500);}
-  .req{font-size:10px; color:var(--danger); margin-left:6px;}
-
-  /* calendar */
-  .cal{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center;}
-  .cal .d{font-size:11px; color:var(--muted); padding:4px 0;}
-  .cal .cell{aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:13px; border-radius:8px; cursor:pointer; position:relative;}
-  .cal .cell.sel{background:var(--accent); color:#fff; font-weight:700;}
-  .cal .cell.has::after{content:""; position:absolute; bottom:5px; width:5px; height:5px; border-radius:50%; background:var(--ok);}
-  .cal .cell.sel.has::after{background:#fff;}
-
-  /* sheet */
-  .mask{position:absolute; inset:0; background:rgba(20,12,8,.45); z-index:40; display:none;}
-  .mask.on{display:block;}
-  .sheet{position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:20px 20px 0 0; padding:18px 16px 24px; z-index:50; transform:translateY(100%); transition:.25s; max-height:84%; overflow-y:auto;}
-  .sheet.on{transform:translateY(0);}
-  .sheet h3{margin:0 0 4px; font-size:16px; color:var(--espresso);}
-  .sheet .sub{font-size:12px; color:var(--muted); margin-bottom:14px;}
-  .sheet .field-row{margin:16px 0;}
-  .sheet .field-row > .lbl{font-size:13px; font-weight:700; color:var(--coffee-700); margin-bottom:8px;}
-  .sheet-actions{display:flex; gap:10px; margin-top:18px;}
-  .sheet-actions .btn{flex:1;}
-
-  .pill{display:inline-block; font-size:11px; background:#f1e8db; color:var(--coffee-700); padding:3px 8px; border-radius:999px; margin:2px 4px 2px 0;}
-  .toast{position:absolute; bottom:90px; left:50%; transform:translateX(-50%); background:rgba(43,29,20,.92); color:#fff; padding:9px 16px; border-radius:999px; font-size:12.5px; z-index:60; opacity:0; transition:.2s; pointer-events:none; white-space:nowrap;}
-  .toast.on{opacity:1;}
-  .note{font-size:12px; color:var(--muted); text-align:center; padding:20px; line-height:1.7;}
-  .legend{font-size:11px; color:var(--muted); line-height:1.9; background:#fbf6ee; border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-top:6px;}
-  .proj-name{font-size:15px; font-weight:700;}
-  .del-confirm{font-size:12.5px; color:var(--muted); margin:6px 0 12px;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#EDEDED;font-family:-apple-system,"PingFang SC","Helvetica Neue",Helvetica,sans-serif;color:var(--ink);
+       display:flex;justify-content:center;padding:24px;gap:32px;flex-wrap:wrap}
+  /* 手机外框 */
+  .phone{width:390px;background:var(--fill-2);border:1px solid #ddd;border-radius:38px;overflow:hidden;
+         box-shadow:0 12px 40px rgba(0,0,0,.12);display:flex;flex-direction:column;height:840px}
+  .statusbar{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px;color:var(--ink)}
+  .navbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;
+          background:#fff;border-bottom:1px solid var(--line)}
+  .navbar .t{font-weight:600;font-size:16px}
+  .navbar .bk,.navbar .rt{font-size:15px;color:var(--ink-2);min-width:44px}
+  .navbar .rt{text-align:right}
+  .screen{flex:1;overflow-y:auto;background:var(--fill);padding:16px}
+  .screen::-webkit-scrollbar{width:0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .sec{font-weight:600;font-size:14px;margin-bottom:10px}
+  .row{display:flex;align-items:center}
+  .between{justify-content:space-between}
+  .col{display:flex;flex-direction:column}
+  .muted{color:var(--ink-3);font-size:12px}
+  .sm{font-size:12px}.xs{font-size:11px}
+  .bold{font-weight:600}
+  .brand-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--brand);margin-right:6px;vertical-align:middle}
+  .brand-text{color:var(--brand)}
+  /* 按钮 */
+  .btn{display:inline-flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;
+       border:1px solid var(--ink);border-radius:10px;padding:9px 16px;font-size:13px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .btn.sm{padding:6px 12px;font-size:12px}
+  .btn.block{width:100%;margin-top:6px}
+  .btn[disabled]{opacity:.4}
+  /* 徽标：靠描边/字重/填充，不引入彩色 */
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--ink-2)}
+  .badge.ok{border-color:var(--ink);color:var(--ink);font-weight:600}
+  .badge.paused{border-style:dashed;color:var(--ink-3)}
+  .badge.full{background:var(--fill);color:var(--ink-3)}
+  .badge.draft{background:var(--fill);color:var(--ink-3);border-color:var(--line)}
+  .badge.shelf{color:var(--ink-3);border-style:dashed}
+  /* chip */
+  .chip{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;cursor:pointer}
+  .chip.on{border-color:var(--ink);font-weight:600}
+  /* 卡片列表项 */
+  .item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:none}
+  .menu .mi{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+  .menu .mi:last-child{border-bottom:none}
+  .menu .ma{color:var(--ink-3)}
+  .menu .mt{font-weight:500}
+  /* 表单 */
+  .field{padding:10px 0;border-bottom:1px solid var(--line)}
+  .field:last-child{border-bottom:none}
+  .field .label{font-size:11px;color:var(--ink-3);margin-bottom:4px}
+  .field input,.field textarea{width:100%;border:none;font-size:13px;outline:none;background:transparent;font-family:inherit}
+  .switch{position:relative;width:42px;height:24px;background:var(--line);border-radius:999px;transition:.2s;flex:none}
+  .switch.on{background:var(--ink)}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}
+  .switch.on::after{left:20px}
+  /* 日历（复用已发布版逻辑） */
+  .cal{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:12px}
+  .cal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cal-title{font-weight:600;font-size:13px}
+  .cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .cal-week{margin-bottom:5px}
+  .cw{text-align:center;font-size:11px;color:var(--ink-3)}
+  .cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:9px;font-size:12px;cursor:pointer;position:relative}
+  .cell.empty{border:none}
+  .cell.open{border-color:var(--ink)}
+  .cell.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .cell.today:not(.sel)::after{content:"";position:absolute;inset:3px;border:2px solid var(--orange);border-radius:7px}
+  .cell.today:not(.sel){color:var(--orange);font-weight:600}
+  .legend{display:flex;align-items:center;font-size:10px;color:var(--ink-3);margin-top:8px;flex-wrap:wrap;gap:3px}
+  .legend .dot{width:9px;height:9px;border-radius:50%;margin-right:3px}
+  .legend .dot.open{background:#fff;border:2px solid var(--ink);margin-left:10px}
+  .legend .dot.today{background:#fff;border:2px solid var(--orange);margin-left:10px}
+  .legend .dot.sel{background:var(--ink);margin-left:10px}
+  /* 每日场次块 */
+  .dayblock{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
+  .dayblock.gray{background:var(--fill);opacity:.7}
+  .dayblock .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .dayblock .dh .dt{font-weight:600;font-size:13px}
+  .sess{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+  .sess .st{font-size:13px}
+  .sess .sc{font-size:11px;color:var(--ink-2)}
+  .ops{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .ops .btn{margin:0}
+  .note{color:var(--ink-3);text-align:center;padding:20px;font-size:12px}
+  .empty-sess{color:var(--ink-3);font-size:12px;padding:8px 0}
+  /* 底部弹出层 */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;z-index:50}
+  .mask.show{display:flex}
+  .sheet{background:#fff;width:100%;max-width:390px;margin:0 auto;border-radius:20px 20px 0 0;padding:18px 16px 26px;animation:up .22s ease}
+  @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
+  .sheet .sh{font-weight:600;font-size:15px;text-align:center;margin-bottom:14px}
+  .sheet .opt{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px}
+  .sheet .opt:last-of-type{border-bottom:none}
+  .sheet .opt .sub{font-size:11px;color:var(--ink-3)}
+  .sheet .cancel{margin-top:12px;text-align:center;padding:13px;color:var(--ink-2);font-size:14px;background:var(--fill);border-radius:12px;cursor:pointer}
+  .sheet .seg{display:flex;gap:8px;margin:6px 0 12px;flex-wrap:wrap}
+  .sheet .seg .chip{cursor:pointer}
+  .sheet input.t{border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;width:100%;font-family:inherit;outline:none}
+  .sheet .grp{margin-bottom:14px}
+  .sheet .grp .gl{font-size:12px;color:var(--ink-3);margin-bottom:6px}
+  .sheet .ck{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+  .sheet .ck:last-child{border-bottom:none}
+  .sheet .ck .req{font-size:10px;color:var(--ink-3);margin-left:6px}
+  .time2{display:flex;align-items:center;gap:8px}
+  .time2 input{font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px;width:90px;text-align:center;font-family:inherit;outline:none}
+  /* 标签式小标 */
+  .pill{font-size:10px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;padding:1px 7px;margin-left:6px}
+  .tag-brand{color:var(--brand);border-color:var(--brand)}
+  .tab{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
+  .tab .tb{flex:1;text-align:center;padding:9px;font-size:12px;cursor:pointer}
+  .tab .tb.on{background:var(--ink);color:#fff}
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .kv:last-child{border-bottom:none}
+  .center{text-align:center}
 </style>
 </head>
 <body>
 
-<!-- ===================== 管理端演示 ===================== -->
-<div class="stage">
-  <h2>管理端 · 演示原型</h2>
-  <div class="phone">
-    <div class="notch"></div>
-    <div class="nav" id="navTitle">项目管理</div>
-    <div class="tabs" id="tabs">
-      <button data-s="manage" class="on">项目管理</button>
-      <button data-s="config">项目配置</button>
-      <button data-s="sessions">场次设定</button>
-      <button data-s="view">查看预约</button>
-    </div>
-
-    <!-- 1. 项目管理 -->
-    <section class="screen on" data-screen="manage">
-      <div class="row" style="margin-bottom:10px">
-        <div class="bold" style="font-size:14px">项目列表</div>
-        <button class="btn primary sm" onclick="toast('打开新建项目表单')">+ 新建</button>
-      </div>
-      <div id="projList"></div>
-      <div class="legend">状态说明：发布态（已发布 / 下架 / 删除）× 预约态（开放 / 暂停），两维独立。点击卡片主体进入项目配置；行内按钮实时切换状态（演示）。</div>
-    </section>
-
-    <!-- 2. 项目全局配置 -->
-    <section class="screen" data-screen="config">
-      <div class="card">
-        <div class="sec-title">① 项目时间设置 <span class="hint">置顶 · 最先配置</span></div>
-        <div class="sm muted">设定本项目整体可预约时间范围</div>
-        <div class="row" style="margin-top:10px">
-          <span class="sm">开放星期</span>
-          <div class="segment" style="flex:1; max-width:230px">
-            <button class="on">一二三四五</button><button>六日</button>
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <span class="sm">开放月份</span>
-          <span class="xs muted">2026-08 ~ 2026-12</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row"><span class="sm" style="font-weight:600">提交后是否审核</span>
-          <div class="switch on" data-toggle></div></div>
-      </div>
-
-      <div class="card tap" onclick="openSheet('limit')">
-        <div class="row"><div><div class="sm" style="font-weight:600">预约次数限制</div>
-          <div class="xs muted" id="limitSummary">每天 · 2 次</div></div>
-          <span class="sm" style="color:var(--accent);font-weight:700">设置 ›</span></div>
-      </div>
-
-      <div class="card tap" onclick="openSheet('open')">
-        <div class="row"><div><div class="sm" style="font-weight:600">预约开放规则</div>
-          <div class="xs muted" id="openSummary">每天 · 提前 3 天</div></div>
-          <span class="sm" style="color:var(--accent);font-weight:700">设置 ›</span></div>
-      </div>
-
-      <div class="card tap" onclick="openSheet('deadline')">
-        <div class="row"><div><div class="sm" style="font-weight:600">预约截止规则</div>
-          <div class="xs muted" id="deadlineSummary">每天 · 场次前 2 小时</div></div>
-          <span class="sm" style="color:var(--accent);font-weight:700">设置 ›</span></div>
-      </div>
-
-      <div class="card">
-        <div class="sec-title">提交预约信息设置</div>
-        <div class="xs muted" style="margin-bottom:4px">勾选预约人需填写项（姓名/手机为系统必填）</div>
-        <div id="fieldList"></div>
-        <button class="btn ghost sm block" onclick="addCustomField()">+ 新增可填写项</button>
-      </div>
-    </section>
-
-    <!-- 3. 场次设定 -->
-    <section class="screen" data-screen="sessions">
-      <div class="sec-title">选择日期 <span class="hint">蓝点为已排场次</span></div>
-      <div class="card">
-        <div class="cal" id="calHead"></div>
-        <div class="cal" id="cal"></div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn ghost sm" onclick="toast('已批量开放所选日期')">批量开放</button>
-          <button class="btn ghost sm" onclick="toast('已批量关闭所选日期')">批量关闭</button>
-        </div>
-      </div>
-      <div class="sec-title">当日场次 <span class="hint" id="sessDate">08-15</span></div>
-      <div id="sessList"></div>
-      <button class="btn primary block" onclick="addSession()">+ 添加场次</button>
-    </section>
-
-    <!-- 4. 查看预约 -->
-    <section class="screen" data-screen="view">
-      <div class="sec-title">项目切换</div>
-      <div class="segment" id="projSwitch" style="margin-bottom:12px"></div>
-      <div id="resvList"></div>
-    </section>
-
-    <!-- sheets -->
-    <div class="mask" id="mask" onclick="closeSheet()"></div>
-
-    <!-- 次数限定 -->
-    <div class="sheet" id="sheet-limit">
-      <h3>次数限定方式</h3>
-      <div class="sub">预约次数限制</div>
-      <div class="field-row"><div class="lbl">设定周期</div>
-        <div class="segment" data-seg="limitPeriod">
-          <button class="on" data-v="day">每天</button><button data-v="week">每周</button>
-          <button data-v="month">每月</button><button data-v="forever">永久</button>
-        </div></div>
-      <div class="field-row"><div class="lbl">周期内可提交次数</div>
-        <div class="stepper"><button onclick="step('limitCount',-1)">−</button>
-          <input id="limitCount" value="2" readonly /><button onclick="step('limitCount',1)">+</button></div></div>
-      <div class="field-row row"><div><div class="lbl">管理员特权</div>
-        <div class="xs muted">管理员不受次数限制</div></div>
-        <div class="switch on" data-toggle></div></div>
-      <div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>
-        <button class="btn primary" onclick="saveLimit()">保存</button></div>
-    </div>
-
-    <!-- 预约开放规则 -->
-    <div class="sheet" id="sheet-open">
-      <h3>预约开放规则</h3>
-      <div class="sub">配置后可约日期范围（按提前天数）</div>
-      <div class="field-row"><div class="lbl">设定周期</div>
-        <div class="segment" data-seg="openPeriod">
-          <button class="on" data-v="day">每天</button><button data-v="week">每周</button>
-          <button data-v="month">每月</button><button data-v="forever">永久</button>
-        </div></div>
-      <div class="field-row"><div class="lbl">可提前天数（1–30）</div>
-        <div class="stepper"><button onclick="step('openDays',-1,1,30)">−</button>
-          <input id="openDays" value="3" readonly /><button onclick="step('openDays',1,1,30)">+</button></div></div>
-      <div class="field-row row"><div><div class="lbl">管理员特权</div>
-        <div class="xs muted">管理员不受提前天数限制</div></div>
-        <div class="switch on" data-toggle></div></div>
-      <div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>
-        <button class="btn primary" onclick="saveOpen()">保存</button></div>
-    </div>
-
-    <!-- 预约截止规则 -->
-    <div class="sheet" id="sheet-deadline">
-      <h3>预约截止规则</h3>
-      <div class="sub">逾期不可提交预约</div>
-      <div class="field-row"><div class="lbl">设定周期</div>
-        <div class="segment" data-seg="deadlinePeriod">
-          <button class="on" data-v="day">每天</button><button data-v="week">每周</button>
-          <button data-v="month">每月</button><button data-v="forever">永久</button>
-        </div></div>
-      <div class="field-row"><div class="lbl">场次开始前截止（小时）</div>
-        <div class="stepper"><button onclick="step('deadlineH',-1,0,48)">−</button>
-          <input id="deadlineH" value="2" readonly /><button onclick="step('deadlineH',1,0,48)">+</button></div></div>
-      <div class="field-row row"><div><div class="lbl">管理员特权</div>
-        <div class="xs muted">管理员不受截止限制</div></div>
-        <div class="switch on" data-toggle></div></div>
-      <div class="sheet-actions"><button class="btn ghost" onclick="closeSheet()">取消</button>
-        <button class="btn primary" onclick="saveDeadline()">保存</button></div>
-    </div>
-
-    <div class="toast" id="toast"></div>
+<!-- ============ 管理端手机 ============ -->
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>📶 ☀ 100%</span></div>
+  <div class="navbar">
+    <div class="bk" onclick="navBack()">〈</div>
+    <div class="t" id="navTitle">管理台</div>
+    <div class="rt" id="navRight"></div>
   </div>
+  <div class="screen" id="screen"></div>
 </div>
 
-<!-- ===================== 用户端演示 ===================== -->
-<div class="stage">
-  <h2>用户端 · 演示原型</h2>
-  <div class="phone">
-    <div class="notch"></div>
-    <div class="nav" id="navTitle2">首次登录</div>
-    <div class="tabs" id="tabs2">
-      <button data-s="login" class="on">首次登录</button>
-      <button data-s="submit">提交预约</button>
-    </div>
-
-    <section class="screen on" data-screen="login">
-      <div class="note" style="padding-top:30px">欢迎来到<br/><b>二曜路8号咖啡和清酒</b></div>
-      <div class="card">
-        <div class="field"><label>昵称</label><input placeholder="如：小林" /></div>
-        <div class="field" style="margin-top:12px"><label>头像</label>
-          <div class="row" style="margin-top:8px">
-            <div style="width:56px;height:56px;border-radius:50%;background:var(--coffee-300);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px">☕</div>
-            <button class="btn ghost sm" onclick="toast('选择头像')">选择头像</button>
-          </div></div>
-      </div>
-      <button class="btn primary block" onclick="toast('已保存资料')">保存</button>
-      <div class="note"><span style="color:var(--accent);text-decoration:underline" onclick="toast('已跳过资料设置')">跳过</span></div>
-    </section>
-
-    <section class="screen" data-screen="submit">
-      <div class="card">
-        <div class="sec-title">法兰绒深烘咖啡预约</div>
-        <div class="xs muted">08-15 · 14:00 · 2 人</div>
-      </div>
-      <div class="card">
-        <div class="field"><label>姓名 <span style="color:var(--danger)">*</span></label><input placeholder="必填" id="fName" /></div>
-        <div class="field" style="margin-top:12px"><label>手机号 <span style="color:var(--danger)">*</span></label>
-          <div class="row" style="margin-top:6px"><input placeholder="必填 · 微信校验" id="fPhone" style="flex:1"/>
-            <button class="btn ghost sm" onclick="wxVerify()" style="margin-left:8px">微信校验</button></div></div>
-        <div class="field" style="margin-top:12px"><label>微信号</label><input placeholder="选填" /></div>
-        <div class="field" style="margin-top:12px"><label>备注</label><input placeholder="自定义项" /></div>
-      </div>
-      <button class="btn primary block" onclick="submitForm()">提交预约</button>
-    </section>
-  </div>
+<!-- 底部弹出层 -->
+<div class="mask" id="mask" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
 </div>
 
 <script>
-/* ---------- 导航 ---------- */
-const titles={manage:'项目管理',config:'项目全局配置',sessions:'场次设定',view:'查看预约',login:'首次登录',submit:'提交预约'};
-function bindTabs(tabsId,navId){
-  document.querySelectorAll('#'+tabsId+' button').forEach(b=>{
-    b.onclick=()=>{
-      document.querySelectorAll('#'+tabsId+' button').forEach(x=>x.classList.remove('on'));
-      b.classList.add('on');
-      const s=b.dataset.s;
-      document.querySelectorAll('.screen').forEach(sc=>sc.classList.remove('on'));
-      document.querySelector(`.screen[data-screen="${s}"]`).classList.add('on');
-      const nav=document.getElementById(navId); if(nav) nav.textContent=titles[s]||'';
-    };
-  });
-}
-bindTabs('tabs','navTitle'); bindTabs('tabs2','navTitle2');
+/* ---------- 数据（演示用） ---------- */
+const today = new Date();
+const Y = today.getFullYear(), M = today.getMonth()+1;
+const pad = n => String(n).padStart(2,'0');
+const ymd = (y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
+const TODAY = ymd(Y,M,today.getDate());
 
-/* ---------- toast ---------- */
-let tt; function toast(m){const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('on'),1400);}
+const state = {
+  project: null,
+  selDate: TODAY,
+  month: M, year: Y,
+  selected: []   // 批量选择集
+};
 
-/* ---------- 开关 ---------- */
-document.querySelectorAll('[data-toggle]').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
-
-/* ---------- 分段 ---------- */
-document.querySelectorAll('[data-seg]').forEach(seg=>{
-  seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');});
-});
-
-/* ---------- 步进 ---------- */
-function step(id,d,min=1,max=99){const el=document.getElementById(id); let v=parseInt(el.value)+d; v=Math.max(min,Math.min(max,v)); el.value=v;}
-
-/* ---------- sheets ---------- */
-function openSheet(k){document.getElementById('mask').classList.add('on'); document.getElementById('sheet-'+k).classList.add('on');}
-function closeSheet(){document.getElementById('mask').classList.remove('on'); document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));}
-const pname={day:'每天',week:'每周',month:'每月',forever:'永久'};
-function saveLimit(){const p=document.querySelector('[data-seg="limitPeriod"] .on').dataset.v;
-  document.getElementById('limitSummary').textContent=pname[p]+' · '+document.getElementById('limitCount').value+' 次'; closeSheet(); toast('已保存次数限制');}
-function saveOpen(){const p=document.querySelector('[data-seg="openPeriod"] .on').dataset.v;
-  document.getElementById('openSummary').textContent=pname[p]+' · 提前 '+document.getElementById('openDays').value+' 天'; closeSheet(); toast('已保存开放规则');}
-function saveDeadline(){const p=document.querySelector('[data-seg="deadlinePeriod"] .on').dataset.v;
-  document.getElementById('deadlineSummary').textContent=pname[p]+' · 场次前 '+document.getElementById('deadlineH').value+' 小时'; closeSheet(); toast('已保存截止规则');}
-
-/* ---------- 项目管理列表 ---------- */
-const projects=[
-  {name:'法兰绒深烘咖啡预约', pub:true, booking:true},
-  {name:'清酒品鉴预约', pub:true, booking:false},
-  {name:'法兰绒研习社预约', pub:false, booking:true},
+const projects = [
+  { id:'p1', name:'法兰绒深烘咖啡预约', published:true, paused:false,
+    openDays:[ymd(Y,M,8),ymd(Y,M,9),ymd(Y,M,10),ymd(Y,M,15),ymd(Y,M,16)],
+    sessions:{
+      [ymd(Y,M,8)]:[{start:'10:00',end:'11:30',max:8},{start:'14:00',end:'15:30',max:8}],
+      [ymd(Y,M,9)]:[{start:'10:00',end:'11:30',max:8}],
+      [ymd(Y,M,15)]:[]
+    },
+    g:{ needReview:true, paused:false, limit:{period:'每天',count:2,adminFree:true},
+        open:{type:'提前天数',adv:3}, cutoff:{type:'场次前',hours:2},
+        fields:['name','phone','wechat'] }
+  },
+  { id:'p2', name:'手冲单品咖啡预约', published:false, paused:false,
+    openDays:[ymd(Y,M,12),ymd(Y,M,13)], sessions:{}, g:{needReview:false,paused:false,
+        limit:{period:'每天',count:1,adminFree:true},open:{type:'提前天数',adv:1},cutoff:{type:'当日',time:'18:00'},fields:['name','phone']} },
+  { id:'p3', name:'周末清酒品鉴', published:true, paused:true,
+    openDays:[ymd(Y,M,20)], sessions:{}, g:{needReview:true,paused:true,
+        limit:{period:'每周',count:3,adminFree:true},open:{type:'提前天数',adv:5},cutoff:{type:'场次前',hours:4},fields:['name','phone','wechat']} }
 ];
-function renderProjects(){
-  const box=document.getElementById('projList'); box.innerHTML='';
-  projects.forEach((p,i)=>{
-    const el=document.createElement('div'); el.className='card';
-    const pubBadge=p.pub?'<span class="badge b-pub">已发布</span>':'<span class="badge b-off">下架</span>';
-    const bookBadge=p.booking?'<span class="badge b-open">开放预约</span>':'<span class="badge b-pause">暂停预约</span>';
-    el.innerHTML=`
-      <div class="card tap" style="padding:0;margin:0;border:none;box-shadow:none" onclick="enterConfig('${p.name}')">
-        <div class="row between"><div class="proj-name">${p.name}</div><div>${pubBadge}${bookBadge}</div></div>
-      </div>
-      <div class="row" style="margin-top:12px; gap:8px; flex-wrap:wrap">
-        ${p.pub?'<button class="btn ghost sm" onclick="togglePub('+i+')">下架</button>':'<button class="btn primary sm live" onclick="togglePub('+i+')">发布</button>'}
-        ${p.booking?'<button class="btn ghost sm" onclick="toggleBook('+i+')">暂停预约</button>':'<button class="btn sm" style="background:#e7f0ff;color:#2f6db0" onclick="toggleBook('+i+')">开放预约</button>'}
-        <button class="btn danger sm" onclick="del('+i+')">删除</button>
-      </div>`;
-    box.appendChild(el);
-  });
+
+const templates = [
+  { id:'t1', name:'平日双场', slots:[{start:'10:00',end:'11:30',max:8},{start:'14:00',end:'15:30',max:8}] },
+  { id:'t2', name:'周末单场', slots:[{start:'15:00',end:'17:00',max:12}] }
+];
+
+const fieldCatalog = [
+  {k:'name',label:'姓名',req:true,lock:true},
+  {k:'phone',label:'手机号',req:true,lock:true},
+  {k:'wechat',label:'微信号',req:false,lock:false},
+  {k:'note',label:'备注',req:false,lock:false},
+  {k:'gender',label:'性别',req:false,lock:false},
+  {k:'age',label:'年龄',req:false,lock:false},
+  {k:'companion',label:'同行人员',req:false,lock:false}
+];
+
+/* ---------- 路由 ---------- */
+const stack = [];
+function nav(html, title, right){ stack.push({title,right}); render(html,title,right); }
+function navBack(){ if(stack.length){ stack.pop(); const prev = stack[stack.length-1]; render(prev.html, prev.title, prev.right);} }
+function render(html,title,right){
+  document.getElementById('screen').innerHTML = html;
+  document.getElementById('navTitle').textContent = title||'';
+  document.getElementById('navRight').innerHTML = right||'';
+  document.getElementById('screen').scrollTop = 0;
+  // 把 html 存回当前栈顶
+  if(stack.length){ stack[stack.length-1].html = html; stack[stack.length-1].title=title; stack[stack.length-1].right=right; }
 }
-function enterConfig(n){toast('进入「'+n+'」配置'); switchTo('config');}
-function switchTo(s){document.querySelector('#tabs button[data-s="'+s+'"]').click();}
-function togglePub(i){projects[i].pub=!projects[i].pub; renderProjects(); toast(projects[i].pub?'已发布':'已下架');}
-function toggleBook(i){projects[i].booking=!projects[i].booking; renderProjects(); toast(projects[i].booking?'已开放预约':'已暂停预约');}
-function del(i){if(confirm('确认删除「'+projects[i].name+'」？')){projects.splice(i,1); renderProjects(); toast('已删除');}}
-renderProjects();
 
-/* ---------- 提交信息字段 ---------- */
-const fields=[{k:'姓名',req:true,on:true},{k:'手机',req:true,on:true},{k:'微信号',req:false,on:true}];
-function renderFields(){const box=document.getElementById('fieldList'); box.innerHTML='';
-  fields.forEach((f,i)=>{const el=document.createElement('div'); el.className='check';
-    el.innerHTML=`<div class="box ${f.on?'on':''}" onclick="toggleField(${i})">${f.on?'✓':''}</div>
-      <div style="flex:1"><span class="sm">${f.k}</span>${f.req?'<span class="req">必填</span>':''}</div>`;
-    box.appendChild(el);});}
-function toggleField(i){if(fields[i].req){toast('必填项不可取消'); return;} fields[i].on=!fields[i].on; renderFields();}
-function addCustomField(){const n=prompt('新增可填写项名称：'); if(n){fields.push({k:n,req:false,on:true}); renderFields();}}
-renderFields();
+/* ---------- 通用组件 ---------- */
+function badge(p){
+  if(p.deleted) return '<span class="badge full">已删除</span>';
+  if(!p.published) return '<span class="badge draft">草稿</span>';
+  if(p.paused)    return '<span class="badge paused">已下架</span>';
+  return '<span class="badge ok">已发布</span>';
+}
+function pubState(p){
+  if(!p.published) return '草稿';
+  if(p.paused) return '下架';
+  return '已发布';
+}
+function bookState(p){ return p.paused ? '暂停预约' : '开放预约'; }
 
-/* ---------- 日历 ---------- */
-const WD=['日','一','二','三','四','五','六']; const calHead=document.getElementById('calHead');
-WD.forEach(d=>{const e=document.createElement('div'); e.className='d'; e.textContent=d; calHead.appendChild(e);});
-const cal=document.getElementById('cal'); let sel=14;
-const hasSet=new Set([3,8,14,20,26]);
-for(let d=1;d<=30;d++){const c=document.createElement('div'); c.className='cell'+(d===sel?' sel':'')+(hasSet.has(d)?' has':''); c.textContent=d;
-  c.onclick=()=>{document.querySelectorAll('.cal .cell').forEach(x=>x.classList.remove('sel')); c.classList.add('sel'); sel=d; renderSessions();};
-  cal.appendChild(c);}
-function renderSessions(){document.getElementById('sessDate').textContent='08-'+String(sel).padStart(2,'0');
-  const box=document.getElementById('sessList'); box.innerHTML='';
-  if(!hasSet.has(sel)){box.innerHTML='<div class="note">当日暂无场次，点下方添加</div>'; return;}
-  const arr=[{s:'10:00',e:'11:30',m:8},{s:'14:00',e:'15:30',m:8}];
-  arr.forEach(se=>{const el=document.createElement('div'); el.className='card';
-    el.innerHTML=`<div class="row between"><div class="bold">${se.s} – ${se.e}</div><span class="tag">满 ${se.m} 人</span></div>
-      <div class="row" style="margin-top:10px"><span class="xs muted">最大预约人数</span>
-      <div class="stepper"><button onclick="toast('−')">−</button><input value="${se.m}" readonly/><button onclick="toast('+')">+</button></div></div>`;
-    box.appendChild(el);});}
-renderSessions();
-function addSession(){hasSet.add(sel); const c=document.querySelector('.cal .cell:nth-child('+sel+')'); if(c)c.classList.add('has');
-  toast('已添加场次（演示）'); renderSessions();}
+/* ============ 各屏 ============ */
+function hub(){
+  const menus = [
+    {t:'项目管理',u:'projects'},{t:'项目配置（时间/场次）',u:'config'},
+    {t:'场次模版',u:'templates'},{t:'查看预约',u:'view'},{t:'管理员',u:'admins'}
+  ];
+  const html = `<div class="card">
+      <div class="row between"><div class="bold">管理台</div>
+      <span class="badge ok">超级管理员</span></div>
+    </div>
+    <div class="card menu">
+      ${menus.map(m=>`<div class="mi" onclick="go('${m.u}')"><div class="mt">${m.t}</div><div class="ma">›</div></div>`).join('')}
+    </div>
+    <button class="btn ghost block" onclick="toast('已退出管理端')">退出管理端</button>`;
+  nav(html,'管理台');
+}
+function go(u){
+  if(u==='projects') return projectsScreen();
+  if(u==='config'){ state.project = projects[0]; return configScreen(); }
+  if(u==='templates') return templatesScreen();
+  if(u==='view') return viewScreen();
+  if(u==='admins') return adminsHint();
+}
+function adminsHint(){
+  nav(`<div class="card"><div class="sec">管理员</div>
+    <div class="kv"><span>超级管理员</span><span class="badge ok">1</span></div>
+    <div class="kv"><span>普通管理员</span><span class="badge">0</span></div>
+    <div class="note">多管理员能力已具备，详见需求文档 §1。</div></div>`,'管理员');
+}
 
-/* ---------- 查看预约切换 ---------- */
-const projSwitch=document.getElementById('projSwitch');
-projects.forEach((p,i)=>{const b=document.createElement('button'); b.textContent=p.name.replace('预约',''); if(i===0)b.className='on';
-  b.onclick=()=>{projSwitch.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.className='on'; renderResv();};
-  projSwitch.appendChild(b);});
-function renderResv(){const box=document.getElementById('resvList'); box.innerHTML='';
-  const data=[{n:'王女士',p:'138****0021',t:'08-15 14:00',s:'已确认',c:'ok'},
-    {n:'陈先生',p:'139****7733',t:'08-15 10:00',s:'待审核',c:'paused'},
-    {n:'小林',p:'137****1190',t:'08-14 19:30',s:'已完成',c:'done'}];
-  data.forEach(r=>{const el=document.createElement('div'); el.className='card';
-    el.innerHTML=`<div class="row between"><div class="bold">${r.n}</div><span class="badge b-${r.c}">${r.s}</span></div>
-      <div class="xs muted" style="margin-top:6px">${r.t} · ${r.p}</div>`;
-    box.appendChild(el);});}
-renderResv();
+/* ---- 项目管理 ---- */
+function projectsScreen(){
+  const html = `<div class="row between" style="margin-bottom:8px">
+      <div class="bold">预约项目</div>
+      <div class="btn sm" onclick="toast('弹出新建项目表单')">+ 新建</div>
+    </div>
+    ${projects.map(p=>`
+      <div class="card" onclick="openProject('${p.id}')">
+        <div class="row between">
+          <div class="row"><span class="brand-dot"></span><span class="bold">${p.name}</span></div>
+          ${badge(p)}
+        </div>
+        <div class="xs muted" style="margin-top:6px">发布状态：${pubState(p)} · 预约：${bookState(p)} · 可约日 ${p.openDays.length} 天</div>
+        <div class="ops" onclick="event.stopPropagation()">
+          ${ p.published
+              ? (p.paused
+                  ? `<button class="btn sm" onclick="togglePause('${p.id}')">上架</button>`
+                  : `<button class="btn sm" onclick="togglePause('${p.id}')">下架</button>`)
+              : `<button class="btn sm" id="pub-${p.id}" onclick="publish('${p.id}')">发布</button>` }
+          <button class="btn ghost sm" onclick="toggleBooking('${p.id}')">${p.paused?'开放预约':'暂停预约'}</button>
+          <button class="btn ghost sm" onclick="confirmDelete('${p.id}')">删除</button>
+        </div>
+      </div>`).join('')}
+    <div class="note">点击项目卡片 → 进入「项目配置」统一编辑时间/场次。</div>`;
+  nav(html,'项目管理');
+}
+function openProject(id){ state.project = projects.find(p=>p.id===id); configScreen(); }
+function publish(id){ const p=projects.find(x=>x.id===id); p.published=true; p.paused=false; projectsScreen(); }
+function togglePause(id){ const p=projects.find(x=>x.id===id); p.published=!p.published; if(p.published)p.paused=false; projectsScreen(); }
+function toggleBooking(id){ const p=projects.find(x=>x.id===id); p.paused=!p.paused; projectsScreen(); }
+function confirmDelete(id){
+  openSheet(`<div class="sh">删除项目</div>
+    <div class="note" style="padding:6px 0 14px">删除后将在列表标记为「已删除」（可恢复），不影响历史预约记录。</div>
+    <div class="opt" onclick="doDelete('${id}')"><div>确认删除</div><div class="sub" style="color:var(--ink-3)">软删除 · 可回退</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function doDelete(id){ const p=projects.find(x=>x.id===id); p.deleted=true; closeSheet(); projectsScreen(); }
 
-/* ---------- 用户端校验 ---------- */
-function wxVerify(){const v=document.getElementById('fPhone').value; if(/^1\d{10}$/.test(v)){toast('微信校验通过');}else toast('手机号格式不正确');}
-function submitForm(){const n=document.getElementById('fName').value.trim(), p=document.getElementById('fPhone').value.trim();
-  if(!n){toast('姓名必填'); return;} if(!/^1\d{10}$/.test(p)){toast('手机号必填且需微信校验'); return;} toast('提交成功');}
+/* ---- 项目配置（时间设置 + 场次 + 全局设定 统一） ---- */
+function configScreen(){
+  const p = state.project;
+  const html = `
+    <div class="card row between tap" onclick="pickProject()">
+      <div class="bold">${p.name}</div><div class="muted">切换 ›</div>
+    </div>
+
+    <!-- ① 项目时间设置：日历 -->
+    <div class="card">
+      <div class="sec">项目时间设置 <span class="pill tag-brand">最先配置</span></div>
+      ${calHTML(p)}
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sm" onclick="batchOpen()">批量开放选中</button>
+        <button class="btn ghost sm" onclick="batchClose()">批量关闭</button>
+      </div>
+      <div class="legend">
+        <span class="dot open"></span>可约
+        <span class="dot today"></span>今天
+        <span class="dot sel"></span>已选
+      </div>
+    </div>
+
+    <!-- ② 按日期向下展开场次块 -->
+    <div class="sec" style="margin:14px 4px 8px">每日场次（点日期下方展开）</div>
+    ${dayBlocksHTML(p)}
+
+    <!-- ③ 全局设定（由「全部设定」迁移而来） -->
+    <div class="card" style="margin-top:14px">
+      <div class="sec">全局设定</div>
+      <div class="field row between"><div class="label">提交后是否审核</div><div class="switch ${p.g.needReview?'on':''}" onclick="sw('needReview')"></div></div>
+      <div class="field row between"><div class="label">暂停/开放预约</div><div class="switch ${p.g.paused?'on':''}" onclick="sw('paused')"></div></div>
+      <div class="field row between tap" onclick="sheetLimit()"><div class="label">预约次数限制</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.limit.period} · ${p.g.limit.count} 次${p.g.limit.adminFree?' · 管理员不限':''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetOpen()"><div class="label">预约开放规则</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.open.type} ${p.g.open.adv?p.g.open.adv+'天':p.g.open.time||''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetCutoff()"><div class="label">预约截止规则</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.cutoff.type} ${p.g.cutoff.hours?p.g.cutoff.hours+'小时':p.g.cutoff.time||''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetFields()"><div class="label">提交预约信息设置</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.fields.length} 项</span><span class="muted">›</span></div></div>
+    </div>
+    <div class="note">时间设置 / 场次 / 全局设定 均已合并到本页；发布与下架入口在「项目管理」。</div>`;
+  nav(html,'项目配置');
+}
+function pickProject(){
+  openSheet(`<div class="sh">切换项目</div>${projects.map(p=>`<div class="opt" onclick="chooseProject('${p.id}')"><div>${p.name}</div><div class="sub">${pubState(p)}</div></div>`).join('')}<div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function chooseProject(id){ closeSheet(); state.project=projects.find(p=>p.id===id); configScreen(); }
+function sw(key){ if(key==='needReview') state.project.g.needReview=!state.project.g.needReview; if(key==='paused') state.project.g.paused=!state.project.g.paused; configScreen(); }
+
+/* 日历渲染（复用已发布逻辑） */
+function calHTML(p){
+  const y=state.year,m=state.month;
+  const first=new Date(y,m-1,1).getDay();
+  const days=new Date(y,m,0).getDate();
+  let cells='';
+  for(let i=0;i<first;i++) cells+=`<div class="cell empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const k=ymd(y,m,d);
+    const open=p.openDays.includes(k);
+    const sel=state.selDate===k;
+    const isToday=k===TODAY;
+    cells+=`<div class="cell ${open?'open':''} ${sel?'sel':''} ${isToday?'today':''}" onclick="pickDate('${k}')">${d}</div>`;
+  }
+  return `<div class="cal">
+    <div class="cal-hd">
+      <div class="btn ghost sm" onclick="calMove(-1)">‹</div>
+      <div class="cal-title">${y} 年 ${m} 月</div>
+      <div class="btn ghost sm" onclick="calMove(1)">›</div>
+    </div>
+    <div class="cal-week">${['日','一','二','三','四','五','六'].map(w=>`<div class="cw">${w}</div>`).join('')}</div>
+    <div class="cal-grid">${cells}</div>
+  </div>`;
+}
+function calMove(d){ let m=state.month+d; let y=state.year; if(m<1){m=12;y--;} if(m>12){m=1;y++;} state.month=m; state.year=y; configScreen(); }
+function pickDate(k){ state.selDate=k; configScreen(); scrollToDay(k); }
+function scrollToDay(k){ setTimeout(()=>{ const el=document.getElementById('day-'+k); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); },60); }
+
+/* 每日场次块（已开放 + 置灰未开放） */
+function dayBlocksHTML(p){
+  // 构造本月 1..days
+  const y=state.year,m=state.month, days=new Date(y,m,0).getDate();
+  let out='';
+  for(let d=1;d<=days;d++){
+    const k=ymd(y,m,d);
+    const open=p.openDays.includes(k);
+    if(!open){ // 置灰展示（Q11 已定：置灰展示）
+      out+=`<div class="dayblock gray" id="day-${k}">
+        <div class="dh"><div class="dt">${k} <span class="xs muted">未开放</span></div></div>
+        <div class="empty-sess">该日未开放预约</div></div>`;
+      continue;
+    }
+    const sess=(p.sessions[k]||[]);
+    out+=`<div class="dayblock" id="day-${k}">
+      <div class="dh"><div class="dt">${k}</div>
+        <div class="ops">
+          <button class="btn ghost sm" onclick="addSession('${k}')">+ 添加场次</button>
+          <button class="btn ghost sm" onclick="useTemplate('${k}')">选用模版</button>
+          <button class="btn ghost sm" onclick="copyDay('${k}')">复制</button>
+        </div>
+      </div>
+      ${ sess.length ? sess.map((s,i)=>`<div class="sess"><div class="st">${s.start} – ${s.end}</div>
+          <div class="sc">限 ${s.max} 人 · 剩 ${s.max} <span class="muted">名额</span></div></div>`).join('')
+        : `<div class="empty-sess">暂无场次，点「选用模版」快速套用</div>` }
+    </div>`;
+  }
+  return out;
+}
+function addSession(k){
+  const p=state.project;
+  openSheet(`<div class="sh">添加场次 · ${k}</div>
+    <div class="grp"><div class="gl">时间段</div>
+      <div class="time2"><input type="time" id="ss" value="10:00"><span>–</span><input type="time" id="se" value="11:30"></div></div>
+    <div class="grp"><div class="gl">最大预约人数（默认 8）</div>
+      <input class="t" type="number" id="smax" value="8"></div>
+    <div class="opt" onclick="doAddSession('${k}')"><div>保存场次</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function doAddSession(k){
+  const s=document.getElementById('ss').value, e=document.getElementById('se').value, mx=+document.getElementById('smax').value||8;
+  if(!state.project.sessions[k]) state.project.sessions[k]=[];
+  state.project.sessions[k].push({start:s,end:e,max:mx});
+  closeSheet(); configScreen();
+}
+function useTemplate(k){
+  openSheet(`<div class="sh">选用模版 · ${k}</div>
+    ${templates.map(t=>`<div class="opt" onclick="applyTemplate('${k}','${t.id}')"><div>${t.name}</div>
+      <div class="sub">${t.slots.length} 场 · ${t.slots[0].start}-${t.slots[0].end}</div></div>`).join('')}
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function applyTemplate(k,tid){
+  const t=templates.find(x=>x.id===tid);
+  state.project.sessions[k]=t.slots.map(s=>({start:s.start,end:s.end,max:s.max}));
+  closeSheet(); configScreen();
+}
+function copyDay(k){
+  openSheet(`<div class="sh">复制 ${k} 的场次</div>
+    <div class="opt" onclick="doCopy('${k}','day')"><div>复制到指定某天</div><div class="sub">选择目标日期</div></div>
+    <div class="opt" onclick="doCopy('${k}','month')"><div>复制到本月所有开放日</div></div>
+    <div class="opt" onclick="doCopy('${k}','all')"><div>复制到全局所有开放日</div><div class="sub">本项目全周期</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function doCopy(k,mode){
+  const src=state.project.sessions[k]||[];
+  if(mode==='day'){
+    openSheet(`<div class="sh">选择目标日期</div>
+      <input class="t" type="date" id="cpyday" value="${k}">
+      <div class="opt" onclick="applyCopy('${k}','day')"><div>确认复制</div></div>
+      <div class="cancel" onclick="copyDay('${k}')">返回</div>`);
+    return;
+  }
+  if(mode==='month'){
+    state.project.openDays.forEach(d=>{ if(d.startsWith(ymd(state.year,state.month,1).slice(0,7))) state.project.sessions[d]=src.map(s=>({...s})); });
+  } else { // all
+    state.project.openDays.forEach(d=>{ state.project.sessions[d]=src.map(s=>({...s})); });
+  }
+  closeSheet(); configScreen();
+}
+function applyCopy(k,mode){
+  const tgt=document.getElementById('cpyday').value;
+  state.project.sessions[tgt]=(state.project.sessions[k]||[]).map(s=>({...s}));
+  if(!state.project.openDays.includes(tgt)) state.project.openDays.push(tgt);
+  closeSheet(); configScreen();
+}
+function batchOpen(){
+  state.selected.forEach(d=>{ if(!state.project.openDays.includes(d)) state.project.openDays.push(d); });
+  state.selected=[]; configScreen(); toast('已批量开放选中日期');
+}
+function batchClose(){
+  state.project.openDays=state.project.openDays.filter(d=>!state.selected.includes(d));
+  state.selected=[]; configScreen(); toast('已批量关闭选中日期');
+}
+
+/* 周期规则弹层：次数限制 / 开放规则 / 截止规则 */
+function sheetLimit(){
+  const g=state.project.g.limit;
+  openSheet(`<div class="sh">预约次数限制</div>
+    <div class="grp"><div class="gl">周期</div><div class="seg" id="lp">
+      ${['每天','每周','每月','永久'].map(x=>`<span class="chip ${g.period===x?'on':''}" onclick="segPick('lp',this,'${x}')">${x}</span>`).join('')}
+    </div></div>
+    <div class="grp"><div class="gl">周期内可提交次数</div><input class="t" type="number" id="lc" value="${g.count}"></div>
+    <div class="ck"><div>管理员不受次数限制</div><div class="switch ${g.adminFree?'on':''}" onclick="swLimitFree()"></div></div>
+    <div class="opt" onclick="saveLimit()"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function swLimitFree(){ state.project.g.limit.adminFree=!state.project.g.limit.adminFree; document.querySelector('#mask .switch').classList.toggle('on'); }
+function saveLimit(){
+  const p=state.project.g.limit;
+  p.period=document.getElementById('lp').dataset.v||p.period;
+  p.count=+document.getElementById('lc').value||1;
+  closeSheet(); configScreen();
+}
+function sheetOpen(){
+  const g=state.project.g.open;
+  openSheet(`<div class="sh">预约开放规则</div>
+    <div class="grp"><div class="gl">口径</div><div class="seg" id="ot">
+      ${['提前天数','指定日期'].map(x=>`<span class="chip ${g.type===x?'on':''}" onclick="segPick('ot',this,'${x}')">${x}</span>`).join('')}
+    </div></div>
+    <div class="grp"><div class="gl">可提前天数（1–30）</div><input class="t" type="number" id="oc" value="${g.adv||''}" placeholder="如 3"></div>
+    <div class="ck"><div>管理员特权（不受限制）</div><div class="switch on"></div></div>
+    <div class="opt" onclick="saveOpen()"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function saveOpen(){ const g=state.project.g.open; g.type=document.getElementById('ot').dataset.v||g.type; g.adv=+document.getElementById('oc').value||1; closeSheet(); configScreen(); }
+function sheetCutoff(){
+  const g=state.project.g.cutoff;
+  openSheet(`<div class="sh">预约截止规则</div>
+    <div class="grp"><div class="gl">口径</div><div class="seg" id="ct">
+      ${['场次前','当日'].map(x=>`<span class="chip ${g.type===x?'on':''}" onclick="segPick('ct',this,'${x}')">${x}</span>`).join('')}
+    </div></div>
+    <div class="grp"><div class="gl" id="ctlbl">${g.type==='场次前'?'提前小时数':'当日截止时间'}</div>
+      ${g.type==='场次前'
+        ? `<input class="t" type="number" id="cv" value="${g.hours||''}" placeholder="如 2">`
+        : `<input class="t" type="time" id="cv" value="${g.time||'18:00'}">`}</div>
+    <div class="ck"><div>管理员特权（不受限制）</div><div class="switch on"></div></div>
+    <div class="opt" onclick="saveCutoff()"><div>保存</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function saveCutoff(){ const g=state.project.g.cutoff; g.type=document.getElementById('ct').dataset.v||g.type;
+  if(g.type==='场次前') g.hours=+document.getElementById('cv').value||2; else g.time=document.getElementById('cv').value; closeSheet(); configScreen(); }
+function segPick(id,el,v){ document.getElementById(id).dataset.v=v; [...el.parentNode.children].forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
+
+/* 提交预约信息设置 */
+function sheetFields(){
+  const p=state.project;
+  openSheet(`<div class="sh">提交预约信息设置</div>
+    ${fieldCatalog.map(f=>{
+      const on=p.g.fields.includes(f.k);
+      const lock=f.lock;
+      return `<div class="ck"><div>${f.label}${f.req?'<span class="req">必填·不可取消</span>':''}</div>
+        ${lock?`<div class="switch on" style="opacity:.5"></div>`
+              :`<div class="switch ${on?'on':''}" onclick="toggleField('${f.k}',this)"></div>`}</div>`;
+    }).join('')}
+    <div class="note" style="padding:8px 0">可新增项：备注 / 性别 / 年龄 / 同行人员（已列于上方，开启即可收集）。</div>
+    <div class="opt" onclick="closeSheet()"><div>完成</div></div>`);
+}
+function toggleField(k,el){ el.classList.toggle('on'); const arr=state.project.g.fields; const i=arr.indexOf(k);
+  if(i>=0) arr.splice(i,1); else arr.push(k); }
+
+/* ---- 场次模版（admin） ---- */
+function templatesScreen(){
+  const html=`<div class="row between" style="margin-bottom:8px">
+      <div class="bold">场次模版</div>
+      <div class="btn sm" onclick="editTemplate()">+ 新增模版</div>
+    </div>
+    ${templates.map(t=>`
+      <div class="card">
+        <div class="row between"><div class="bold">${t.name}</div><span class="badge">${t.slots.length} 场</span></div>
+        ${t.slots.map(s=>`<div class="kv"><span>${s.start} – ${s.end}</span><span class="muted">限 ${s.max} 人</span></div>`).join('')}
+        <div class="ops"><button class="btn ghost sm" onclick="editTemplate('${t.id}')">编辑</button>
+          <button class="btn ghost sm" onclick="toast('已删除模版')">删除</button></div>
+      </div>`).join('')}
+    <div class="note">模版全 admin 共享，可在「项目配置 → 选用模版」中套用。</div>`;
+  nav(html,'场次模版');
+}
+function editTemplate(id){
+  const t=id?templates.find(x=>x.id===id):{name:'',slots:[{start:'10:00',end:'11:30',max:8}]};
+  openSheet(`<div class="sh">${id?'编辑':'新增'}模版</div>
+    <div class="grp"><div class="gl">模版名称</div><input class="t" id="tname" value="${t.name}"></div>
+    <div class="grp"><div class="gl">场次（默认 8 人/场）</div>
+      <div id="tslots">
+        ${t.slots.map(s=>`<div class="time2" style="margin-bottom:8px"><input type="time" class="tstart" value="${s.start}"><span>–</span><input type="time" class="tend" value="${s.end}"><input class="tcap" type="number" value="${s.max}" style="width:54px;margin-left:6px"></div>`).join('')}
+      </div>
+      <div class="opt" onclick="addTSlot()"><div>+ 添加场次</div></div>
+    </div>
+    <div class="opt" onclick="saveTemplate('${id||''}')"><div>保存模版</div></div>
+    <div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function addTSlot(){ const c=document.getElementById('tslots'); const d=document.createElement('div');
+  d.className='time2'; d.style.marginBottom='8px';
+  d.innerHTML=`<input type="time" class="tstart" value="14:00"><span>–</span><input type="time" class="tend" value="15:30"><input class="tcap" type="number" value="8" style="width:54px;margin-left:6px">`;
+  c.appendChild(d); }
+function saveTemplate(id){
+  const name=document.getElementById('tname').value||'未命名模版';
+  const starts=[...document.querySelectorAll('.tstart')], ends=[...document.querySelectorAll('.tend')], caps=[...document.querySelectorAll('.tcap')];
+  const slots=starts.map((s,i)=>({start:s.value,end:ends[i].value,max:+caps[i].value||8}));
+  if(id){ const t=templates.find(x=>x.id===id); t.name=name; t.slots=slots; }
+  else templates.push({id:'t'+Date.now(),name,slots});
+  closeSheet(); templatesScreen();
+}
+
+/* ---- 查看预约 ---- */
+function viewScreen(){
+  const html=`<div class="card row between tap" onclick="pickViewProject()">
+      <div class="bold">${state.project?state.project.name:'法兰绒深烘咖啡预约'}</div><div class="muted">切换 ›</div></div>
+    <div class="tab">
+      <div class="tb on">待审核</div><div class="tb">已通过</div><div class="tb">已取消</div>
+    </div>
+    <div class="card">
+      <div class="kv"><span class="bold">张女士</span><span class="badge ok">已通过</span></div>
+      <div class="kv"><span class="muted">场次</span><span>08-08 10:00–11:30</span></div>
+      <div class="kv"><span class="muted">手机</span><span>138****8021</span></div>
+      <div class="kv"><span class="muted">微信号</span><span>zhang_8021</span></div>
+    </div>
+    <div class="card">
+      <div class="kv"><span class="bold">李先生</span><span class="badge paused">待审核</span></div>
+      <div class="kv"><span class="muted">场次</span><span>08-09 10:00–11:30</span></div>
+      <div class="kv"><span class="muted">手机</span><span>139****3390</span></div>
+    </div>
+    <div class="note">默认选中「法兰绒深烘咖啡预约」，点顶部可切换项目。</div>`;
+  nav(html,'查看预约');
+}
+function pickViewProject(){
+  openSheet(`<div class="sh">切换项目</div>${projects.map(p=>`<div class="opt" onclick="chooseView('${p.id}')"><div>${p.name}</div><div class="sub">${pubState(p)}</div></div>`).join('')}<div class="cancel" onclick="closeSheet()">取消</div>`);
+}
+function chooseView(id){ closeSheet(); state.project=projects.find(p=>p.id===id); viewScreen(); }
+
+/* ---------- 弹出层工具 ---------- */
+function openSheet(h){ document.getElementById('sheet').innerHTML=h; document.getElementById('mask').classList.add('show'); }
+function closeSheet(){ document.getElementById('mask').classList.remove('show'); }
+function toast(m){ const o=document.createElement('div'); o.textContent=m; o.style.cssText='position:fixed;left:50%;top:60%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:99'; document.body.appendChild(o); setTimeout(()=>o.remove(),1400); }
+
+/* ---------- 启动 ---------- */
+hub();
 </script>
 </body>
 </html>

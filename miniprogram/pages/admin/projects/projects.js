@@ -30,5 +30,52 @@ Page({
       wx.hideLoading(); this.setData({ showForm: false, form: { name: '', intro: '', icon: 'coffee', needReview: false, dailyLimit: 1, advanceDays: 7 } })
       this.load(); wx.showToast({ title: '已创建', icon: 'success' })
     }).catch(e => { wx.hideLoading(); wx.showToast({ title: e.message, icon: 'none' }) })
+  },
+  goConfig(e) {
+    wx.navigateTo({ url: '/pages/admin/projectConfig/projectConfig?projectId=' + e.currentTarget.dataset.id })
+  },
+  togglePublish(e) {
+    const id = e.currentTarget.dataset.id
+    const item = this.data.list.find(x => x._id === id)
+    if (!item) return
+    wx.showLoading({ title: '处理中' })
+    call('publishProject', { projectId: id, published: !item.published })
+      .then(() => { wx.hideLoading(); this.load(); wx.showToast({ title: item.published ? '已下架' : '已发布', icon: 'success' }) })
+      .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
+  },
+  togglePause(e) {
+    const id = e.currentTarget.dataset.id
+    const item = this.data.list.find(x => x._id === id)
+    if (!item) return
+    wx.showLoading({ title: '处理中' })
+    call('updateProject', { projectId: id, paused: !item.paused })
+      .then(() => { wx.hideLoading(); this.load(); wx.showToast({ title: item.paused ? '已开放预约' : '已暂停预约', icon: 'success' }) })
+      .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
+  },
+  deleteProject(e) {
+    const id = e.currentTarget.dataset.id
+    const item = this.data.list.find(x => x._id === id)
+    if (!item) return
+    wx.showModal({
+      title: '删除项目',
+      content: '将标记为「已删除」（可恢复），不影响历史预约记录。',
+      confirmText: '删除',
+      success: r => {
+        if (!r.confirm) return
+        wx.showLoading({ title: '处理中' })
+        call('updateProject', { projectId: id, deleted: true })
+          .then(() => { wx.hideLoading(); this.load(); wx.showToast({ title: '已删除', icon: 'success' }) })
+          .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
+      }
+    })
+  },
+  restoreProject(e) {
+    const id = e.currentTarget.dataset.id
+    const item = this.data.list.find(x => x._id === id)
+    if (!item) return
+    wx.showLoading({ title: '处理中' })
+    call('updateProject', { projectId: id, deleted: false })
+      .then(() => { wx.hideLoading(); this.load(); wx.showToast({ title: '已恢复', icon: 'success' }) })
+      .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
   }
 })

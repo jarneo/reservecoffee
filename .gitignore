@@ -5,6 +5,11 @@ node_modules/
 # 日志
 *.log
 
+# 密钥 / 上传凭证（绝不入库）
+*.key
+deploy/*.key
+project.private.config.json
+
 # 系统/编辑器
 .DS_Store
 Thumbs.db

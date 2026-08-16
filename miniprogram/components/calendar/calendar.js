@@ -15,11 +15,13 @@ Component({
       const y = this.data.year, m = this.data.month
       const first = new Date(y, m - 1, 1).getDay()
       const days = new Date(y, m, 0).getDate()
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
       const cells = []
       for (let i = 0; i < first; i++) cells.push({ empty: true })
       for (let d = 1; d <= days; d++) {
         const ymd = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-        cells.push({ empty: false, ymd, day: d, open: this.data.openDays.indexOf(ymd) >= 0, sel: this.data.selected.indexOf(ymd) >= 0 })
+        cells.push({ empty: false, ymd, day: d, open: this.data.openDays.indexOf(ymd) >= 0, sel: this.data.selected.indexOf(ymd) >= 0, today: ymd === todayStr })
       }
       this.setData({ cells })
     },

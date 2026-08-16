@@ -1,4 +1,16 @@
-.topbar { padding: 12rpx 4rpx 20rpx; }
+.topbar { padding: 12rpx 4rpx 20rpx; display: flex; align-items: center; justify-content: space-between; }
+.menu-link { color: var(--brand); font-size: 26rpx; }
+
+/* 介绍图片区域（日历上方） */
+.intro-area { margin-bottom: 20rpx; }
+.intro-stack { display: flex; flex-direction: column; gap: 16rpx; }
+.intro-item { position: relative; width: 100%; border-radius: 16rpx; overflow: hidden; background: var(--fill); border: 1rpx solid var(--line); }
+.intro-img { width: 100%; height: auto; display: block; }
+.intro-cap { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(26,26,26,.62); color: #fff; font-size: 22rpx; padding: 8rpx 14rpx; }
+.intro-ph { background: #fff; border: 1rpx dashed var(--brand); border-radius: 16rpx; padding: 28rpx 26rpx; }
+.intro-ph-t { color: var(--brand); font-weight: 600; font-size: 28rpx; margin-bottom: 10rpx; }
+.intro-ph-d { color: var(--ink-2); font-size: 24rpx; line-height: 1.6; }
+
 .legend { display:flex; align-items:center; font-size:22rpx; color:var(--ink-3); margin-bottom:16rpx; }
 .legend .dot { width:18rpx; height:18rpx; border-radius:50%; margin-right:8rpx; }
 .legend .dot.ok { background:#fff; border:2rpx solid var(--ink); }

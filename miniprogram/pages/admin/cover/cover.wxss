@@ -1,0 +1,8 @@
+.sec { font-size:26rpx; color:var(--ink-3); margin-bottom:14rpx; }
+.ma { color:var(--ink-3); }
+.tip { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:14rpx; }
+.cover-row { display:flex; align-items:center; gap:18rpx; }
+.cover-img { width:200rpx; height:200rpx; border-radius:12rpx; object-fit:cover; background:var(--fill); border:1rpx solid var(--line); flex:none; }
+.cover-ph { width:200rpx; height:200rpx; border:1rpx dashed var(--line); border-radius:12rpx; display:flex; align-items:center; justify-content:center; color:var(--ink-3); font-size:24rpx; background:var(--fill); flex:none; }
+.cover-acts { display:flex; flex-direction:column; gap:12rpx; }
+.ta { width:100%; min-height:160rpx; box-sizing:border-box; border:1rpx solid var(--line); border-radius:12rpx; padding:16rpx; font-size:26rpx; line-height:1.6; background:#fff; color:var(--ink); }

@@ -1,16 +1,26 @@
 <view class="page">
-  <view class="topbar"><view class="bold">{{project.name}}</view></view>
+  <view class="topbar">
+    <view class="bold">{{project.name}}</view>
+      <view class="menu-link tap" bindtap="goMenu">店铺菜单 ›</view>
+    </view>
 
-  <view class="legend"><view class="dot ok"></view>可预约<view class="dot off"></view>不可预约</view>
-
-  <view class="daygrid">
-    <view wx:for="{{dayGrid}}" wx:key="y"
-      class="daycell {{item.disabled?'off':''}} {{item.y===selectedDate?'on':''}}"
-      bindtap="pickDay" data-y="{{item.y}}">
-      <view class="dn">{{item.dayNum}}</view>
-      <view class="dw">{{item.wd}}</view>
+    <!-- 介绍图片区域（日历上方）：图集画廊 / 占位「预约须知」 -->
+  <view class="intro-area">
+    <block wx:if="{{introImages.length}}">
+      <view class="intro-stack">
+        <view wx:for="{{introImages}}" wx:key="fileId" class="intro-item" bindtap="previewIntro" data-i="{{index}}">
+          <image class="intro-img" src="{{item.url}}" mode="widthFix"/>
+          <view wx:if="{{item.caption}}" class="intro-cap">{{item.caption}}</view>
+        </view>
+      </view>
+    </block>
+    <view wx:else class="intro-ph">
+      <view class="intro-ph-t">预约须知</view>
+      <view class="intro-ph-d">请准时到店；如需取消请提前在「我的预约」操作。可约时间以日历开放日为准。</view>
     </view>
   </view>
+
+  <calendar openDays="{{openDays}}" selected="{{[selectedDate]}}" year="{{calYear}}" month="{{calMonth}}" bind:select="onCalSelect"/>
 
   <block wx:if="{{selectedDate}}">
     <view class="biz">今日营业 {{bizWindow || '暂未排场'}}</view>

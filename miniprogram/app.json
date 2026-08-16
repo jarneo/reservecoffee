@@ -4,14 +4,22 @@
     "pages/booking/booking",
     "pages/confirm/confirm",
     "pages/mine/mine",
+    "pages/menu/menu",
+    "pages/product/product",
     "pages/admin/hub/hub",
     "pages/admin/homeConfig/homeConfig",
     "pages/admin/projects/projects",
     "pages/admin/projectConfig/projectConfig",
+    "pages/admin/cover/cover",
     "pages/admin/sessions/sessions",
     "pages/admin/view/view",
     "pages/admin/review/review",
-    "pages/admin/admins/admins"
+    "pages/admin/admins/admins",
+    "pages/admin/menuAdmin/menuAdmin",
+    "pages/admin/reviewAdmin/reviewAdmin",
+    "pages/admin/smsConfig/smsConfig",
+    "pages/admin/templates/templates",
+    "pages/shareMenu/shareMenu"
   ],
   "window": {
     "backgroundColor": "#F5F5F5",

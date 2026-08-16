@@ -13,7 +13,9 @@ const COL = {
   schedules: 'schedules',
   reservations: 'reservations',
   admins: 'admins',
-  stats: 'stats_daily'
+  stats: 'stats_daily',
+  products: 'products',
+  reviews: 'reviews'
 }
 
 // 订阅消息模板占位（申请到后替换字符串即可；未申请时发送失败不阻断主流程）

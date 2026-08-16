@@ -3,27 +3,82 @@
     <view class="card row between tap"><view class="bold">{{project?project.name:'选择项目'}}</view><view class="ma">切换 ›</view></view>
   </picker>
 
-  <!-- 日历 + 批量治理 -->
+  <!-- 介绍图片：上传 / 替换 / 删除 / 排序 / 说明 -->
   <view class="card">
-    <view class="sec">可约日期治理（点选日期加入/移出选中集）</view>
-    <calendar openDays="{{openDays}}" selected="{{selected}}" year="{{year}}" month="{{month}}" bind:select="onCalSelect"/>
-    <view class="bartools">
-      <button class="btn sm" bindtap="batchOpen">批量开放选中</button>
-      <button class="btn ghost sm" bindtap="batchClose">批量关闭</button>
-      <button wx:if="{{selected.length}}" class="btn ghost sm" bindtap="clearSel">清除选择</button>
+    <view class="sec row between">
+      <view>介绍图片（预约页展示）</view>
+      <view class="muted">{{introImages.length}}/9</view>
+    </view>
+    <view class="img-grid">
+      <view wx:for="{{introImages}}" wx:key="fileId" class="img-cell">
+        <image class="img-thumb" src="{{item.url||item.fileId}}" mode="aspectFill"/>
+        <view class="img-mask">
+          <view class="img-btns">
+            <text class="img-btn" catchtap="replaceImage" data-i="{{index}}">替换</text>
+            <text class="img-btn" catchtap="deleteImage" data-i="{{index}}">删除</text>
+          </view>
+          <view class="img-move">
+            <text class="img-btn" catchtap="moveImage" data-i="{{index}}" data-d="-1">↑</text>
+            <text class="img-btn" catchtap="moveImage" data-i="{{index}}" data-d="1">↓</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{introImages.length<9}}" class="img-add" bindtap="addImages">＋<view class="xs muted">添加</view></view>
+    </view>
+    <view wx:if="{{introImages.length}}" class="img-caps">
+      <view wx:for="{{introImages}}" wx:key="fileId" class="field">
+        <view class="label">第 {{index+1}} 张说明（可选）</view>
+        <input value="{{item.caption}}" placeholder="如：店内环境 / 出品特写" bindinput="onCaption" data-i="{{index}}"/>
+      </view>
+      <button class="btn block" bindtap="saveCaptions">保存说明文字</button>
+    </view>
+    <view class="tip">图片存于云存储，删除会同步清理云文件，避免孤儿文件。</view>
+    <view class="tip">建议竖图：宽 750px（高清可 1080px），单张 ≤1MB，最多 9 张；按添加顺序在预约页全宽纵向展示，长图不会被裁切。</view>
+  </view>
+
+  <!-- ① 项目时间设置：直接点选日期切换可约/不可约 -->
+  <view class="card">
+    <view class="sec">项目时间设置</view>
+    <calendar openDays="{{openDays}}" year="{{year}}" month="{{month}}" bind:select="onCalSelect"/>
+    <view class="tip">点击日期即可切换「可约 / 不可约」，可多选；橘色圈为今天。</view>
+  </view>
+
+  <!-- ② 按开放日期展开每日场次 -->
+  <view class="sec" style="margin:4rpx 4rpx 10rpx">每日场次</view>
+  <view wx:if="{{dayList.length===0}}" class="note">先在上方日历勾选可约日期，再为每日添加场次。</view>
+  <view class="dayblock" wx:for="{{dayList}}" wx:key="date">
+    <view class="dh">
+      <view class="dt">{{item.date}}</view>
+      <view class="pill">可约</view>
+    </view>
+    <sessionCard wx:for="{{item.sessions}}" wx:for-item="s" wx:key="id"
+      session="{{s}}" canChangeCap="{{true}}" showCancel="{{true}}" data-date="{{item.date}}" bind:op="onSessionOp"/>
+    <view wx:if="{{item.sessions.length===0}}" class="empty">暂无场次，点「添加」或「模版」</view>
+    <view class="ops">
+      <button class="btn ghost sm" data-d="{{item.date}}" bindtap="openAdd">添加</button>
+      <button class="btn ghost sm" data-d="{{item.date}}" bindtap="openTpl">模版</button>
+      <button class="btn ghost sm" data-d="{{item.date}}" bindtap="openCopy">复制</button>
     </view>
   </view>
 
-  <!-- 全局设定 -->
-  <view class="card">
+  <!-- ③ 全局设定 -->
+  <view class="card" style="margin-top:14rpx">
     <view class="sec">全局设定</view>
-    <view class="field row between"><view class="label">需审核</view><switch checked="{{global.needReview}}" bindchange="gReview"/></view>
-    <view class="field row between"><view class="label">暂停/开放</view><switch checked="{{global.paused}}" bindchange="gPaused"/></view>
-    <view class="field row between"><view class="label">每日次数上限</view><input type="number" style="width:120rpx;text-align:right" value="{{global.dailyLimit}}" bindinput="gDaily"/></view>
-    <view class="field row between"><view class="label">提前天数(1–30)</view><input type="number" style="width:120rpx;text-align:right" value="{{global.advanceDays}}" bindinput="gAdv"/></view>
-    <view class="field row between"><view class="label">启用固定时段模板</view><switch checked="{{global.useSlotTemplate}}" bindchange="gTemplate"/></view>
-    <view class="field"><view class="label">时段模板（每行 起-止，如 10:00-11:30）</view><textarea value="{{global.slotTemplateText}}" bindinput="onSlotText"/></view>
-    <button class="btn block" bindtap="saveGlobal">保存全局设定</button>
+    <view class="field row between tap" bindtap="openCutoff">
+      <view class="label">预约截止规则</view>
+      <view class="val">{{cutoffText}} ›</view>
+    </view>
+    <view class="field row between tap" bindtap="openFields">
+      <view class="label">提交预约信息设置</view>
+      <view class="val">{{fieldsText}} ›</view>
+    </view>
+    <view class="field row between"><view class="label">提交后是否审核</view><switch checked="{{global.needReview}}" bindchange="gReview"/></view>
+    <view class="field row between"><view class="label">暂停/开放预约</view><switch checked="{{global.paused}}" bindchange="gPaused"/></view>
+    <view class="field row between"><view class="label">次数上限</view><input type="number" style="width:120rpx;text-align:right" value="{{global.dailyLimit}}" bindinput="gDaily"/></view>
+    <view class="field row between"><view class="label">提前天数</view><input type="number" style="width:120rpx;text-align:right" value="{{global.advanceDays}}" bindinput="gAdv"/></view>
+    <view class="field row between"><view class="label">开启短信通知（预约成功时推送）</view><switch checked="{{global.smsEnabled}}" bindchange="gSms"/></view>
+    <view class="field"><view class="label">短信注意事项（可选，填入模板变量）</view><textarea value="{{global.smsNotice}}" bindinput="onSmsNotice" placeholder="如：到店请报预约手机号"/></view>
+    <button class="btn block" bindtap="saveGlobal">保存</button>
   </view>
 
   <view class="row" style="gap:16rpx;margin:8rpx 0 16rpx">
@@ -31,25 +86,65 @@
     <button class="btn ghost sm" bindtap="publish" data-v="false">下架</button>
   </view>
 
-  <!-- 单日场次编辑 -->
-  <view class="card">
-    <view class="sec">单日场次编辑</view>
-    <picker mode="date" value="{{editDate}}" bindchange="onEditDate">
-      <view class="field tap"><view class="label">选择日期</view><view class="bold">{{editDate||'点击选择'}}</view></view>
-    </picker>
-    <view wx:if="{{editDate}}">
-      <sessionCard wx:for="{{sessions}}" wx:key="id" session="{{item}}" canChangeCap="{{true}}" showCancel="{{true}}" bind:op="onSessionOp"/>
-      <view class="add">
-        <view class="row" style="gap:12rpx">
-          <input placeholder="开始" value="{{newSess.start}}" bindinput="onStart" style="width:160rpx"/>
-          <text>–</text>
-          <input placeholder="结束" value="{{newSess.end}}" bindinput="onEnd" style="width:160rpx"/>
-          <input placeholder="名额" type="number" value="{{newSess.capacity}}" bindinput="onCap" style="width:120rpx"/>
-        </view>
-        <button class="btn sm" bindtap="addSession" style="margin-top:12rpx">添加场次</button>
+  <!-- 添加场次：屏幕居中弹层 -->
+  <view class="modal-mask" wx:if="{{showAdd}}" bindtap="closeAdd">
+    <view class="modal" catchtap="noop">
+      <view class="modal-t">添加场次 · {{addDate}}</view>
+      <view class="field row between"><view class="label">开始</view>
+        <picker mode="time" value="{{addForm.start}}" bindchange="onAddStart"><view class="picker">{{addForm.start}}</view></picker>
       </view>
-      <button class="btn ghost block" bindtap="copyDay" style="margin-top:16rpx">复制当天设置</button>
+      <view class="field row between"><view class="label">结束</view>
+        <picker mode="time" value="{{addForm.end}}" bindchange="onAddEnd"><view class="picker">{{addForm.end}}</view></picker>
+      </view>
+      <view class="field row between"><view class="label">人数(默认8)</view>
+        <input type="number" style="width:140rpx;text-align:right" value="{{addForm.capacity}}" bindinput="onAddCap"/>
+      </view>
+      <view class="row" style="gap:12rpx;margin-top:16rpx">
+        <button class="btn ghost block" bindtap="closeAdd">取消</button>
+        <button class="btn block" bindtap="confirmAdd">保存</button>
+      </view>
     </view>
-    <view wx:else class="note">选择日期后可编辑场次</view>
+  </view>
+
+  <!-- 预约截止规则：屏幕居中弹层 -->
+  <view class="modal-mask" wx:if="{{showCutoff}}" bindtap="closeCutoff">
+    <view class="modal" catchtap="noop">
+      <view class="modal-t">预约截止规则</view>
+      <view class="field row between">
+        <view class="label">截止方式</view>
+        <view class="row" style="gap:12rpx">
+          <view class="chip {{cutoffDraft.type==='场次前'?'on':''}}" bindtap="onCutoffType" data-t="场次前">场次前</view>
+          <view class="chip {{cutoffDraft.type==='当日'?'on':''}}" bindtap="onCutoffType" data-t="当日">当日</view>
+        </view>
+      </view>
+      <view wx:if="{{cutoffDraft.type==='场次前'}}" class="field row between">
+        <view class="label">提前小时数</view>
+        <input type="number" style="width:140rpx;text-align:right" value="{{cutoffDraft.hours}}" bindinput="onCutoffHours"/>
+      </view>
+      <view wx:elif="{{cutoffDraft.type==='当日'}}" class="field row between">
+        <view class="label">截止时间</view>
+        <picker mode="time" value="{{cutoffDraft.time}}" bindchange="onCutoffTime"><view class="picker">{{cutoffDraft.time}}</view></picker>
+      </view>
+      <view class="row" style="gap:12rpx;margin-top:16rpx">
+        <button class="btn ghost block" bindtap="closeCutoff">取消</button>
+        <button class="btn block" bindtap="saveCutoff">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交预约信息设置：屏幕居中弹层 -->
+  <view class="modal-mask" wx:if="{{showFields}}" bindtap="closeFields">
+    <view class="modal" catchtap="noop">
+      <view class="modal-t">提交预约信息设置</view>
+      <view class="tip" style="text-align:left;margin-top:0;margin-bottom:8rpx">勾选顾客预约时需填写的信息；姓名、手机号为必填项，不可关闭。</view>
+      <view wx:for="{{fieldCatalog}}" wx:key="key" class="field row between">
+        <view class="label">{{item.label}}{{item.req?'（必填）':''}}{{item.lock?' · 锁定':''}}</view>
+        <switch checked="{{fieldsDraft.indexOf(item.key)>=0}}" disabled="{{item.lock}}" bindchange="toggleField" data-k="{{item.key}}"/>
+      </view>
+      <view class="row" style="gap:12rpx;margin-top:16rpx">
+        <button class="btn ghost block" bindtap="closeFields">取消</button>
+        <button class="btn block" bindtap="saveFields">保存</button>
+      </view>
+    </view>
   </view>
 </view>

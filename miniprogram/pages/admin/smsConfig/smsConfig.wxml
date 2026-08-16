@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="sec">短信通知配置 · 仅超级管理员</view>
+  <view class="card">
+    <view class="field"><view class="label">短信签名 SignName</view><input value="{{signName}}" bindinput="onSign" placeholder="如：法兰绒咖啡"/></view>
+    <view class="field"><view class="label">模板 ID TemplateId</view><input value="{{templateId}}" bindinput="onTpl" placeholder="如：123456"/></view>
+    <view class="field"><view class="label">SDK AppId</view><input value="{{smsSdkAppId}}" bindinput="onApp" placeholder="如：1400000000"/></view>
+    <view class="field"><view class="label">SecretId</view><input value="{{secretId}}" bindinput="onId" placeholder="{{secretIdMask?secretIdMask+'（已配置，留空不改）':'腾讯云 SecretId'}}"/></view>
+    <view class="field"><view class="label">SecretKey</view><input value="{{secretKey}}" bindinput="onKey" placeholder="{{hasSecret?'已配置，留空不改':'腾讯云 SecretKey'}}"/></view>
+    <view class="field"><view class="label">通知正文模板（注意事项）</view><textarea value="{{noticeTemplate}}" bindinput="onNote" placeholder="如：到店请报预约手机号"/></view>
+  </view>
+  <button class="btn block" bindtap="save">保存短信配置</button>
+  <view class="tip">顾客预约并「预约成功」时自动推送短信；模板变量（称呼 / 项目 / 状态 / 日期 / 场次）由系统填充，此处仅填注意事项文案。每个项目的「开启短信通知」开关见「项目配置 → 全局设定」。</view>
+</view>

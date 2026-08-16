@@ -1,0 +1,11 @@
+.sec { font-size: 26rpx; color: var(--ink-3); margin: 8rpx 4rpx 12rpx; }
+.ma { color: var(--ink-3); }
+.star { color: #E8833A; font-size: 24rpx; }
+.rname { font-weight: 600; font-size: 26rpx; }
+.rname .top { color: var(--brand); }
+.rtext { font-size: 26rpx; color: var(--ink); margin-top: 8rpx; line-height: 1.6; }
+.rtime { font-size: 20rpx; color: var(--ink-3); margin-top: 8rpx; }
+.rtime .hidden { color: var(--warn); }
+.ops { display: flex; gap: 20rpx; margin-top: 12rpx; }
+.ob { color: var(--brand); font-size: 26rpx; }
+.ob.danger { color: #B23A3A; }

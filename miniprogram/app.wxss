@@ -47,6 +47,7 @@ page {
 .btn.block { width: 100%; }
 .btn[disabled] { opacity: .4; }
 .btn.sm { padding: 10rpx 20rpx; font-size: 24rpx; }
+.btn.ghost.danger { color: var(--ink-3); border-style: dashed; }
 
 /* 状态徽标（靠描边/字重/填充区分，不引入彩色） */
 .badge {
@@ -56,6 +57,7 @@ page {
 .badge.ok { border-color: var(--ink); color: var(--ink); font-weight: 600; }
 .badge.paused { border-style: dashed; color: var(--ink-3); }
 .badge.full { background: var(--fill); color: var(--ink-3); border-color: var(--line); }
+.badge.del { background: var(--ink); color: #fff; border-color: var(--ink); opacity: .55; }
 .badge.expired { border-style: dashed; color: var(--ink-3); }
 .badge.done { background: var(--ink); color: #fff; border-color: var(--ink); }
 .badge.reject { border-color: var(--line); color: var(--ink-3); }

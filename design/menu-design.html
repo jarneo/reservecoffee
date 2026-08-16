@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>店铺菜单 · 顾客端原型</title>
+<style>
+  :root{
+    --ink:#1A1A1A; --ink-2:#555; --ink-3:#999; --line:#E7E7E7;
+    --fill:#F5F5F5; --fill-2:#FAFAFA; --brand:#7A5230; --orange:#E8833A;
+    --card:#fff; --page:#FBFBFB;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:#e9e9e9;font-family:-apple-system,"PingFang SC","Helvetica Neue",Helvetica,sans-serif;color:var(--ink)}
+  .phone{width:390px;margin:24px auto;background:var(--page);border-radius:28px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.18);position:relative;min-height:760px}
+  .statusbar{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:12px;color:var(--ink)}
+  .topbar{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1rpx solid var(--line);background:#fff}
+  .topbar .t{font-weight:600;font-size:17px}
+  .topbar .back{font-size:22px;color:var(--ink)}
+  .screen{display:none;padding:16px}
+  .screen.active{display:block}
+  .rolebar{position:absolute;top:8px;right:14px;z-index:5;display:flex;gap:6px}
+  .rolebar button{font-size:11px;padding:5px 10px;border:1rpx solid var(--line);background:#fff;border-radius:999px;color:var(--ink-2)}
+  .rolebar button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  .hero{padding:18px 16px;background:#fff;border-bottom:1rpx solid var(--line)}
+  .brand-row{display:flex;align-items:center;gap:8px}
+  .brand-dot{width:12px;height:12px;border-radius:50%;background:var(--brand)}
+  .brand-text{color:var(--brand);font-weight:600;font-size:15px}
+  .tag{font-size:12px;color:var(--ink-3);margin-top:6px}
+  .sec-title{font-size:13px;color:var(--ink-3);margin:18px 2px 10px;letter-spacing:1px}
+
+  .card{background:#fff;border:1rpx solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+  .row{display:flex;align-items:center}
+  .row.between{justify-content:space-between}
+  .muted{color:var(--ink-3);font-size:12px}
+  .bold{font-weight:600}
+  .price{color:var(--ink);font-weight:600}
+  .price small{font-size:11px;color:var(--ink-3);font-weight:400}
+
+  /* 菜品图片（非图标） */
+  .dish{display:flex;gap:12px;align-items:flex-start}
+  .dish-img{width:88px;height:88px;border-radius:14px;background:var(--fill);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:11px;overflow:hidden;border:1rpx solid var(--line)}
+  .dish-img img{width:100%;height:100%;object-fit:cover}
+  .dish-info{flex:1;min-width:0}
+  .stars{color:var(--orange);font-size:13px;letter-spacing:1px}
+  .stars .off{color:var(--line)}
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;border:1rpx solid var(--line);color:var(--ink-2)}
+  .badge.off{color:var(--ink-3);border-style:dashed}
+  .badge.ok{color:var(--ink);font-weight:600;border-color:var(--ink)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;border-radius:12px;padding:12px 18px;font-size:14px;border:1rpx solid var(--ink)}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .btn.block{width:100%}
+  .btn.sm{padding:7px 14px;font-size:12px}
+  .btn[disabled]{opacity:.4}
+
+  .modal-mask{position:absolute;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:20}
+  .modal-mask.show{display:flex}
+  .modal{width:330px;background:#fff;border-radius:18px;padding:18px}
+  .modal-t{font-weight:600;font-size:16px;margin-bottom:12px}
+  .field{padding:10px 0}
+  .field .label{font-size:12px;color:var(--ink-3);margin-bottom:6px}
+  .field input,.field textarea{width:100%;border:1rpx solid var(--line);border-radius:10px;padding:9px;font-size:14px;font-family:inherit}
+  .uploader{width:100%;height:120px;border:1rpx dashed var(--line);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px;gap:6px;background:var(--fill-2)}
+  .uploader.has{overflow:hidden;border-style:solid}
+  .uploader.has img{width:100%;height:100%;object-fit:cover}
+
+  /* 评价 */
+  .rev{background:#fff;border:1rpx solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+  .rev .hd{display:flex;align-items:center;justify-content:space-between}
+  .rev .who{font-size:13px;font-weight:600}
+  .rev .meta{font-size:11px;color:var(--ink-3)}
+  .rev .txt{font-size:13px;color:var(--ink-2);margin-top:6px;line-height:1.5}
+  .rev .pin{font-size:11px;color:var(--brand);border:1rpx solid var(--brand);border-radius:999px;padding:1px 8px}
+  .rev.hidden{opacity:.5}
+  .rev-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+
+  .seg{display:flex;border:1rpx solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:12px}
+  .seg button{flex:1;border:0;background:#fff;padding:9px;font-size:13px;color:var(--ink-2)}
+  .seg button.on{background:var(--ink);color:#fff}
+
+  .nav{position:absolute;left:0;right:0;bottom:0;height:58px;background:#fff;border-top:1rpx solid var(--line);display:flex}
+  .nav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:var(--ink-3);text-decoration:none;gap:3px}
+  .nav a.on{color:var(--ink)}
+  .nav a .ic{font-size:18px}
+  .pad-nav{padding-bottom:74px}
+  .pill{font-size:11px;border:1rpx solid var(--line);border-radius:999px;padding:2px 10px;color:var(--ink-2)}
+  .note{font-size:12px;color:var(--ink-3);text-align:center;padding:18px}
+  .toast{position:absolute;left:50%;top:42%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;font-size:13px;padding:9px 16px;border-radius:10px;opacity:0;transition:.2s;z-index:40;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span>9:41</span><span>●●● 5G ▱</span></div>
+
+  <!-- 顾客端原型：店主管理（上传 / 上下架 / 评价置顶）见 second-design.html 管理台 -->
+
+  <!-- ============ 顾客端：店铺菜单 ============ -->
+  <div class="screen active" id="cMenu">
+    <div class="hero">
+      <div class="brand-row"><span class="brand-dot"></span><span class="brand-text">二曜路8号 · 店铺菜单</span></div>
+      <div class="tag">SLOW COFFEE · 图片菜品 · 真实评价</div>
+    </div>
+    <div class="sec-title">在售菜品</div>
+    <div id="cMenuList"></div>
+    <div class="note">店主管理（上传 / 上下架 / 评价置顶）见 second-design.html 管理台。</div>
+    <div class="pad-nav"></div>
+  </div>
+
+  <!-- ============ 顾客端：菜品详情 + 评价 ============ -->
+  <div class="screen" id="cDish">
+    <div class="topbar"><span class="back" onclick="go('cMenu')">‹</span><span class="t" id="cDishName">菜品</span></div>
+    <div id="cDishBody" style="padding:16px"></div>
+    <div class="pad-nav"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ====== 演示数据 ====== */
+const products = [
+  { id:'m1', name:'法兰绒深烘拿铁', price:38, desc:'法兰绒滴滤深烘浓缩 + 绵密奶泡，醇厚回甘。', image:'', onSale:true, sort:0 },
+  { id:'m2', name:'季节手冲单品', price:45, desc:'每周轮换产地豆，澄清透亮果酸。', image:'', onSale:true, sort:1 },
+  { id:'m3', name:'清酒小酌套餐', price:88, desc:'主理人精选 3 款清酒 + 下酒小食。', image:'', onSale:false, sort:2 }
+];
+const reviews = [
+  { id:'r1', productId:'m1', name:'林*', rating:5, text:'奶泡很绵，深烘的苦甜平衡得刚好，会回购。', status:'visible', pinned:true, createdAt:Date.now()-86400000 },
+  { id:'r2', productId:'m1', name:'陈*', rating:4, text:'不错，就是高峰期要等一会儿。', status:'visible', pinned:false, createdAt:Date.now()-3600000 },
+  { id:'r3', productId:'m1', name:'匿名', rating:2, text:'今天偏酸，可能豆子状态一般。', status:'hidden', pinned:false, createdAt:Date.now()-7200000 },
+  { id:'r4', productId:'m2', name:'王*', rating:5, text:'手冲很干净，店员讲解也专业。', status:'visible', pinned:false, createdAt:Date.now()-5000000 }
+];
+
+let role='customer', curDish=null;
+
+function go(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1400); }
+function stars(n){ let s=''; for(let i=1;i<=5;i++) s+= i<=n?'★':'<span class="off">★</span>'; return s; }
+function fmtDate(ts){ const d=new Date(ts); return `${d.getMonth()+1}-${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+
+/* ====== 顾客端：菜单 ====== */
+function renderCMenu(){
+  const list=document.getElementById('cMenuList');
+  const onSale=products.filter(p=>p.onSale);
+  if(!onSale.length){ list.innerHTML='<div class="note">暂无可售菜品</div>'; return; }
+  list.innerHTML = onSale.map(p=>`
+    <div class="card tap" onclick="openDish('${p.id}')">
+      <div class="dish">
+        <div class="dish-img">${p.image?`<img src="${p.image}">`:'图片'}</div>
+        <div class="dish-info">
+          <div class="row between"><span class="bold">${p.name}</span><span class="price">¥${p.price}<small>/份</small></span></div>
+          <div class="muted" style="margin:4px 0 6px">${p.desc}</div>
+          <div class="stars">${stars(avgRating(p.id))}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function avgRating(pid){ const rs=reviews.filter(r=>r.productId===pid && r.status==='visible'); if(!rs.length) return 0; return Math.round(rs.reduce((a,b)=>a+b.rating,0)/rs.length); }
+
+/* ====== 顾客端：菜品详情 + 评价 ====== */
+function openDish(id){
+  const p=products.find(x=>x.id===id); curDish=p;
+  document.getElementById('cDishName').textContent=p.name;
+  const rs=reviews.filter(r=>r.productId===id && r.status==='visible');
+  const body=document.getElementById('cDishBody');
+  body.innerHTML=`
+    <div class="card">
+      <div class="dish">
+        <div class="dish-img">${p.image?`<img src="${p.image}">`:'图片'}</div>
+        <div class="dish-info">
+          <div class="row between"><span class="bold">${p.name}</span><span class="price">¥${p.price}</span></div>
+          <div class="muted" style="margin-top:6px">${p.desc}</div>
+          <div class="stars" style="margin-top:6px">${stars(avgRating(id))} <span class="muted">${rs.length} 条评价</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sec-title">用户评价</div>
+    <div id="cRevList">${rs.length? rs.map(revCard).join('') : '<div class="note">暂无评价，来做第一个吧</div>'}</div>
+    ${role==='customer'?`<button class="btn block" style="margin-top:8px" onclick="openReviewModal()">发表评价（评分 + 文字）</button>`:''}`;
+  go('cDish');
+}
+function revCard(r){
+  return `<div class="rev ${r.status==='hidden'?'hidden':''}">
+    <div class="hd"><span class="who">${r.name}</span><span class="stars">${stars(r.rating)}</span></div>
+    <div class="meta">${fmtDate(r.createdAt)} ${r.pinned?'<span class="pin">置顶</span>':''}</div>
+    <div class="txt">${r.text}</div>
+  </div>`;
+}
+let reviewRating=5;
+function openReviewModal(){
+  const wrap=document.createElement('div'); wrap.className='modal-mask show'; wrap.id='revModal';
+  wrap.innerHTML=`<div class="modal">
+    <div class="modal-t">发表评价</div>
+    <div class="field"><div class="label">评分</div>
+      <div id="rateBox" style="font-size:26px;letter-spacing:4px;cursor:pointer">${stars(reviewRating)}</div></div>
+    <div class="field"><div class="label">文字评价</div><textarea id="revText" rows="3" placeholder="说说你的体验…"></textarea></div>
+    <div class="row" style="gap:10px"><button class="btn ghost block" onclick="closeRevModal()">取消</button><button class="btn block" onclick="submitReview()">提交</button></div>
+  </div>`;
+  document.body.appendChild(wrap);
+  document.getElementById('rateBox').onclick=(e)=>{ const i=[...e.currentTarget.children].indexOf(e.target); if(i>=0){reviewRating=i+1; e.currentTarget.innerHTML=stars(reviewRating);} };
+  wrap.onclick=(e)=>{ if(e.target===wrap) closeRevModal(); };
+}
+function closeRevModal(){ const m=document.getElementById('revModal'); if(m) m.remove(); }
+function submitReview(){
+  const text=document.getElementById('revText').value.trim();
+  if(!text){ toast('请填写评价内容'); return; }
+  reviews.unshift({ id:'r'+Date.now(), productId:curDish.id, name:'我', rating:reviewRating, text, status:'visible', pinned:false, createdAt:Date.now() });
+  closeRevModal(); openDish(curDish.id); toast('评价已提交');
+}
+
+/* init */
+renderCMenu();
+</script>
+</body>
+</html>

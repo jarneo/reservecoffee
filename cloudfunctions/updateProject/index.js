@@ -19,10 +19,43 @@ exports.main = async (event) => {
   if (event.dailyLimit !== undefined) patch.dailyLimit = Math.max(1, Number(event.dailyLimit) || 1)
   if (event.useSlotTemplate !== undefined) patch.useSlotTemplate = !!event.useSlotTemplate
   if (event.slotTemplate !== undefined) patch.slotTemplate = Array.isArray(event.slotTemplate) ? event.slotTemplate.slice(0, 20) : []
+  // 介绍图片（图集）：整组替换，支持 上传/替换/删除/排序/说明
+  if (event.introImages !== undefined) {
+    if (!Array.isArray(event.introImages)) return fail('introImages 须为数组')
+    if (event.introImages.length > 9) return fail('介绍图片最多 9 张')
+    patch.introImages = event.introImages.slice(0, 9).map((it, i) => ({
+      fileId: String(it.fileId || '').slice(0, 200),
+      caption: String(it.caption || '').slice(0, 120),
+      sort: Number.isFinite(Number(it.sort)) ? Number(it.sort) : i,
+      width: Number(it.width) || 0,
+      height: Number(it.height) || 0
+    }))
+  }
   if (event.advanceDays !== undefined) {
     const adv = Number(event.advanceDays)
     if (!(adv >= 1 && adv <= 30)) return fail('提前天数须在 1–30 之间')
     patch.advanceDays = adv
+  }
+  // 短信通知：每项目独立开关 + 本店注意事项（模板变量 {6}）
+  if (event.smsEnabled !== undefined) patch.smsEnabled = !!event.smsEnabled
+  if (event.smsNotice !== undefined) patch.smsNotice = String(event.smsNotice || '').slice(0, 200)
+  // 软删除（标记后可恢复，不影响历史预约）
+  if (event.deleted !== undefined) patch.deleted = !!event.deleted
+  // 预约截止规则：{ type:'场次前'|'当日', hours?, time? }
+  if (event.cutoff !== undefined) {
+    if (!event.cutoff || typeof event.cutoff !== 'object') return fail('cutoff 格式错误')
+    const type = ['场次前', '当日'].includes(event.cutoff.type) ? event.cutoff.type : '当日'
+    patch.cutoff = {
+      type,
+      hours: type === '场次前' ? (Number(event.cutoff.hours) || 2) : undefined,
+      time: type === '当日' ? (event.cutoff.time || '18:00') : undefined
+    }
+  }
+  // 提交预约信息收集字段（白名单键）
+  if (event.fields !== undefined) {
+    patch.fields = Array.isArray(event.fields)
+      ? event.fields.filter(k => typeof k === 'string').slice(0, 20)
+      : []
   }
   patch.updatedAt = Date.now()
 

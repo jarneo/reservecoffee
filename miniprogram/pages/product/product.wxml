@@ -1,0 +1,35 @@
+<view class="page">
+  <view class="hero">
+    <image wx:if="{{product.imageUrl}}" class="hero-img" src="{{product.imageUrl}}" mode="aspectFill"/>
+    <view wx:else class="hero-ph">暂无图片</view>
+  </view>
+
+  <view class="card">
+    <view class="row between">
+      <view class="name">{{product.name}}</view>
+      <view class="price">{{product.priceText}}</view>
+    </view>
+    <view class="star">{{product.stars}}<text class="count"> {{product.ratingCount||0}} 条评价</text></view>
+    <view wx:if="{{product.desc}}" class="desc">{{product.desc}}</view>
+  </view>
+
+  <view class="sec">评价（{{reviews.length}}）</view>
+  <view wx:if="{{reviews.length===0}}" class="note">还没有评价，快来抢沙发</view>
+  <view wx:for="{{reviews}}" wx:key="_id" class="card rev">
+    <view class="row between">
+      <view class="rname">{{item.name}}<text wx:if="{{item.top}}" class="top"> · 置顶</text></view>
+      <view class="star">{{item.stars}}</view>
+    </view>
+    <view class="rtext">{{item.text}}</view>
+    <view class="rtime">{{item.time}}</view>
+  </view>
+
+  <view class="card post">
+    <view class="sec">写评价</view>
+    <view class="stars-sel">
+      <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="sbtn {{rating>=item?'on':''}}" bindtap="setRating" data-n="{{item}}">★</text>
+    </view>
+    <textarea class="ta" placeholder="说说你的感受…" value="{{text}}" bindinput="onText" maxlength="300"/>
+    <button class="btn block" bindtap="submit" disabled="{{posting}}">提交评价</button>
+  </view>
+</view>

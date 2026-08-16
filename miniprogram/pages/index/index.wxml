@@ -1,18 +1,32 @@
 <view class="page">
   <view class="hero">
+    <image wx:if="{{featured && featured.imageUrl}}" class="hero-img" src="{{featured.imageUrl}}" mode="widthFix"/>
     <view class="brand-row"><view class="brand-dot"></view><view class="brand-text">{{homepage.logo}}</view></view>
-    <view class="tag">{{homepage.tag}}</view>
-    <view class="intro">{{homepage.intro}}</view>
+    <view class="tag" wx:if="{{homepage.tag}}">{{homepage.tag}}</view>
+    <view class="intro" wx:if="{{featured.intro}}">{{featured.intro}}</view>
+    <view class="intro" wx:elif="{{homepage.intro}}">{{homepage.intro}}</view>
   </view>
 
   <view class="sec-title">预约项目</view>
   <view wx:if="{{projects.length===0}}" class="note">暂无可预约项目</view>
   <view wx:for="{{projects}}" wx:key="_id" class="card tap" bindtap="goBooking" data-id="{{item._id}}">
-    <view class="row between">
-      <view class="bold">{{item.name}}</view>
-      <view class="badge {{item.needReview?'paused':''}}">{{item.needReview?'需审核':'免审核'}}</view>
-    </view>
+    <view class="bold">{{item.name}}</view>
     <view class="sm muted" style="margin-top:8rpx">{{item.intro}}</view>
+  </view>
+
+  <view class="sec-title" style="margin-top:36rpx">店铺菜单</view>
+  <view wx:if="{{products.length===0}}" class="note">暂无在售菜品</view>
+  <view wx:for="{{products}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
+    <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="aspectFill"/>
+    <view wx:else class="menu-img ph">暂无图</view>
+    <view class="menu-info">
+      <view class="row between">
+        <view class="bold">{{item.name}}</view>
+        <view class="menu-price">¥{{item.price}}</view>
+      </view>
+      <view wx:if="{{item.desc}}" class="sm muted" style="margin-top:6rpx">{{item.desc}}</view>
+      <view class="sm muted" style="margin-top:10rpx">查看评价 ({{item.reviewCount}}) ›</view>
+    </view>
   </view>
 
   <view wx:if="{{role!=='none'}}" class="btn ghost block" bindtap="goAdmin" style="margin-top:24rpx">进入管理端</view>

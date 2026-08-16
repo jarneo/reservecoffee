@@ -1,0 +1,6 @@
+.ops { display: flex; gap: 12rpx; flex-wrap: wrap; }
+.slot-row { display: flex; align-items: center; gap: 12rpx; padding: 14rpx 0; border-bottom: 1rpx solid var(--line); }
+.slot-row .picker { border: 1rpx solid var(--line); border-radius: 8rpx; padding: 10rpx 16rpx; font-size: 26rpx; }
+.slot-row .dash { color: var(--ink-3); }
+.slot-row .cap { width: 96rpx; text-align: center; border: 1rpx solid var(--line); border-radius: 8rpx; padding: 10rpx; }
+.slot-row .rm { color: var(--ink-3); padding: 6rpx 10rpx; }

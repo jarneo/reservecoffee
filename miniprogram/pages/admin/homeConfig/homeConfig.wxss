@@ -1,0 +1,3 @@
+/* homeConfig 局部样式：复用 app.wxss 的 .page/.card/.field/.label/.btn */
+.sec { font-size:26rpx; color:var(--ink-3); margin-bottom:14rpx; }
+.tip { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:14rpx; line-height:1.5; }

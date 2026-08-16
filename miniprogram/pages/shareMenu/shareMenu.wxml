@@ -1,0 +1,48 @@
+<!-- pages/shareMenu/shareMenu — 公众号菜单进入的店铺菜单与顾客评价页 -->
+<view class="page">
+  <!-- 店铺头部 -->
+  <view class="hero">
+    <view class="h-name">{{shop.logo}}</view>
+    <view class="h-tag" wx:if="{{shop.tag}}">{{shop.tag}}</view>
+    <view class="h-intro" wx:if="{{shop.intro}}">{{shop.intro}}</view>
+  </view>
+
+  <!-- 店铺菜单 -->
+  <view class="sec-title">店铺菜单</view>
+  <view class="card" wx:for="{{products}}" wx:key="_id">
+    <view class="dish">
+      <view class="dish-img">
+        <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" class="img"/>
+        <view wx:else class="ph">图片</view>
+      </view>
+      <view class="dish-info">
+        <view class="row between">
+          <view class="bold">{{item.name}}</view>
+          <view class="bold brand-text">{{item.priceText}}</view>
+        </view>
+        <view class="xs muted" style="margin-top:6rpx">{{item.desc}}</view>
+        <view class="row" style="margin-top:10rpx">
+          <view class="stars">{{item.stars}}</view>
+          <view class="xs muted" style="margin-left:10rpx">{{item.ratingText}} · {{item.ratingCount}} 条评价</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{!products.length}}" class="note">菜单筹备中，敬请期待。</view>
+
+  <!-- 顾客评价 -->
+  <view class="sec-title">顾客评价</view>
+  <view wx:if="{{reviews.length}}">
+    <view class="card rev" wx:for="{{reviews}}" wx:key="_id">
+      <view class="row between">
+        <view class="bold">{{item.name}}</view>
+        <view class="xs muted">{{item.productName}}</view>
+      </view>
+      <view class="stars" style="margin:8rpx 0">{{item.stars}}</view>
+      <view class="sm" style="margin-top:2rpx">{{item.text}}</view>
+    </view>
+  </view>
+  <view wx:else class="note">暂无评价，欢迎到店体验后分享~</view>
+
+  <view class="foot muted xs">本页由公众号菜单进入 · 在线预约请打开小程序</view>
+</view>
