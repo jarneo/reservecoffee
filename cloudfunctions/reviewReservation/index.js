@@ -1,5 +1,5 @@
 // reviewReservation — 审核通过/拒绝（owner）
-const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe } = require('./lib')
+const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
 const { sendReservationSms } = require('./sms')
 
 exports.main = async (event) => {
@@ -69,6 +69,20 @@ exports.main = async (event) => {
       })
     }
     // 拒绝：不发送订阅消息（顾客在「我的预约」查看状态）
+
+    // 审核结果 → 推送「待审核提醒」给管理员（owner+manager），闭环审核流
+    // thing1 前缀标注结果（已通过/已拒绝），thing 类型上限 20 字，安全
+    await notifyAdmins(db, {
+      templateId: TPL.adminReview,
+      data: {
+        thing5: { value: p.name },
+        thing1: { value: `${decision === 'approve' ? '已通过 ' : '已拒绝 '}${r.name}` },
+        time4: { value: `${r.date} ${r.sessionStart}` },
+        phone_number2: { value: r.phone }
+      },
+      page: 'pages/admin/review/review'
+    }).catch(() => {})
+
     return ok({ decision, status: decision === 'approve' ? 'confirmed' : 'cancelled' })
   } catch (e) {
     await transaction.rollback().catch(() => {})

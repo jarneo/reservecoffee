@@ -30,14 +30,14 @@ const TPL = {
   reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo'       // 结束提醒（顾客，仅预订人）
 }
 
-// 服务号模板消息（templateMessage）模板 ID（微信公众平台申请）。
-// 与订阅消息不同：服务号消息需用户「关注服务号」后按「服务号 openid」送达（见 getMpOpenid）。
-// 字段键与用户在公众平台申请的模板结构一致；data 构造在各触发函数里完成。
+// 服务号「订阅通知」模板 ID（公众号后台 → 订阅通知 申请，非已废弃的「模板消息」）。
+// ⚠️ 下面 4 个 ID 仍是【模板消息】旧 ID（已于 2023-10-01 废弃，45103 失效），待用户从「订阅通知」申请到新 ID 后替换！
+// 字段键（thing*/number*/const*）必须与用户后台「订阅通知」模板实际关键词一致；data 构造在各触发函数里，替换 ID 时需同步核对字段。
 const MP_TPL = {
-  adminNew: 'JQI4jXsKyQAa2zU_kbKuhrXPV4kQHW_n_6hPVUhoLIQ',      // 餐位被预订提醒（管理员 owner+manager）· 免审下单成功
-  reserveSuccess: '63vHJHcLMU2tW27b2MdwAmxp7LMwTWe6oRB4O_PcXYs', // 订座结果提醒·成功（顾客）· 免审成功 / 审核通过
-  reserveCancel: '63vHJHcLMU2tW27b2MdwAmxp7LMwTWe6oRB4O_PcXYs',  // 订座结果提醒·取消（顾客+管理员）· 与上同一模板，用 const1 区分「已预约/已取消」
-  adminReview: 'eBa1lSsI5HY37Funet_Hiz4QuY2W6kQanSDV94aPgxA'     // 收到新订餐订单通知（管理员 owner+manager）· 待审下单成功
+  adminNew: 'JQI4jXsKyQAa2zU_kbKuhrXPV4kQHW_n_6hPVUhoLIQ',      // TODO(订阅通知) 待替换：餐位被预订提醒（管理员 owner+manager）· 免审下单成功
+  reserveSuccess: '63vHJHcLMU2tW27b2MdwAmxp7LMwTWe6oRB4O_PcXYs', // TODO(订阅通知) 待替换：订座结果提醒·成功（顾客）· 免审成功 / 审核通过
+  reserveCancel: '63vHJHcLMU2tW27b2MdwAmxp7LMwTWe6oRB4O_PcXYs',  // TODO(订阅通知) 待替换：订座结果提醒·取消（顾客+管理员）· 与原同一模板 const 区分
+  adminReview: 'eBa1lSsI5HY37Funet_Hiz4QuY2W6kQanSDV94aPgxA'     // TODO(订阅通知) 待替换：收到新订餐订单通知（管理员 owner+manager）· 待审下单成功
 }
 
 // 店铺默认名（以店铺名义发订阅/短信）。优先读 config 集合文档 store.name，回退此常量。
@@ -132,8 +132,15 @@ async function notifyAdmins(db, { templateId, data, page }) {
     console.log('[notifyAdmins] no admin(owner/manager) found')
     return
   }
+  console.log('[notifyAdmins] sending', templateId, 'to', ids.length, 'admin(s):', ids)
   for (const oid of ids) {
-    await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+    try {
+      await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+      console.log('[notifyAdmins] sent ok to', oid)
+    } catch (e) {
+      // 关键错误码：43101=用户未授权订阅模板；47003=字段值非法；47004=模板不存在
+      console.warn('[notifyAdmins] send failed to', oid, ':', e && e.message)
+    }
   }
 }
 
@@ -159,38 +166,29 @@ async function getMpOpenid(db, openid) {
   } catch (e) { return '' }
 }
 
-// 发送服务号模板消息（templateMessage）。找不到 mpOpenid 或模板未配置时优雅跳过（不阻断主流程）。
-async function sendMp({ mpOpenid, templateId, data, url, miniprogram }) {
-  if (!mpOpenid || !templateId || templateId.indexOf('TPL_ID_') === 0) {
-    console.log('[mp] skip (no mpOpenid or template):', templateId)
-    return
-  }
-  try {
-    await cloud.openapi.templateMessage.send({
-      touser: mpOpenid,
-      templateId,
-      data,
-      url: url || '',
-      miniprogram: miniprogram || undefined
-    })
-  } catch (e) {
-    console.warn('[mp] send failed (ignored):', e.message)
-  }
-}
+// ===== 服务号通知（已整体下线，2026-08-23）=====
+// 微信自 2023-10-01 起全面下线公众号「模板消息」接口（45103 失效），其替代「订阅通知」授权链路
+// 在「小程序 web-view」场景下无法落地（需服务号 JS-SDK 签名，工程量过大）。经用户确认，服务号通知功能
+// 整体移除，仅保留【小程序订阅消息】+【短信】双通道。下方 sendMp / notifyAdminsMp 一律 no-op，
+// 不再尝试调用微信，避免无谓的 access_token 获取与 45103 日志噪音。MP_TPL 等常量保留仅作历史参考。
 
-// 给所有管理员（owner + manager）发服务号模板消息（需其已关注服务号并采集到 mpOpenid）。
-async function notifyAdminsMp(db, { templateId, data }) {
-  if (!templateId || templateId.indexOf('TPL_ID_') === 0) return
-  const ids = await listAdminOpenids(db)
-  for (const oid of ids) {
-    const mp = await getMpOpenid(db, oid)
-    if (mp) await sendMp({ mpOpenid: mp, templateId, data })
-  }
+// 发送服务号消息（已禁用）：no-op，仅留日志便于排查。
+async function sendMp() {
+  console.log('[mp] disabled: 服务号通知功能已移除，跳过发送')
+  return
+}
+// 兼容别名
+async function sendMpSubscribe() { return sendMp() }
+
+// 给所有管理员发服务号消息（已禁用）：no-op。
+async function notifyAdminsMp() {
+  console.log('[mp] disabled: 服务号通知功能已移除，跳过管理员发送')
+  return
 }
 
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
   ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
-  readMpSwitch, mpOn, getMpOpenid, sendMp, notifyAdminsMp
+  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, getMpAccessToken, notifyAdminsMp
 }

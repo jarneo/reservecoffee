@@ -141,7 +141,7 @@ exports.main = async (event) => {
             thing3: { value: dt }
           },
           page: 'pages/admin/hub/hub'
-        })
+        }).catch(e => console.warn('[createReservation] notifyAdmins adminReview failed (ignored):', e && e.message))
       }
     }
 

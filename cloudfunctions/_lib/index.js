@@ -132,8 +132,15 @@ async function notifyAdmins(db, { templateId, data, page }) {
     console.log('[notifyAdmins] no admin(owner/manager) found')
     return
   }
+  console.log('[notifyAdmins] sending', templateId, 'to', ids.length, 'admin(s):', ids)
   for (const oid of ids) {
-    await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+    try {
+      await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+      console.log('[notifyAdmins] sent ok to', oid)
+    } catch (e) {
+      // 关键错误码：43101=用户未授权订阅模板；47003=字段值非法；47004=模板不存在
+      console.warn('[notifyAdmins] send failed to', oid, ':', e && e.message)
+    }
   }
 }
 
