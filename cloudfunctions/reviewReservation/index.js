@@ -1,11 +1,11 @@
 // reviewReservation — 审核通过/拒绝（owner）
-const { db, COL, TPL, ok, fail, wxCtx, getRole, sendSubscribe } = require('./lib')
+const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe } = require('./lib')
 const { sendReservationSms } = require('./sms')
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
   const role = await getRole(OPENID)
-  if (role.role !== 'owner') return fail('仅超级管理员可审核')
+  if (role.role !== 'owner' && role.role !== 'manager') return fail('仅管理员可审核')
 
   const { reservationId, decision } = event
   if (!reservationId || !['approve', 'reject'].includes(decision)) return fail('参数缺失')
@@ -38,23 +38,37 @@ exports.main = async (event) => {
     }
     await transaction.commit()
 
-    // 审核通过 → 短信通知「预约成功」（每项目独立开关）
-    if (decision === 'approve') {
-      const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
-      const p = pRes.data
-      if (p && p.smsEnabled) {
-        sendReservationSms({
-          db, phone: r.phone, name: r.name, project: p.name,
-          date: r.date, time: `${r.sessionStart}–${r.sessionEnd}`,
-          status: 'confirmed', notice: p.smsNotice
-        }).catch(() => {})
-      }
+    // 项目信息 + 店铺名（提前读取，修复 p 作用域隐患）
+    const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
+    const p = pRes.data
+    const storeName = await getStoreName(db)
+    const dt = `${monthDay(r.date)} ${r.sessionStart}-${r.sessionEnd}`
+
+    // 审核通过 → 短信通知「已为您留座」（单条留座，仅预订人）
+    if (decision === 'approve' && p && p.smsEnabled) {
+      sendReservationSms({
+        db, phone: r.phone, name: r.name,
+        date: monthDay(r.date),
+        time: `${r.sessionStart}-${r.sessionEnd}`,
+        seats: `${r.partySize}人位`
+      }).catch(() => {})
     }
 
-    await sendSubscribe({
-      openid: r.openid, templateId: TPL.reviewResult,
-      data: {}, page: 'pages/mine/mine'
-    })
+    // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
+    if (decision === 'approve') {
+      await sendSubscribe({
+        openid: r.openid,
+        templateId: TPL.reserveSuccess,
+        data: {
+          thing10: { value: p.name },
+          time12: { value: `${r.date} ${r.sessionStart}` },
+          thing6: { value: `${r.partySize}人位` },
+          thing9: { value: '已为您留座，请准时光临，期待与您相见～' }
+        },
+        page: 'pages/mine/mine'
+      })
+    }
+    // 拒绝：不发送订阅消息（顾客在「我的预约」查看状态）
     return ok({ decision, status: decision === 'approve' ? 'confirmed' : 'cancelled' })
   } catch (e) {
     await transaction.rollback().catch(() => {})

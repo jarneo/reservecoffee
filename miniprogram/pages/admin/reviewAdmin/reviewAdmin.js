@@ -16,7 +16,7 @@ function timeStr(ts) {
 Page({
   behaviors: [guard],
   data: { projects: [], projectId: '', projectName: '', products: [], productId: '', productName: '', reviews: [] },
-  onLoad() { this.guard(['owner']).then(r => { if (r) this.loadProjects() }) },
+  onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
   loadProjects() {
     call('listProjects').then(d => {
       const list = d.list || []
@@ -47,6 +47,18 @@ Page({
       .then(d => {
         const reviews = (d.reviews || []).map(r => ({ ...r, stars: stars(r.rating), time: timeStr(r.createdAt) }))
         this.setData({ reviews })
+        // 解析评价头像 fileID → 临时 URL（管理端可见署名头像，便于辨别）
+        const ids = [...new Set(reviews.map(r => r.avatar).filter(Boolean))]
+        if (ids.length) {
+          wx.cloud.getTempFileURL({ fileList: ids })
+            .then(res => {
+              const map = {}
+              ;(res.fileList || []).forEach(f => { if (f.fileID) map[f.fileID] = f.tempFileURL })
+              const next = this.data.reviews.map(r => ({ ...r, avatarUrl: map[r.avatar] || '' }))
+              this.setData({ reviews: next })
+            })
+            .catch(() => {})
+        }
       })
       .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },

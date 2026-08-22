@@ -1,4 +1,22 @@
 <view class="page">
+  <view class="card" style="margin-bottom:20rpx">
+    <view class="sec">我的资料</view>
+    <view class="row between" style="margin-top:14rpx;align-items:center">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill"/>
+        <view wx:elif="{{pAvatar}}" class="avatar-img avatar-ph"></view>
+        <view wx:else class="avatar-ph">头像</view>
+      </button>
+      <view style="flex:1;margin-left:18rpx">
+        <view class="field" style="padding:10rpx 0"><view class="label">称呼</view>
+          <input value="{{name}}" bindinput="onName" placeholder="如何称呼您"/></view>
+        <view class="field" style="padding:10rpx 0"><view class="label">手机号</view>
+          <input type="number" value="{{phone}}" bindinput="onPhone" placeholder="用于通知与到店核验"/></view>
+      </view>
+    </view>
+    <button class="btn block" style="margin-top:18rpx" bindtap="saveMine">保存资料</button>
+  </view>
+
   <view wx:if="{{role==='owner' || role==='manager'}}" class="card" style="margin-bottom:20rpx">
     <view class="sec">我的身份</view>
     <view class="row between" style="margin-top:6rpx">

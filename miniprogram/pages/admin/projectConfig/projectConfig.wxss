@@ -30,6 +30,11 @@
 .empty { color:var(--ink-3); font-size:22rpx; padding:8rpx 0; }
 .ops { display:flex; gap:12rpx; margin-top:10rpx; }
 .ops .btn { margin:0; }
+/* 操作按钮行移入日期表头(.dh)时：去掉上间距，与设计稿一致右对齐 */
+.dayblock .dh .ops { margin-top:0; gap:16rpx; }
+/* 按天暂停开关：文字在上、开关在下，紧凑排布 */
+.pause-toggle { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; line-height:1.1; margin-right:2rpx; }
+.pause-toggle .xs { font-size:20rpx; margin-bottom:2rpx; }
 
 /* 添加场次：屏幕居中弹层 */
 .modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:100; }

@@ -21,12 +21,17 @@ Component({
       for (let i = 0; i < first; i++) cells.push({ empty: true })
       for (let d = 1; d <= days; d++) {
         const ymd = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-        cells.push({ empty: false, ymd, day: d, open: this.data.openDays.indexOf(ymd) >= 0, sel: this.data.selected.indexOf(ymd) >= 0, today: ymd === todayStr })
+        // 今天之前的日期禁用（只读，不可勾选）
+        const disabled = ymd < todayStr
+        cells.push({ empty: false, ymd, day: d, open: this.data.openDays.indexOf(ymd) >= 0, sel: this.data.selected.indexOf(ymd) >= 0, today: ymd === todayStr, disabled })
       }
       this.setData({ cells })
     },
     prev() {
       const y = this.data.year, m = this.data.month
+      const now = new Date()
+      // 不允许翻到「当前月之前」的整月（过去月份不可选）
+      if (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) return
       const ny = m === 1 ? y - 1 : y, nm = m === 1 ? 12 : m - 1
       this.setData({ year: ny, month: nm })
     },
@@ -38,6 +43,11 @@ Component({
     tap(e) {
       const ymd = e.currentTarget.dataset.ymd
       if (!ymd) return
+      const cell = this.data.cells.find(c => c.ymd === ymd)
+      if (cell && cell.disabled) {
+        wx.showToast({ title: '不能选择过去的日期', icon: 'none' })
+        return
+      }
       this.triggerEvent('select', { ymd })
     }
   }

@@ -7,6 +7,30 @@ function ymd(d) {
 
 const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
+// "HH:MM" -> 当天分钟数
+function parseHm(t) {
+  const a = String(t || '').split(':').map(Number)
+  return (isNaN(a[0]) ? 0 : a[0]) * 60 + (isNaN(a[1]) ? 0 : a[1])
+}
+
+// 场次是否已过预约截止（已过期，不可再约）
+// cutoff: { mode:'before'|'after', minutes }；未配置 / 非法 则不限制（返回 false）
+//   mode 'before'：场次开始前 minutes 分钟截止（默认语义）
+//   mode 'after' ：场次开始后 minutes 分钟截止
+// 截止时刻 = 场次开始时刻 ± minutes；now >= 截止时刻 即视为已过期
+function isSessionExpired(dateStr, startStr, cutoff) {
+  if (!cutoff || (cutoff.mode !== 'before' && cutoff.mode !== 'after') || !(Number(cutoff.minutes) > 0)) return false
+  const [y, mo, d] = String(dateStr || '').split('-').map(Number)
+  if (!y || !mo || !d) return false
+  const mins = parseHm(startStr)
+  const start = new Date(y, mo - 1, d, Math.floor(mins / 60), mins % 60)
+  const offset = Number(cutoff.minutes) * 60000
+  const deadline = cutoff.mode === 'before'
+    ? new Date(start.getTime() - offset)
+    : new Date(start.getTime() + offset)
+  return Date.now() >= deadline.getTime()
+}
+
 // 友好日期标签：2026-08-14 周四
 function dateLabel(y) {
   const [y0, m, d] = y.split('-').map(Number)
@@ -19,4 +43,14 @@ function isPhone(v) {
   return /^1[3-9]\d{9}$/.test(v)
 }
 
-module.exports = { ymd, dateLabel, isPhone, WEEK }
+// 请求微信订阅消息授权（过滤未配置的占位模板 ID，避免传入 TPL_ID_* 报错）
+// 需在用户手势（点击）回调内调用，否则弹窗可能被拦截
+function requestSubscribe(tmplIds) {
+  const valid = (tmplIds || []).filter(id => id && !String(id).startsWith('TPL_ID_'))
+  if (!valid.length) return
+  if (typeof wx !== 'undefined' && wx.requestSubscribeMessage) {
+    wx.requestSubscribeMessage({ tmplIds: valid, success() {}, fail() {} })
+  }
+}
+
+module.exports = { ymd, dateLabel, isPhone, WEEK, requestSubscribe, parseHm, isSessionExpired }

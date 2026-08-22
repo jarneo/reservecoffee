@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全局通知配置 · 原型</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --line:#e6e8eb; --ink:#1f2329; --sub:#6b7280;
+    --brand:#7c6a54; --brand2:#a8885a; --ok:#1f9d55; --warn:#d97706; --chip:#eef1f4;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:880px;margin:0 auto;padding:24px 18px 60px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .lead{color:var(--sub);font-size:13px;margin-bottom:18px;}
+  .tabs{display:flex;gap:8px;margin-bottom:18px;}
+  .tab{padding:10px 18px;border:1px solid var(--line);background:var(--panel);border-radius:10px;cursor:pointer;font-size:14px;}
+  .tab.on{background:var(--brand);color:#fff;border-color:  var(--brand);}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;}
+  .card h3{margin:0 0 6px;font-size:16px;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .meta{color:var(--sub);font-size:13px;line-height:1.7;}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;color:#fff;}
+  .t-booker{background:#3b82f6;} .t-admin{background:#8b5cf6;}
+  .switch{position:relative;width:50px;height:28px;flex:none;}
+  .switch input{display:none;}
+  .slider{position:absolute;inset:0;background:#cbd2d9;border-radius:99px;transition:.2s;}
+  .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--brand);}
+  .switch input:checked + .slider:before{transform:translateX(22px);}
+  .tpl{border:1px solid var(--line);border-radius:12px;margin-top:12px;overflow:hidden;}
+  .tpl .head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;background:#fafafa;}
+  .tpl .head:hover{background:#f0f1f3;}
+  .tpl .body{padding:14px;border-top:1px solid var(--line);display:none;}
+  .tpl.open .body{display:block;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;}
+  th{background:var(--chip);color:var(--sub);font-weight:600;}
+  td .k{color:var(--brand2);font-family:ui-monospace,Consolas,monospace;}
+  .fixed{width:100%;margin-top:10px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;}
+  .note{background:#fff8e6;border:1px solid #f0d9a0;color:#8a6d1d;font-size:12px;padding:10px 12px;border-radius:8px;margin-top:10px;line-height:1.6;}
+  .banner{background:#eef4ff;border:1px solid #c7dcff;color:#1f5fbf;font-size:13px;padding:12px 14px;border-radius:10px;margin-bottom:12px;line-height:1.6;}
+  .ghost{opacity:.6;}
+  .field{margin-top:12px;}
+  .field label{font-size:13px;color:var(--sub);display:block;margin-bottom:5px;}
+  .field input{width:100%;padding: 9px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;}
+  .pill{font-size:11px;padding:3px 9px;border-radius:99px;background:var(--chip);color:var(--sub);margin-right:8px;}
+  .pill.ok{background:#e7f6ec;color:var(--ok);}
+  .pill.wait{background:#fff0e6;color:var(--warn);}
+  .t-name{font-size:15px;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>全局通知配置</h1>
+  <div class="lead">统一管理「订阅消息 / 服务号 / 短信」三类推送。原型设计稿，后端逻辑待确认后实现。</div>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="sub">订阅通知配置</div>
+    <div class="tab" data-tab="mp">服务通知配置</div>
+    <div class="tab" data-tab="sms">短信配置</div>
+  </div>
+
+  <!-- 订阅通知：逐模板开关，与「项目配置-订阅消息」总开关为 AND 关系 -->
+  <section id="sub" class="pane">
+    <div class="note">
+      ⚠️ <b>双重开关逻辑</b>：本页可对「单个订阅模板」逐一开关；同时还需「项目配置 → 订阅消息」总开关为开启，该模板才会真正推送。<br>
+      即：<b>项目总开关 ON &amp;&amp; 本页该模板开关 ON</b> 才会发送；任一关闭都不推送。两者不冲突，互为补充。
+    </div>
+
+    <div class="meta" style="margin:6px    2px 10px">共 7 个订阅模板。点击展开查看字段映射、可编辑固定语与<b>模板 ID（微信后台绑定）</b>；右侧开关控制该模板是否启用。</div>
+
+    <!-- 顾客·预约成功 -->
+    <div class="tpl open">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-booker">顾客</span> 预约成功通知</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">立即 · 下单后 / 审核通过</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：预订人 ｜ 触发：免审创建成功、或管理员审核通过</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">ShNSAxZvFsDgyZhFfi3OTbofXCzjsM5P1-sSD8ZU2e4</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing10</td><td>项目名称</td><td>系统填充（项目名）</td></tr>
+          <tr><td class="k">time12</td><td>预约时间</td><td>系统填充 例 2026-08-22 14:00</td></tr>
+          <tr><td class="k">thing6</td><td>预约人数</td><td>系统填充 例 2人位</td></tr>
+          <tr><td class="k">thing9</td><td>温馨提示（可编辑）</td><td><input class="fixed" value="已为您留座，请准时赴约，期待与您相见～"></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 顾客·取消 -->
+    <div class="tpl">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-booker">顾客</span> 取消通知</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">立即 · 取消预约</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：预订人 ｜ 触发：取消预约</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">Y1VIDe6Y_DiQqzE_FaaBzvNyD2nErGogF5pCbLed_u8</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing1</td><td>项目名称</td><td>系统填充</td></tr>
+          <tr><td class="k">time9</td><td>预约时间</td><td>系统填充</td></tr>
+          <tr><td class="k">thing5</td><td>提示（可编辑）</td><td><input class="fixed" value="期待下次为您留座～"></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 顾客·开场前提醒 -->
+    <div class="tpl">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-booker">顾客</span> 开场前提醒</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">开场前 ≤60 分钟</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：预订人 ｜ 触发：定时每 15 分钟扫描，开场前 60 分钟内</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">OTbjHkCiDnS2a5r0-6AIf2ze41-M2flVKAKbt6LWe6c</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing10</td><td>项目名称</td><td>系统填充</td></tr>
+          <tr><td class="k">time1</td><td>预约时间</td><td>系统填充</td></tr>
+          <tr><td class="k">thing5</td><td>温馨提示（可编辑）</td><td><input class="fixed" value="预约时间很近了，记得还有一个预约，路上注意安全哦。"></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 顾客·结束提醒 -->
+    <div class="tpl">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-booker">顾客</span> 结束提醒</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">场次结束时刻</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：预订人 ｜ 触发：定时每 15 分钟扫描，到达场次结束时间（例 10:00-11:30 → 11:30 发）</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing10</td><td>项目名称</td><td>系统填充</td></tr>
+          <tr><td class="k">time12</td><td>开始时间</td><td>系统填充</td></tr>
+          <tr><td class="k">time14</td><td>结束时间</td><td>系统填充</td></tr>
+          <tr><td class="k">thing9</td><td>完成语（可编辑）</td><td><input class="fixed" value="您的预约已完成，感谢您的到来！如有疑问，可以联系店铺……"></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 管理员·新预约 -->
+    <div class="tpl">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-admin">管理员</span> 新预约通知</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">立即 · 免审下单</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：所有 owner + manager ｜ 触发：免审创建成功</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">AJ8iCZgYFaNoSmwmrwwivnRTnJ3BvFu5sOeg4Wa-3aM</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing1</td><td>项目</td><td>系统填充</td></tr>
+          <tr><td class="k">thing12</td><td>预约人</td><td>系统填充</td></tr>
+          <tr><td class="k">thing3</td><td>时间+场次+人数</td><td>系统填充 例 8月22日 14:00-15:00 2人位</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 管理员·取消 -->
+    <div class="tpl">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-admin">管理员</span> 取消通知</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">立即 · 取消预约</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：所有 owner + manager ｜ 触发：取消预约</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">TpTXSsqC4i8F_GtN_boeKh4TXjVI-1rXUwA01AIdO5Q</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing5</td><td>项目名称</td><td>系统填充</td></tr>
+          <tr><td class="k">thing1</td><td>预约人</td><td>系统填充</td></tr>
+          <tr><td class="k">time4</td><td>预约时间</td><td>系统填充</td></tr>
+          <tr><td class="k">phone_number2</td><td>电话号码</td><td>系统填充</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!--  ​管理员·待审核 -->
+    <div class="tpl">
+      <div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="t-name"><span class="tag t-admin">管理员</span> 待审核通知</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill">立即 · 待审下单</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox" checked><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body">
+        <div class="meta">接收：所有 owner + manager ｜ 触发：待审创建成功（顾客不收）</div>
+        <div class="meta">模板 ID（微信后台绑定）：<span class="k">UQJ5AfBWVUTQO-upC-3_W-UeDu_BgPPGoyj11Ei5Py8</span></div>
+        <table>
+          <tr><th>字段键</th><th>含义</th><th>内容</th></tr>
+          <tr><td class="k">thing5</td><td>项目名称</td><td>系统填充</td></tr>
+          <tr><td class="k">thing1</td><td>预约人</td><td>系统填充</td></tr>
+          <tr><td class="k">time4</td><td>预约时间</td><td>系统填充</td></tr>
+          <tr><td class="k">phone_number2</td><td>电话号码</td><td>系统填充</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 服务通知：逐模板开关，与「项目配置」总开关为 AND 关系 -->
+  <section id="mp" class="pane" style="display:none">
+    <div class="banner">⚠️ 服务通知依赖「小程序 + 服务号」绑定同一微信开放平台（共享 UnionID），且顾客关注了服务号后方可送达。当前你已完成绑定申请，模板尚未在公众平台配置 —— 以下为占位，待模板 ID 就绪后填入。</div>
+
+    <div class="note">
+      ⚠️ <b>双重开关逻辑（与订阅消息一致）</b>：本页可对「单个服务号模板」逐一开关；同时还需「项目配置 → 服务通知」总开关为开启，该模板才会真正推送。<br>
+      即：<b>项目总开关 ON &amp;&amp; 本页该模板开关 ON</b> 才会发送。
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <h3>绑定状态</h3>
+          <div class="meta">服务号 AppID / 绑定方式（公众平台「消息推送」指向回调云函数）。</div>
+        </div>
+        <span class="pill wait">待绑定 / 绑定中</span>
+      </div>
+      <div class="field">
+        <label>服务号 AppID</label>
+        <input placeholder="在公众平台查看，如 wxXXXXXXXX">
+      </div>
+      <div class="note">服务号 openid 通过「关注事件」回调采集并写入 users（按 unionid 关联）。模板 ID 与字段映射待你在公众平台配置后回填。</div>
+    </div>
+
+    <div class="meta" style="margin:6px 2px 10px">服务号模板（7 个，结构同订阅，仅占位）。每个模板可单独开关；模板配置就绪后方可启用。</div>
+
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-booker">顾客</span> 预约成功（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpReserveSuccess ｜ 字段：项目 / 时间 / 人数 / 提示 —— 待填模板 ID</div>
+      </div>
+    </div>
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-booker">顾客</span> 取消（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpReserveCancel ｜ 字段：项目 / 时间 / 提示 —— 待填模板 ID</div>
+      </div>
+    </div>
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-booker">顾客</span> 开场前提醒（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpReminder ｜ 字段：项目 / 时间 / 提示 —— 待填模板 ID</div>
+      </div>
+    </div>
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-booker">顾客</span> 结束提醒（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpReminderEnd ｜ 字段：项目 / 开始 / 结束 / 完成语 —— 待填模板 ID</div>
+      </div>
+    </div>
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-admin">管理员</span> 新预约（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpAdminNew ｜ 字段：项目 / 预约人 / 时间+场次+人数 —— 待填模板 ID</div>
+      </div>
+    </div>
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-admin">管理员</span> 取消（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpAdminCancel ｜ 字段：项目 / 预约人 / 时间 / 电话 —— 待填模板 ID</div>
+      </div>
+    </div>
+    <div class="tpl ghost">
+      <div class="head"><span class="t-name"><span class="tag t-admin">管理员</span> 待审核（服务号）</span>
+        <span style="display:flex;align-items:center;">
+          <span class="pill wait">待配置模板</span>
+          <label class="switch" onclick="event.stopPropagation()"><input type="checkbox"><span class="slider"></span></label>
+        </span>
+      </div>
+      <div class="body" style="display:block">
+        <div class="meta">mpAdminReview ｜ 字段：项目 / 预约人 / 时间 / 电话 —— 待填模板 ID</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 短信：保持不变 -->
+  <section id="sms" class="pane"  style="display:none">
+    <div class="card">
+      <div class="row">
+        <div>
+          <h3>启用短信通知</h3>
+          <div class="meta">腾讯云短信 · 不需用户授权，有手机号即可送达（按条计费）。</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="smsMaster"><span class="slider"></span></label>
+      </div>
+      <div class="field">
+        <label>短信签名</label>
+        <input value="打开咖啡馆">
+      </div>
+      <div class="field">
+        <label>模板 ID（通知短信，全明文 / 不支持变量）</label>
+        <input placeholder="腾讯云审核通过后的 TemplateId">
+      </div>
+      <div class="note">当前短信不支持变量，正文为固定文案，故此处仅做「开关 + 模板 ID」配置；具体文案在腾讯云后台配置。开通后，「预约成功」场景会给预订人发送一条留座提醒。</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+      document.querySelectorAll('.pane').forEach(p=>p.style.display='none');
+      t.classList.add('on');
+      document.getElementById(t.dataset.tab).style.display='block';
+    };
+  });
+</script>
+</body>
+</html>

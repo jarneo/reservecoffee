@@ -1,6 +1,60 @@
-.chips { display:flex; flex-wrap:wrap; gap:12rpx; margin-bottom:16rpx; }
-.chip { padding:10rpx 20rpx; border:1rpx solid var(--line); border-radius:999rpx; font-size:24rpx; }
-.chip.on { border-color:var(--ink); font-weight:600; }
+/* 横向日期条（参考预约项目页：两周 + 箭头翻页，只显示今天及之后） */
+.datestrip-wrap { display:flex; align-items:center; gap:12rpx; margin-bottom:8rpx; }
+.dnav { flex:none; width:60rpx; height:60rpx; line-height:60rpx; text-align:center; border-radius:50%; border:1rpx solid var(--line); background:#fff; color:var(--ink-2); font-size:40rpx; }
+.dnav:active { border-color:var(--ink); }
+.dnav.disabled { opacity:.25; }
+.datestrip { flex:1; white-space:nowrap; }
+.dchip { display:inline-flex; flex-direction:column; align-items:center; width:112rpx; margin-right:16rpx; background:#fff; border:1rpx solid var(--line); border-radius:24rpx; padding:20rpx 0 16rpx; }
+.dchip .wk { font-size:22rpx; color:var(--ink-3); line-height:1; }
+.dchip .dd { font-size:34rpx; font-weight:600; margin-top:10rpx; line-height:1.1; }
+.dchip .mo { font-size:20rpx; color:var(--ink-3); margin-top:4rpx; line-height:1; }
+.dchip.off { background:var(--fill); color:var(--ink-3); }
+.dchip.off .wk,.dchip.off .dd,.dchip.off .mo { color:var(--ink-3); }
+.dchip.open { border-color:var(--ink); color:var(--ink); }
+.dchip.open .wk { color:var(--ink-2); }
+.dchip.today:not(.on) { box-shadow:0 0 0 2rpx var(--orange); border-color:transparent; }
+.dchip.today:not(.on) .wk { color:var(--orange); font-weight:600; }
+.dchip.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+.dchip.on .wk,.dchip.on .dd,.dchip.on .mo { color:#fff; }
+.range-label { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:4rpx; }
+
+.scard-wrap { margin-bottom: 16rpx; }
+.people-link { font-size: 24rpx; color: var(--brand); text-align: right; padding: 8rpx 4rpx 4rpx; }
+
 .ma { color:var(--ink-3); }
 .note { color:var(--ink-3); text-align:center; padding:30rpx; }
 .tip { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:20rpx; }
+
+/* 本场预约人弹层（点击「查看本场预约人」直接弹出，不再跳转页面） */
+.sheet-mask { position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,.4); display:flex; align-items:flex-end; z-index:50; }
+.sheet { background:#fff; width:100%; padding:36rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); border-radius:24rpx 24rpx 0 0; max-height:82vh; box-sizing:border-box; }
+.sheet-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16rpx; }
+.sheet-head .x { font-size:36rpx; color:var(--ink-3); padding:0 6rpx; line-height:1; }
+.people-scroll { max-height:60vh; }
+.person { display:flex; align-items:center; gap:18rpx; background:#fff; border:1rpx solid var(--line); border-radius:20rpx; padding:18rpx 20rpx; margin-bottom:12rpx; }
+.person:last-child { margin-bottom:0; }
+.person:active { background:var(--fill); }
+.avatar { flex:none; width:64rpx; height:64rpx; border-radius:50%; background:var(--brand); color:#fff; font-size:30rpx; font-weight:600; display:flex; align-items:center; justify-content:center; }
+.pinfo { flex:1; min-width:0; }
+.phone { font-size:28rpx; color:var(--ink); font-weight:500; }
+.ph-btn { flex:none; color:#fff; background:var(--brand); font-size:28rpx; font-weight:600; padding:14rpx 30rpx; border-radius:999rpx; }
+.ph-btn:active { opacity:.85; }
+.ph-btn.disabled { background:var(--fill); color:var(--ink-3); }
+.review-row { display:flex; gap:12rpx; margin-top:14rpx; }
+.rev-btn { flex:1; text-align:center; font-size:26rpx; font-weight:600; padding:14rpx 0; border-radius:12rpx; }
+.rev-btn.approve { background:var(--green,#07c160); color:#fff; }
+.rev-btn.reject { background:#fff; color:var(--red,#e34d59); border:1rpx solid var(--red,#e34d59); }
+.rev-btn:active { opacity:.85; }
+.person .row.between { align-items:center; }
+.head-actions { display:flex; align-items:center; gap:12rpx; flex:none; }
+.cancel-mini { display:inline-flex; align-items:center; font-size:22rpx; line-height:1.4; color:var(--red,#e34d59); border:1rpx solid var(--red,#e34d59); border-radius:999rpx; padding:4rpx 18rpx; }
+.cancel-mini:active { background:#fdecee; }
+.btn.call-lg { font-size:32rpx; font-weight:600; padding:24rpx 0; }
+/* 详情层 */
+.drow { display:flex; gap:20rpx; }
+.dcell { flex:1; }
+.dcell .xs { margin-bottom:4rpx; }
+.dval { font-size:28rpx; color:var(--ink); font-weight:500; }
+.btn.ghost { background:#fff; color:var(--ink); border:1rpx solid var(--line); }
+.btn.ghost[disabled] { opacity:.4; }
+.noop {}

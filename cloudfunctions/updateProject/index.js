@@ -17,6 +17,10 @@ exports.main = async (event) => {
   if (event.needReview !== undefined) patch.needReview = !!event.needReview
   if (event.paused !== undefined) patch.paused = !!event.paused
   if (event.dailyLimit !== undefined) patch.dailyLimit = Math.max(1, Number(event.dailyLimit) || 1)
+  if (event.maxParty !== undefined) patch.maxParty = Math.max(1, Math.min(20, Number(event.maxParty) || 2))
+  if (event.subscribeNotify !== undefined) patch.subscribeNotify = !!event.subscribeNotify
+  // 服务号通知总开关（项目级）：此前漏写导致「开启后保存仍显示未开启」
+  if (event.mpNotify !== undefined) patch.mpNotify = !!event.mpNotify
   if (event.useSlotTemplate !== undefined) patch.useSlotTemplate = !!event.useSlotTemplate
   if (event.slotTemplate !== undefined) patch.slotTemplate = Array.isArray(event.slotTemplate) ? event.slotTemplate.slice(0, 20) : []
   // 介绍图片（图集）：整组替换，支持 上传/替换/删除/排序/说明
@@ -36,20 +40,16 @@ exports.main = async (event) => {
     if (!(adv >= 1 && adv <= 30)) return fail('提前天数须在 1–30 之间')
     patch.advanceDays = adv
   }
-  // 短信通知：每项目独立开关 + 本店注意事项（模板变量 {6}）
+  // 短信通知：每项目独立开关
   if (event.smsEnabled !== undefined) patch.smsEnabled = !!event.smsEnabled
-  if (event.smsNotice !== undefined) patch.smsNotice = String(event.smsNotice || '').slice(0, 200)
   // 软删除（标记后可恢复，不影响历史预约）
   if (event.deleted !== undefined) patch.deleted = !!event.deleted
-  // 预约截止规则：{ type:'场次前'|'当日', hours?, time? }
+  // 预约截止规则：{ mode:'before'|'after', minutes }（场次开始前/开始后 N 分钟）
   if (event.cutoff !== undefined) {
     if (!event.cutoff || typeof event.cutoff !== 'object') return fail('cutoff 格式错误')
-    const type = ['场次前', '当日'].includes(event.cutoff.type) ? event.cutoff.type : '当日'
-    patch.cutoff = {
-      type,
-      hours: type === '场次前' ? (Number(event.cutoff.hours) || 2) : undefined,
-      time: type === '当日' ? (event.cutoff.time || '18:00') : undefined
-    }
+    const mode = ['before', 'after'].includes(event.cutoff.mode) ? event.cutoff.mode : 'before'
+    const minutes = Math.min(1440, Math.max(1, Number(event.cutoff.minutes) || 30))
+    patch.cutoff = { mode, minutes }
   }
   // 提交预约信息收集字段（白名单键）
   if (event.fields !== undefined) {

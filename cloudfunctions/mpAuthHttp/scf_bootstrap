@@ -1,0 +1,10 @@
+#!/bin/bash
+# HTTP 云函数启动脚本（Web Server 模式）：监听 SCF 注入的 PORT
+if [ -x /var/lang/node18/bin/node ]; then
+  NODE=/var/lang/node18/bin/node
+elif [ -x /opt/nodejs/node18/bin/node ]; then
+  NODE=/opt/nodejs/node18/bin/node
+else
+  NODE=node
+fi
+$NODE /var/user/index.js

@@ -1,19 +1,24 @@
 <view class="page">
-  <view class="topbar"><view class="bold">店铺菜单</view></view>
+  <view class="hero">
+    <view class="brand-row"><view class="brand-dot"></view><view class="brand-text">{{shopName || '店铺菜单'}}</view></view>
+    <view wx:if="{{shopTag}}" class="tag">{{shopTag}}</view>
+  </view>
 
+  <view class="sec-title">在售菜品</view>
   <view wx:if="{{products.length===0}}" class="note">该店暂未上架菜品</view>
-  <view class="grid">
+  <view class="list">
     <view wx:for="{{products}}" wx:key="_id" class="card tap" bindtap="goProduct" data-id="{{item._id}}">
-      <view class="thumb">
-        <image wx:if="{{item.imageUrl}}" class="img" src="{{item.imageUrl}}" mode="aspectFill"/>
-        <view wx:else class="ph">暂无图</view>
+      <view class="dish">
+        <view class="dish-img">
+          <image wx:if="{{item.imageUrl}}" class="img" src="{{item.imageUrl}}" mode="aspectFill"/>
+          <view wx:else class="ph">图片</view>
+        </view>
+        <view class="dish-info">
+          <view class="row between"><view class="bold">{{item.name}}</view><view class="price">¥{{item.price}}<text class="unit">/份</text></view></view>
+          <view wx:if="{{item.desc}}" class="muted" style="margin:6rpx 0">{{item.desc}}</view>
+          <view class="stars">{{item.stars}}</view>
+        </view>
       </view>
-      <view class="name">{{item.name}}</view>
-      <view class="row between" style="margin-top:6rpx">
-        <view class="price">{{item.priceText}}</view>
-        <view class="star">{{item.stars}}<text class="count">({{item.ratingCount||0}})</text></view>
-      </view>
-      <view wx:if="{{item.desc}}" class="desc">{{item.desc}}</view>
     </view>
   </view>
 </view>

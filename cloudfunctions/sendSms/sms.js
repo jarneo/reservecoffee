@@ -1,8 +1,8 @@
-// cloudfunctions/_lib/sms.js — 腾讯云短信发送辅助
+// cloudfunctions/_lib/sms.js — 腾讯云短信发送辅助（单条留座模板）
 // 依赖：tencentcloud-sdk-nodejs-sms（在调用方云函数的 package.json 中声明）
-// 合规说明：国内短信必须使用控制台「已审批」的签名 + 模板；本辅助使用单一模板，
-// 通过变量携带动态内容（称呼/项目/状态/日期/场次/注意事项），每项目的自定义内容
-// 体现在「注意事项」变量上，而非自由拼接正文，以确保通过运营商模板审核。
+// 合规说明：国内短信必须使用控制台「已审批」的签名 + 模板。本辅助使用单一模板，
+// 变量：{1}称呼 {2}日期 {3}场次 {4}几人位；正文固定、变量填充，确保通过运营商模板审核。
+// 店铺名由控制台签名 SignName 提供（=「二曜路8号咖啡和清酒」），模板正文不含签名前缀。
 
 const REGION = process.env.SMS_REGION || 'ap-guangzhou'
 
@@ -22,20 +22,19 @@ async function loadConfig(db) {
 }
 
 /**
- * 发送预约类短信
- * @param {object} o { db, phone, name, project, date, time, status, notice }
- *   status: 'confirmed' | 'pending'（决定短信正文里的状态文案）
+ * 发送预约留座短信（单条，≤70 字，仅发预订人）
+ * @param {object} o { db, phone, name, date, time, seats }
+ *   date: 友好短日期（如 8月20日，由调用方 monthDay 生成）
+ *   time: 场次时段（如 14:00-15:00）
+ *   seats: 几人位（如 2人位）
  * 返回 { skipped, reason } 或 { ok, res } / { ok:false, error }
  */
 async function sendReservationSms(o) {
-  const { db, phone, name, project, date, time, status, notice } = o
+  const { db, phone, name, date, time, seats } = o
   if (!phone) return { skipped: true, reason: 'no phone' }
 
   const cfg = await loadConfig(db)
   if (!cfg) return { skipped: true, reason: 'sms not configured' }
-
-  const statusText = status === 'confirmed' ? '预约成功' : '待审核'
-  const noticeText = (notice && notice.trim()) || (cfg && cfg.noticeTemplate && cfg.noticeTemplate.trim()) || '请准时到店，如需取消请提前在「我的预约」操作'
 
   let SmsClient
   try {
@@ -52,14 +51,14 @@ async function sendReservationSms(o) {
   })
 
   // 模板变量顺序需与控制台已审批模板一致：
-  // {1}称呼 {2}项目 {3}状态 {4}日期 {5}场次 {6}注意事项
+  // {1}称呼 {2}日期 {3}场次 {4}几人位
+  // 模板正文（不含签名，签名由 SignName 提供）：
+  //   亲爱的{1}，已为您留座：{2} {3}，{4}。到店报手机号即可，期待相见～
   const TemplateParamSet = [
     name || '顾客',
-    project || '',
-    statusText,
     date || '',
     time || '',
-    noticeText
+    seats || ''
   ]
 
   try {

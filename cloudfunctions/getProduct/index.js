@@ -22,11 +22,22 @@ exports.main = async (event) => {
 
   const imageUrl = await resolveImage(p.image)
   const rev = await db.collection(COL.reviews).where({ productId, status: 'normal' }).get()
-  const reviews = (rev.data || []).slice().sort((a, b) =>
+  let reviews = (rev.data || []).slice().sort((a, b) =>
     ((b.top ? 1 : 0) - (a.top ? 1 : 0)) || ((b.createdAt || 0) - (a.createdAt || 0))
   )
   const count = reviews.length
   const avg = count ? Math.round(reviews.reduce((s, x) => s + (x.rating || 0), 0) / count * 10) / 10 : 0
+
+  // 解析评价头像 fileID → 临时 URL
+  const avatarIds = [...new Set(reviews.map(r => r.avatar).filter(Boolean))]
+  let avatarMap = {}
+  if (avatarIds.length) {
+    try {
+      const ares = await cloud.getTempFileURL({ fileList: avatarIds })
+      ;(ares.fileList || []).forEach(f => { if (f.fileID) avatarMap[f.fileID] = f.tempFileURL })
+    } catch (e) { console.warn('[getProduct] avatar resolve failed:', e.message) }
+  }
+  reviews = reviews.map(r => ({ ...r, avatarUrl: avatarMap[r.avatar] || '' }))
 
   const product = { ...p, imageUrl, rating: avg, ratingCount: count }
   return ok({ product, reviews })

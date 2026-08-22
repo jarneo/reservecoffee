@@ -1,8 +1,10 @@
 <view class="page">
-  <view class="topbar">
-    <view class="bold">{{project.name}}</view>
-      <view class="menu-link tap" bindtap="goMenu">店铺菜单 ›</view>
+    <view class="topbar">
+      <view class="bold">{{project.name}}</view>
+      <view class="menu-link tap" bindtap="goIndex">换项目 ›</view>
     </view>
+
+    <view wx:if="{{project.paused}}" class="pause-banner">本项目已暂停预约，以下场次暂不可选</view>
 
     <!-- 介绍图片区域（日历上方）：图集画廊 / 占位「预约须知」 -->
   <view class="intro-area">
@@ -20,19 +22,35 @@
     </view>
   </view>
 
-  <calendar openDays="{{openDays}}" selected="{{[selectedDate]}}" year="{{calYear}}" month="{{calMonth}}" bind:select="onCalSelect"/>
+  <view class="datestrip-wrap">
+    <view class="dnav {{canPrev?'':'disabled'}}" bindtap="moveDate" data-delta="-14">‹</view>
+    <scroll-view scroll-x class="datestrip" enhanced="{{true}}" show-scrollbar="{{false}}">
+      <view wx:for="{{dateChips}}" wx:key="ymd"
+        class="dchip {{item.open?'open':''}} {{item.today?'today':''}} {{item.sel?'on':''}} {{item.open?'':'off'}} {{item.status?'st-'+item.status:''}}"
+        data-ymd="{{item.ymd}}" bindtap="pickDate">
+        <view wx:if="{{item.mo}}" class="mo">{{item.mo}}</view>
+        <view class="wk">{{item.wk}}</view>
+        <view class="dd">{{item.dd}}</view>
+        <view wx:if="{{item.status==='paused'}}" class="chip-tag paused">暂停</view>
+        <view wx:elif="{{item.status==='full'}}" class="chip-tag full">满员</view>
+        <view wx:elif="{{item.status==='expired'}}" class="chip-tag expired">已过期</view>
+      </view>
+    </scroll-view>
+    <view class="dnav" bindtap="moveDate" data-delta="14">›</view>
+  </view>
+  <view class="range-label">{{dateRangeLabel}}</view>
 
   <block wx:if="{{selectedDate}}">
     <view class="biz">今日营业 {{bizWindow || '暂未排场'}}</view>
     <view wx:if="{{sessions.length===0}}" class="note">该日暂未设置场次，请联系店家</view>
     <view wx:for="{{sessions}}" wx:key="id"
-      class="card tap {{item.paused||item.remaining<=0?'dis':''}}"
+      class="card tap {{item.paused||item.blocked||item.remaining<=0||item.expired?'dis':''}}"
       bindtap="pickSession" data-id="{{item.id}}">
       <view class="row between">
         <view class="bold">{{item.start}} – {{item.end}}</view>
-        <view class="badge {{item.remaining<=0?'full':(item.paused?'paused':'ok')}}">{{item.paused?'已暂停':(item.remaining<=0?'已满':'剩 '+item.remaining+'/'+item.capacity)}}</view>
+        <view class="badge {{item.expired?'expired':(item.remaining<=0?'full':((item.paused||item.blocked)?'paused':'ok'))}}">{{item.expired?'已过期':(item.paused||item.blocked?'已暂停':(item.remaining<=0?'已满':'剩 '+item.remaining+'/'+item.capacity))}}</view>
       </view>
-      <view class="sm muted" style="margin-top:6rpx">{{item.paused?'本场已暂停':(item.remaining<=0?'人数已满':'点击选择该场次')}}</view>
+      <view class="sm muted" style="margin-top:6rpx">{{item.expired?'本场已过期':(item.paused||item.blocked?'本场已暂停':(item.remaining<=0?'人数已满':'点击选择该场次'))}}</view>
     </view>
   </block>
   <view wx:else class="note">请选择上方可预约的日期</view>

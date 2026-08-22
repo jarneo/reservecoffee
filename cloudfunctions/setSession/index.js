@@ -22,7 +22,6 @@ exports.main = async (event) => {
     } else if (action === 'resume') {
       schedule.sessions[idx].paused = false
     } else if (action === 'changeCap') {
-      if (role.role !== 'owner') { await transaction.rollback(); return fail('普通管理员不可修改名额') }
       const cap = Number(capacity)
       if (!(cap >= 0)) { await transaction.rollback(); return fail('名额无效') }
       if (cap < schedule.sessions[idx].booked) { await transaction.rollback(); return fail('名额不可低于已预约人数') }

@@ -4,7 +4,7 @@ const guard = require('../../../components/adminGuard/adminGuard.js')
 Page({
   behaviors: [guard],
   data: { list: [] },
-  onLoad() { this.guard(['owner']).then(r => { if (r) this.load() }) },
+  onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.load() }) },
   load() {
     call('listReviews').then(d => this.setData({ list: d.list || [] })).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },

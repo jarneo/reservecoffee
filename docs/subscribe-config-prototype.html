@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>订阅通知配置 · 超级管理员（原型）</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --ink: #1f2329; --sub: #6b7280;
+    --line: #e5e7eb; --brand: #b4532a; --brand-soft: #fbeee7;
+    --green: #16a34a; --chip: #eef2f7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px; margin-bottom: 16px; }
+  .row-flex { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .global-title { font-size: 16px; font-weight: 600; }
+  .desc { color: var(--sub); font-size: 13px; margin-top: 6px; }
+  .switch { position: relative; width: 52px; height: 30px; flex: none; }
+  .switch input { display: none; }
+  .slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 999px; transition: .2s; cursor: pointer; }
+  .slider::before { content:""; position:absolute; width:24px; height:24px; left:3px; top: 3px;
+    background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .switch input:checked + .slider { background: var(--brand); }
+  .switch input:checked + .slider::before { transform: translateX(22px); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 18px; margin-bottom: 14px; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .name { font-size: 16px; font-weight: 600; }
+  .tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; }
+  .tag.cust { background: var(--brand-soft); color: var(--brand); }
+  .tag.admin { background: #e7f0ff; color: #1d4ed8; }
+  .meta { color: var(--sub); font-size: 13px; margin-bottom: 12px; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--sub); font-weight: 600; }
+  td.k { color: var(--brand); font-family: ui-monospace, monospace; white-space: nowrap; }
+  td.v input { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 13px; background: #fff; color: var(--ink); }
+  .bar { display: flex; gap: 10px; margin-top: 18px; }
+  .btn { padding: 11px 22px; border-radius: 10px; font-size: 14px; cursor: pointer; border: none; }
+  .btn.primary { background: var(--brand); color: #fff; }
+  .btn.ghost { background: var(--chip); color: var(--ink); }
+  .note { font-size: 12px; color: var(--sub); margin-top: 14px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>订阅通知配置</h1>
+  <div class="sub">超级管理员 · 管理台 · 原型（仅展示交互结构，后端尚未实现）</div>
+
+  <div class="panel row-flex">
+    <div>
+      <div class="global-title">全局订阅通知</div>
+      <div class="desc">总开关：关闭后所有订阅消息（顾客 + 管理员）一律不发。</div>
+    </div>
+    <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+  </div>
+
+  <div id="list">
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">预约成功</span>
+        <span class="tag cust">顾客</span>
+      </div>
+      <div class="meta">触发：<b>免审下单成功 / 审核通过</b> · 接收：<b>预订人</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing10</td><td>项目名称</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">time12</td><td>预约时间</td><td><input value="（日期+开始时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing6</td><td>预约人数</td><td><input value="（人数，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing9</td><td>温馨提示（固定语）</td><td><input value="已为您留座，请准时赴约，期待与您相见～"></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">预约取消</span>
+        <span class="tag cust">顾客</span>
+      </div>
+      〜<div class="meta">触发：<b>取消预约</b> · 接收：<b>预订人</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing1</td><td>项目名称</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">time9</td><td>预约时间</td><td><input value="（日期+开始时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing5</td><td>提示（固定语）</td><td><input value="期待下次为您留座～"></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">开场前提醒</span>
+        <span class="tag cust">顾客</span>
+      </div>
+      <div class="meta">触发：<b>开场前 ≤60 分钟（定时每15分钟扫）</b> · 接收：<b>预订人</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing10</td><td>项目名称</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">time1</td><td>预约时间</td><td><input value="（日期+开始时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing5</td><td>温馨提示（固定语）</td><td><input value="预约时间很近了，记得还有一个预约，路上注意安全哦。"></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">结束提醒</span>
+        <span class="tag cust">顾客</span>
+      </div>
+      <div class="meta">触发：<b>场次结束时刻（定时每15分钟扫）</b> · 接收：<b>预订人</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing10</td><td>项目名称</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">time12</td><td>预约时间（开始）</td><td><input value="（日期+开始时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">time14</td><td>结束时间</td><td><input value="（日期+结束时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing9</td><td>温馨提示（固定语）</td><td><input value="您的预约已完成，感谢您的到来！如有疑问，可以联系店铺～"></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">新预约提醒</span>
+        <span class="tag admin">管理员</span>
+      </div>
+      <div class="meta">触发：<b>免审下单成功</b> · 接收：<b>全部 owner+manager</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing1</td><td>项目</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing12</td><td>预约人</td><td><input value="（预订人称呼，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing3</td><td>时间+场次+人数</td><td><input value="（日期场次+人数，系统填充）" disabled></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">取消提醒</span>
+        <span class="tag admin">管理员</span>
+      </div>
+      <div class="meta">触发：<b>取消预约</b> · 接收：<b>全部 owner+manager</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing5</td><td>项目名称</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing1</td><td>预约人</td><td><input value="（预订人，系统填充）" disabled></td></tr>
+        <tr><td class="k">time4</td><td>预约时间</td><td><input value="（日期+开始时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">phone_number2</td><td>电话号码</td><td><input value="（手机号，系统填充）" disabled></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="name">待审核提醒</span>
+        <span class="tag admin">管理员</span>
+      </div>
+      <div class="meta">触发：<b>待审下单成功</b> · 接收：<b>全部 owner+manager</b></div>
+      <table>
+        <tr><th>字段键</th><th>含义</th><th>内容（可编辑）</th></tr>
+        <tr><td class="k">thing5</td><td>项目名称</td><td><input value="（项目名，系统填充）" disabled></td></tr>
+        <tr><td class="k">thing1</td><td>预约人</td><td><input value="（预订人称呼，系统填充）" disabled></td></tr>
+        <tr><td class="k">time4</td><td>预约时间</td><td><input value="（日期+开始时间，系统填充）" disabled></td></tr>
+        <tr><td class="k">phone_number2</td><td>电话号码</td><td><input value="（手机号，系统填充）" disabled></td></tr>
+      </table>
+      <div class="row-flex" style="margin-top:12px">
+        <span class="desc">启用此模板</span>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bar">
+    <button class="btn primary" onclick="alert('原型：保存动作未实现')">保存配置</button>
+    <button class="btn ghost" onclick="alert('原型：仅查看')">取消</button>
+  </div>
+
+  <div class="note">
+    原型说明：<br>
+    1）全局开关控制整体订阅发送；每个模板还有各自的启用开关（可扩展为「项目级」开关，成熟后再定）。<br>
+    2）标记为「系统填充」的字段由后端按预约数据注入，不可编辑；仅「固定语」可在前端配置。<br>
+    3）字段键（thing10/time12…）由微信模板结构决定，不可在前端改键名，只能改固定语文案。<br>
+    4）后端尚未实现——落地时需：新建配置文档（如 config.subscribe）、让后端读取并替代硬编码 value、并在管理台新增此页面入口。
+  </div>
+</div>
+</body>
+</html>

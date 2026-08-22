@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "项目配置（日历+场次）",
+  "navigationBarTitleText": "项目配置",
     "usingComponents": {
     "calendar": "/components/calendar/calendar",
     "sessionCard": "/components/sessionCard/sessionCard"

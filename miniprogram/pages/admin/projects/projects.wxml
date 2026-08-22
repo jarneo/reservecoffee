@@ -18,19 +18,19 @@
     <button class="btn block" bindtap="create" style="margin-top:12rpx">创建项目</button>
   </view>
 
-  <view wx:for="{{list}}" wx:key="_id" class="card">
+  <view wx:for="{{list}}" wx:key="_id" class="card tap" bindtap="goConfig" data-id="{{item._id}}">
     <view class="row between">
       <view class="bold">{{item.name}}</view>
       <view class="badge {{item.deleted?'del':(!item.published?'full':(item.paused?'paused':'ok'))}}">{{item.deleted?'已删除':(!item.published?'未发布':(item.paused?'暂停预约':'已发布'))}}</view>
     </view>
     <view class="xs muted" style="margin-top:6rpx">{{item.deleted?'已删除':(item.published?'已发布':'未发布')}} · {{item.paused?'暂停预约':'开放预约'}} · 可约日 {{item.openDays.length}} 天</view>
-    <view class="row" style="display:flex; gap:12rpx; margin-top:14rpx; flex-wrap:wrap">
-      <button class="btn sm ghost" bindtap="goConfig" data-id="{{item._id}}">配置</button>
-      <button wx:if="{{item.published && !item.deleted}}" class="btn sm ghost" bindtap="togglePublish" data-id="{{item._id}}">下架</button>
-      <button wx:elif="{{!item.deleted}}" class="btn sm" bindtap="togglePublish" data-id="{{item._id}}">发布</button>
-      <button wx:if="{{!item.deleted}}" class="btn sm ghost" bindtap="togglePause" data-id="{{item._id}}">{{item.paused?'开放预约':'暂停预约'}}</button>
-      <button wx:if="{{item.deleted}}" class="btn sm" bindtap="restoreProject" data-id="{{item._id}}">恢复</button>
-      <button wx:else class="btn sm ghost danger" bindtap="deleteProject" data-id="{{item._id}}">删除</button>
+    <view class="ops">
+      <button wx:if="{{item.published && !item.deleted}}" class="btn sm ghost" catchtap="togglePublish" data-id="{{item._id}}">下架</button>
+      <button wx:elif="{{!item.deleted}}" class="btn sm" catchtap="togglePublish" data-id="{{item._id}}">发布</button>
+      <button wx:if="{{!item.deleted}}" class="btn sm ghost" catchtap="togglePause" data-id="{{item._id}}">{{item.paused?'开放预约':'暂停预约'}}</button>
+      <button wx:if="{{!item.deleted}}" class="btn sm ghost" catchtap="deleteProject" data-id="{{item._id}}">删除</button>
+      <view wx:if="{{item.deleted}}" class="badge full">已删除</view>
+      <button wx:if="{{item.deleted}}" class="btn sm ghost" catchtap="restoreProject" data-id="{{item._id}}">恢复</button>
     </view>
   </view>
   <view wx:if="{{list.length===0}}" class="note">暂无项目，点击右上角新建</view>

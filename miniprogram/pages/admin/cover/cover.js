@@ -4,45 +4,29 @@ const guard = require('../../../components/adminGuard/adminGuard.js')
 Page({
   behaviors: [guard],
   data: {
-    projects: [], projectId: '', project: null,
     cover: '', intro: '', _oldCover: ''
   },
 
-  onLoad(options) {
+  onLoad() {
     this.guard(['owner']).then(r => {
-      if (r) this.loadProjects(options && options.projectId)
+      if (r) this.load()
     })
   },
 
-  loadProjects(presetId) {
-    call('listProjects').then(d => {
-      const list = d.list || []
-      this.setData({ projects: list })
-      const id = presetId || (list.length ? list[0]._id : '')
-      if (id) this.selectProject(id)
-    }).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
-  },
-
-  onProjectPick(e) {
-    const id = this.data.projects[e.detail.value]._id
-    this.selectProject(id)
-  },
-
-  async selectProject(id) {
-    this.setData({ projectId: id })
-    const d = await call('getProjectAdmin', { projectId: id })
-    const p = d.project
-    this.setData({
-      project: p,
-      cover: p.imageUrl || p.image || '',
-      intro: p.intro || '',
-      _oldCover: ''
-    })
+  // 首图及介绍是「首页级」配置（单份），不是某个项目的配置，故无项目切换。
+  async load() {
+    try {
+      const d = await call('getHomepage')
+      const hp = d.homepage || {}
+      this.setData({ cover: hp.heroImage || '', intro: hp.intro || '', _oldCover: '' })
+    } catch (e) {
+      wx.showToast({ title: e.message || '加载失败', icon: 'none' })
+    }
   },
 
   async uploadOne(tempPath) {
     const ext = (tempPath.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
-    const cloudPath = `projects/${this.data.projectId}/${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
+    const cloudPath = `homepage/${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
     const res = await wx.cloud.uploadFile({ cloudPath, filePath: tempPath })
     return res.fileID
   },
@@ -72,7 +56,7 @@ Page({
     const cover = this.data.cover || ''
     wx.showLoading({ title: '保存中' })
     try {
-      await call('updateProject', { projectId: this.data.projectId, image: cover, intro: this.data.intro || '' })
+      await call('updateHomepage', { heroImage: cover, intro: this.data.intro || '' })
       if (old && old !== cover) await call('deleteProjectFile', { fileIds: [old] }).catch(() => {})
       this.setData({ _oldCover: '' })
       wx.showToast({ title: '已保存', icon: 'success' })

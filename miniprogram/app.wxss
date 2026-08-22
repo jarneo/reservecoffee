@@ -9,6 +9,7 @@ page {
   --brand: #7A5230;        /* 品牌色（仅点缀，不参与状态表达） */
   --ok: #1A1A1A;
   --warn: #8A6D3B;
+  --orange: #E8833A;       /* 仅用于标记「今天」 */
 
   background: var(--fill-2);
   color: var(--ink);
@@ -42,9 +43,11 @@ page {
   background: var(--ink); color: #fff;
   border-radius: 12rpx; padding: 18rpx 32rpx;
   font-size: 28rpx; border: 1rpx solid var(--ink);
+  width: auto !important; /* 强制覆盖 mp <button> 原生默认 width:100%，使其按内容自适应（与设计稿一致） */
 }
+button.btn { width: auto !important; } /* 提高特异性再保险一层，确保压过原生 button 默认样式 */
 .btn.ghost { background: #fff; color: var(--ink); }
-.btn.block { width: 100%; }
+.btn.block { width: 100% !important; } /* 整行按钮（创建/保存等）保持满宽，优先级高于上面的 auto */
 .btn[disabled] { opacity: .4; }
 .btn.sm { padding: 10rpx 20rpx; font-size: 24rpx; }
 .btn.ghost.danger { color: var(--ink-3); border-style: dashed; }

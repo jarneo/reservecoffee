@@ -55,10 +55,21 @@ exports.main = async (event) => {
     )
   }
 
+  // 解析评价头像 fileID → 临时 URL
+  const avatarIds = [...new Set(flat.map(r => r.avatar).filter(Boolean))]
+  let avatarMap = {}
+  if (avatarIds.length) {
+    try {
+      const ares = await cloud.getTempFileURL({ fileList: avatarIds })
+      ;(ares.fileList || []).forEach(f => { if (f.fileID) avatarMap[f.fileID] = f.tempFileURL })
+    } catch (e) { console.warn('[getMenu] avatar resolve failed:', e.message) }
+  }
+  const flatWithAvatar = flat.map(r => ({ ...r, avatarUrl: avatarMap[r.avatar] || '' }))
+
   // 关联菜品名称 + 回填到菜品对象
   const nameMap = {}
   products.forEach(p => { nameMap[p._id] = p.name })
-  const flatWithName = flat.map(r => ({ ...r, productName: nameMap[r.productId] || '' }))
+  const flatWithName = flatWithAvatar.map(r => ({ ...r, productName: nameMap[r.productId] || '' }))
   const byProduct = {}
   flatWithName.forEach(r => { (byProduct[r.productId] = byProduct[r.productId] || []).push(r) })
   const productsWithReviews = products.map(p => ({ ...p, reviews: byProduct[p._id] || [] }))

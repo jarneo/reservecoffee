@@ -8,7 +8,7 @@ Page({
     showForm: false, editingId: '',
     form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '' }
   },
-  onLoad() { this.guard(['owner']).then(r => { if (r) this.loadProjects() }) },
+  onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
   loadProjects() {
     call('listProjects').then(d => {
       const list = d.list || []

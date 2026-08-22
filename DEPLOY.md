@@ -1,50 +1,43 @@
 # 部署指南 · 二曜路8号咖啡和清酒 · 预约小程序（CloudBase）
 
-微信原生小程序 + 腾讯云开发 CloudBase 的可运行脚手架。本文覆盖三类部署前置：
+微信原生小程序 + 腾讯云开发 CloudBase。本文覆盖：云平台/AppID 准备、CloudBase MCP 配置、数据库初始化、云函数部署、前端上传、通知（订阅/服务号/短信）配置。
 
-1. **云平台（CloudBase）环境与微信小程序 AppID**
-2. **CloudBase MCP 配置**（让 WorkBuddy / IDE 帮你部署、建集合、发短信）
-3. **数据库初始化**（集合创建、权限、种子数据、短信配置）
-
-> 设计基线：`design/design-system.html`（v6.3 原型）、`design/DESIGN_SYSTEM.md` §13（短信）。
-> 架构契约：`C:\Users\Administrator\.workbuddy\plans\toasty-nebula-babbage.md`。
-> 代码：`miniprogram/`（前端）、`cloudfunctions/`（27 个云函数）。
+> 设计基线：`design/design-system.html`。通知细节见 `docs/服务通知实现与配置.md`。
+> 代码规模（实测，非旧文档的"27/44 函数"）：**云函数 55 个**，**数据库集合 10 个**，订阅/服务号模板 ID **已申请真实值并启用**。
 
 ---
 
-## 0. 前置清单（Checklist）
+## 0. 环境信息（实际）
 
-| 项 | 说明 | 获取位置 |
-|---|---|---|
-| 微信小程序 AppID | 真实 AppID（非 `touristappid`） | 微信公众平台 → 开发管理 → 开发设置 |
-| 微信开发者工具 | 导入项目并预览/上传 | https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html |
-| 腾讯云账号 + 实名 | 开通云开发 | https://console.cloud.tencent.com/ |
-| CloudBase 环境 ID | 形如 `reservecoffee-xxx` | 云开发控制台 → 环境 → 概览 |
-| （可选）CloudBase MCP | 让 AI 直接部署/建库 | 见 §2 |
-| （可选）短信签名 + 模板 | 短信到达能力 | 见 §7 |
+| 项 | 值 |
+|---|---|
+| CloudBase 环境 ID | `cloud1-d8g9mhgxm32d2eac6` |
+| 小程序 AppID | `wxb97578ed89c6e2c7` |
+| 服务号 AppID | `wx4d8d957ee8af6073` |
+| 小程序静态网站域名 | `cloud1-d8g9mhgxm32d2eac6-1468614423.tcloudbaseapp.com` |
+| 体验版 | 见 `deploy/version.txt`（由 `deploy/sync.js` 自增） |
 
 ---
 
 ## 1. 云平台（CloudBase）准备
 
-1. **开通云开发**：登录云开发控制台（与小程序 AppID 同主体）。新建环境，记录**环境 ID**。
-2. **环境套餐**：个人版（¥19.9/月）即可支撑本预约系统；上线后按资源点计量。
-3. **关联小程序**：在云开发控制台「设置 → 环境」中确认该环境已绑定你的小程序 AppID（微信云开发默认同主体自动关联）。
-4. **首次进入即店主**：用店主微信打开小程序管理端，首个进入者自动成为 `owner`（`_lib/ensureOwner`）。
+1. **开通云开发**：登录[云开发控制台](https://console.cloud.tencent.com/)，与小程序 AppID 同主体新建环境，记录环境 ID。
+2. **环境套餐**：个人版即可支撑本预约系统。
+3. **关联小程序**：云开发控制台「设置 → 环境」确认已绑定小程序 AppID（同主体自动关联）。
+4. **首次进入即店主**：店主微信打开小程序管理端，首个进入者自动成为 `owner`（`_lib.ensureOwner`）。
 
 ---
 
-## 2. 配置 CloudBase MCP
+## 2. 配置 CloudBase MCP（让 AI 部署/建库）
 
 > MCP 让 WorkBuddy / 主流 IDE 直接调用 CloudBase（建集合、部署云函数、发短信），免去手动控制台点击。
 
 ### 方式 A（推荐，在 WorkBuddy 内）
-- 当前连接器 `cloudbase` 为 **disconnected**。在工作区右侧「连接器」面板找到 **CloudBase（腾讯云 CloudBase）**，点击连接并授权登录腾讯云。
-- 连接成功后告诉我「已连接」，我即可用 MCP 工具：创建 7 个集合、逐个部署 27 个云函数、写入 `config_sms` 等。
+在工作区右侧「连接器」面板找到 **CloudBase（腾讯云 CloudBase）**，点击**连接**并授权登录腾讯云。连接后告诉我「已连接」。
 
-### 方式 B（手动 MCP 配置，适用于 Cursor / VS Code 等 IDE）
-在 IDE 的 MCP 配置（如 `mcp.json`）中加入：
+⚠️ **面板"已连接" ≠ 工具已注入会话**：若 `ToolSearch` 查不到 `mcp__cloudbase__*` 工具，直接用 `DeferExecuteTool` 调 `mcp__cloudbase__manageFunctions`（action: `createFunction`/`updateFunctionCode`/`invokeFunction`/`updateFunctionConfig`/`createFunctionTrigger`/`deleteFunction`）。仍不行则断开→重连并点「信任/授权」。
 
+### 方式 B（手动 MCP 配置，适用于 Cursor / VS Code）
 ```json
 {
   "mcpServers": {
@@ -52,115 +45,123 @@
       "command": "npx",
       "args": ["@cloudbase/cloudbase-mcp@latest"],
       "env": {
-        "CLOUDBASE_API_KEY": "<你的环境级 API Key>",
-        "CLOUDBASE_ENV_ID": "<你的环境 ID>"
+        "CLOUDBASE_API_KEY": "<环境级 API Key>",
+        "CLOUDBASE_ENV_ID": "<环境 ID>"
       }
     }
   }
 }
 ```
 
-- `CLOUDBASE_API_KEY`：CloudBase 控制台 → 环境设置 → API 密钥 创建（环境级，长期有效，建议用环境变量注入，勿硬编码）。
-- 不设密钥时，首次调用会走设备码 OAuth 登录引导你选环境。
-- 本地模式要求已装 Node.js 与 `npx`（本机 managed Node 22 可用）。
-
 ---
 
-## 3. 本地工程配置（两处占位需替换）
+## 3. 本地工程配置（两处占位）
 
-**① `miniprogram/app.js`** — 把 `ENV_ID` 换成你的环境 ID：
-
-```js
-const ENV_ID = 'your-env-id'   // ← 替换为 CloudBase 环境 ID
-```
-
-**② `project.config.json`** — 把 `appid` 换成真实 AppID（当前为 `touristappid`，只能预览、无法用云能力）：
-
-```json
-"appid": "wxYourRealAppId"
-```
+**① `miniprogram/app.js`** — `ENV_ID` 已改为 `cloud1-d8g9mhgxm32d2eac6`。
+**② `project.config.json`** — `appid` 已改为 `wxb97578ed89c6e2c7`（非 `touristappid`）。
 
 微信开发者工具「导入项目」：目录选仓库根，`miniprogramRoot` 已指向 `miniprogram/`，`cloudfunctionRoot` 已指向 `cloudfunctions/`。
 
 ---
 
-## 4. 数据库初始化（云开发 NoSQL 集合）
-
-在云开发控制台「数据库」或经 MCP 创建以下集合（权限规则统一：**读 = 所有用户；写 = 仅云函数/后台**）：
+## 4. 数据库初始化（10 个集合）
 
 | 集合 | 说明 |
 |---|---|
-| `config_homepage` | 首页配置，单文档 `_id: homepage`（logo/头图/简介） |
-| `projects` | 预约项目（含 `openDays`/`advanceDays`/`useSlotTemplate`/`smsEnabled`/`smsNotice` 等） |
-| `schedules` | 按项目+天的场次（人数上限/已约/暂停） |
-| `reservations` | 预约记录（双轴 `status` + `review`） |
-| `admins` | 微信授权管理员（owner / manager） |
+| `config_homepage` | 首页配置，`_id: homepage` |
+| `projects` | 预约项目（`openDays`/`advanceDays`/`useSlotTemplate`/`paused`/`cutoff`/`needReview`/`mpNotify`/`smsEnabled`/`smsNotice`） |
+| `schedules` | 按项目+天的场次（`sessions[].capacity/booked/paused`、`closed`） |
+| `reservations` | 预约记录（双轴 `status`+`review`，`reminded`/`ended` 标记） |
+| `admins` | 管理员（`owner`/`manager`） |
+| `users` | 顾客资料（小程序 openid 主键，`name`/`phone`/`unionid`/`mpOpenid`） |
 | `stats_daily` | 访问统计（按日） |
-| `config_sms` | 短信全局配置（单文档 `_id:'sms'`，见 §7） |
+| `products` | 菜单/菜品（`status`/`sort`/`image`） |
+| `reviews` | 顾客评价（`productId`/`status`/`top`/`avatar`） |
+| `config` | 全局配置（子文档 `store`/`sms`/`subscribe`/`mp`） |
 
-> 集合权限务必设为「仅创建者可读写 / 所有用户可读，仅后台可写」的组合；本项目所有写操作都经云函数，前端**不直接写库**，因此推荐 `读=所有用户、写=仅管理端`（云函数使用管理员态写入）。
+权限统一：**读 = 所有用户；写 = 仅云函数（后台）**。
 
-**写入种子数据**：部署完成后调用 `seedData` 云函数（owner 身份），自动写入首页文案 + 3 个种子项目（法兰绒深烘咖啡 / 清酒品鉴 / 法兰绒研习社）。也可在控制台手动给 `config_homepage` 写 `_id:'homepage'` 文档。
+**种子数据**：部署后调 `seedData`（owner 身份）写入首页文案 + 3 个种子项目。也可控制台手动给 `config_homepage` 写 `_id:'homepage'`。
 
 ---
 
 ## 5. 云函数部署
 
-`cloudfunctions/` 下共 **27 个函数**，每个目录含 `index.js` + `lib.js` + `sms.js`（用到短信的 3 个）+ `package.json`，运行时 **Nodejs18**（云开发侧选择 Node 18）。
+**55 个函数**（见 README 列表）。每个目录含 `index.js` + `lib.js` + `package.json`，运行时 **Nodejs18.15**。
 
-**顾客端（5）**：`getHomepage` `getProject` `createReservation` `listMyReservations` `cancelReservation`
-**管理端（22）**：`getRole` `updateHomepage` `listProjects` `createProject` `updateProject` `publishProject` `getSchedule` `setDaySessions` `setOpenDays` `copyDaySessions` `setSession` `listSessionReservations` `reviewReservation` `markCompleted` `listAdmins` `addAdmin` `removeAdmin` `getVisitStats` `exportData` `listReviews` `seedData` `sendSms`
+部署方式：
+- **CloudBase MCP**：`updateFunctionCode`（存量）/ `createFunction`（新建），`functionRootPath` 传 `cloudfunctions` 父目录，勿传多余顶层字段。
+- **CLI**：`tcb fn deploy --all`（本环境 tcb CLI 不可靠，优先用 MCP）。
+- `wx-server-sdk` 部署时按 `package.json` 自动安装。**新建函数必须带 `package.json` 声明 `wx-server-sdk ^2.6.3`**，否则云端报 `Cannot find module`。
 
-部署方式（任选）：
-- **控制台 / MCP**：逐个右键「上传并部署：云端安装依赖」。
-- **CLI**：`tcb fn deploy --all`（需先配置 CLI 登录）。
-- `wx-server-sdk` 与 `tencentcloud-sdk-nodejs-sms`（仅 3 个短信函数）会在部署时按 `package.json` 自动安装。
-
----
-
-## 6. 短信服务开通（如启用短信推送）
-
-短信是**独立产品**，需额外在腾讯云「短信」控制台完成：
-
-1. **资质与上图**：完成短信签名（如「二曜路8号咖啡」）实名报备。
-2. **申请通知模板**：模板类型选「通知短信」，正文用变量占位，例如：
-   > `【签名】{1}，您预约的{2}已{3}。预约日期{4}，场次{5}。{6}`
-   变量顺序须与代码一致：`{1}称呼 {2}项目 {3}状态 {4}日期 {5}场次 {6}注意事项`。模板审批通过后拿到 **TemplateId**。
-3. **拿到 SmsSdkAppId / SignName / TemplateId**。
-4. **配置凭证**，二选一：
-   - **环境变量**（推荐，更安全）：在 3 个短信函数（`sendSms`/`createReservation`/`reviewReservation`）的「云函数配置 → 环境变量」设置 `SMS_SECRET_ID`、`SMS_SECRET_KEY`、`SMS_SDK_APP_ID`、`SMS_SIGN_NAME`、`SMS_TEMPLATE_ID`、`SMS_REGION`。
-   - **数据库**：向 `config_sms` 写入 `{ _id:'sms', smsSdkAppId, signName, templateId, secretId, secretKey, region }`。
-5. **项目级开关**：管理端「项目配置 → 全局设定 → 短信推送」逐项目开启并填写注意事项（≤30 字）。未开启则不发。
-
-> 合规提醒：正文模板固定、变量填充是监管要求；每项目的「自定义内容」只能落在变量 `{6}`（注意事项），不可改写模板正文。
+> **`createFunction` 后立即 `updateFunctionCode` 可能不替换代码**：workaround = `deleteFunction` → 重新 `createFunction`。
 
 ---
 
-## 7. 微信订阅消息模板（可选，非短信）
+## 6. 前端上传（体验版）
 
-`createReservation`/`reviewReservation`/`cancelReservation` 已预留 `cloud.openapi.subscribeMessage.send` 调用点（`_lib` 常量 `TPL`）。小程序后台申请到真实模板 ID 后，替换占位 `TPL_ID_*` 即可；未申请时调用失败**不阻断**主流程。
+`deploy/sync.js`（miniprogram-ci）自动升版本 + 上传体验版：
+```bash
+# 在 managed Node 环境执行（miniprogram-ci 装到 workspace node_modules）
+NODE_PATH=~/.workbuddy/binaries/node/workspace/node_modules \
+  /Users/mac/.workbuddy/binaries/node/versions/22.22.2/bin/node deploy/sync.js
+```
+私钥 `deploy/private.wxb97578ed89c6e2c7.key`。受微信「小程序代码上传 IP 白名单」约束须设「允许所有 IP」。
+
+---
+
+## 7. 通知配置
+
+### 7.1 微信订阅消息（已启用真实模板 ID）
+`createReservation`/`reviewReservation`/`cancelReservation` 已接入 `cloud.openapi.subscribeMessage.send`（`_lib.TPL`，7 个真实 ID）。顾客端 `confirm` 页 `submit` 内已 `requestSubscribe` 请求授权。无需额外平台配置。
+
+### 7.2 服务号模板消息（⚠️ 当前待修复，发送能力已就绪但缺目标 openid）
+**已具备的能力**：
+- 4 个服务号模板 ID 已填（`_lib.MP_TPL`）。
+- 后端 `create`/`cancel`/`review` 已接入 `cloud.openapi.templateMessage.send`，凭据由**云环境绑定服务号**托管——**代码不需要 AppSecret**。
+- 三个函数 `config.json` 已声明 `permissions.openapi:["subscribeMessage.send","templateMessage.send"]`（否则报 -604101；权限缓存 ~10 分钟）。
+
+**关键认知**：
+- 服务号模板消息的 `touser` 必须是**用户在服务号下的 openid**（`users.mpOpenid`），≠ 小程序 openid，≠ unionid。
+- 你已在**微信开放平台**绑定服务号+小程序（共享 unionid），这解决了"两边身份能对应"，但**不会自动把服务号 openid 灌进 `users.mpOpenid`**。
+- 当前"采集服务号 openid"的链路有缺陷（见下方「待修复」），因此**下单不报错，但 `sendMp` 因找不到 mpOpenid 自动跳过，用户收不到服务号消息**。
+
+**待修复（代码层，需连 CloudBase 部署）**：
+- `cloudfunctions/mpAuth/index.js` 方案自相矛盾（前端 `mp-auth.html`+`mpAuthWeb` 是 postMessage+Event 调用，后端却写成 HTTP 云函数），且残留 `cloud.callContainer` 死代码会直接崩溃。需重写为纯 Event 函数（`exports.main(event)` 读 `event.code/event.openid`），或用 unionid 关联替代网页授权。
+- 顾客端缺少"开启服务号通知"入口（当前仅管理员 `notifyConfig` 页有按钮）；需增加顾客端授权引导。
+
+**你需完成的平台配置（AI 无法代操作微信后台）**：
+1. 确认服务号已**微信认证**（未认证不能发模板消息/网页授权）。
+2. 若走网页授权路线：公众平台 → **设置与开发 → 公众号设置 → 功能设置 → 网页授权域名**，填 `cloud1-d8g9mhgxm32d2eac6-1468614423.tcloudbaseapp.com`（不带 `https://`），并上传验证文件到该静态网站根（用 CloudBase 静态网站托管上传）。同时小程序后台 → **开发管理 → 开发设置 → 业务域名** 加同域名。
+3. 若服务号 openid 走环境变量（网页授权换 openid 需要 `mpAuth` 的 `MP_APP_SECRET`）：提供值后由 AI 写进 `mpAuth` 环境变量。
+
+> 注：发模板消息本身**不需要**公众平台「服务器配置」/ Token。此前的"消息推送/服务器配置"路径描述已过时，以本段为准。
+
+### 7.3 短信（独立产品）
+1. 腾讯云短信控制台完成签名（如「二曜路8号咖啡」）+ 通知模板审批。
+2. 拿到 SmsSdkAppId / SignName / TemplateId。
+3. 配置：环境变量（`SMS_SECRET_ID`/`SMS_SECRET_KEY`/`SMS_SDK_APP_ID`/`SMS_SIGN_NAME`/`SMS_TEMPLATE_ID`/`SMS_REGION`）或 `config_sms` 集合（`_id:sms`）。
+4. 管理端「项目配置 → 全局设定 → 短信推送」逐项目开启并填注意事项（≤30 字）。
 
 ---
 
 ## 8. 验证清单（冒烟测试）
 
-- [ ] 微信开发者工具用真实 AppID 打开，云能力初始化无报错。
-- [ ] 店主微信首次进入管理端，`admins` 出现一条 `owner` 记录。
-- [ ] 调用 `seedData` 后，首页出现 3 个项目；`projects` 含 `smsEnabled/smsNotice` 字段。
-- [ ] 顾客端：选日期→选场次→填手机号→提交，收到「预约成功」或「待审核」提示；`reservations` 新增一条。
-- [ ] 管理端：项目配置可批量开放/关闭日期、增删场次、改名额、开关短信。
-- [ ] 短信：开启项目短信并配置 `config_sms` 后，成功预约的手机号收到短信（含日期/场次/注意事项）。
-- [ ] 审核流（需审项目）：owner 在「审核」通过 → 顾客「我的预约」变「预约成功」并收到短信。
+- [ ] 真实 AppID 打开，云能力初始化无报错。
+- [ ] 店主微信首次进管理端，`admins` 出现一条 `owner`。
+- [ ] `seedData` 后首页出现 3 个项目。
+- [ ] 顾客端：选日期→选场次→填手机号→提交，收到「预约成功」；`reservations` 新增一条。
+- [ ] 订阅消息：下单后收到微信订阅通知（需用户授权）。
+- [ ] 服务号消息：修复 openid 采集后，关注服务号的用户下单收到服务号通知（待修复项）。
+- [ ] 短信：开启项目短信并配置 `config_sms` 后，成功预约的手机号收到短信。
+- [ ] 审核流（需审项目）：owner 审核通过 → 顾客「我的预约」变成功并收到通知。
 
 ---
 
 ## 9. 回退与常见问题
 
-- **回退原型**：本仓库 git 强版本锁，需退回 v6.3 原型执行 `git reset --hard e2e068c`（基线）；当前 SMS 改动在正常里程碑提交之上。
-- **云函数部署失败**：确认运行时选 Node 18、依赖安装成功；短信函数需 `tencentcloud-sdk-nodejs-sms`。
-- **短信发不出**：检查签名/模板是否审批通过、`TemplateId` 与变量顺序是否一致、凭证环境变量是否生效、手机号格式是否为 11 位大陆号码。
-- **环境 ID 不匹配**：`app.js` 的 `ENV_ID` 与微信开发者工具所关联云环境须一致。
-
----
-
-_文档版本：v6.3 + SMS · 配套 `design-system.html` 原型与架构计划文件。_
+- **云函数部署失败**：确认运行时 Node 18、依赖安装成功；新建函数须 `package.json` 声明 `wx-server-sdk`。
+- **短信发不出**：签名/模板是否审批、TemplateId 与变量顺序、`config_sms`/环境变量是否生效、手机号格式。
+- **服务号 -604101**：`config.json` 未声明 openapi 权限，或权限缓存未生效（等 ~10 分钟）。
+- **服务号收不到**：`users.mpOpenid` 为空（采集链路缺陷，见 7.2 待修复）；或用户未关注服务号。
+- **环境 ID 不匹配**：`app.js` 的 `ENV_ID` 与开发者工具关联云环境须一致。

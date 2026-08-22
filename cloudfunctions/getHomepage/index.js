@@ -70,6 +70,10 @@ exports.main = async () => {
     }
   }
 
+  // 解析首页主图（店铺主图）为临时 URL，供顾客首页头图展示
+  if (homepage.heroImage) {
+    try { homepage.heroImageUrl = await resolveImage(homepage.heroImage) } catch (e) { homepage.heroImageUrl = '' }
+  }
   console.log('[getHomepage] openid=', OPENID, 'projects=', projects.length, 'products=', products.length)
   return ok({ homepage, projects, products })
 }

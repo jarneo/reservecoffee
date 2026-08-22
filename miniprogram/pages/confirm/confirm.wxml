@@ -6,11 +6,17 @@
   </view>
 
   <view class="card">
-    <view class="field"><view class="label">称呼</view><input placeholder="如何称呼您" value="{{name}}" bindinput="onName"/></view>
-    <view class="field"><view class="label">手机号（必填）</view><input type="number" placeholder="用于通知与到店核验" value="{{phone}}" bindinput="onPhone"/></view>
+    <view class="field"><view class="label">称呼</view><input type="nickname" placeholder="如何称呼您（可一键填入微信昵称）" value="{{name}}" bindinput="onName"/></view>
+    <view class="field"><view class="label">手机号（必填）</view>
+      <view class="phone-row">
+        <input class="phone-input" type="number" placeholder="用于通知与到店核验" value="{{phone}}" bindinput="onPhone"/>
+        <button class="btn ghost sm get-phone" open-type="getPhoneNumber" bindgetphonenumber="onGetPhone">获取手机号</button>
+      </view>
+    </view>
     <view class="field row between">
       <view class="label">人数</view>
       <view class="stepper"><button bindtap="step" data-d="-1">−</button><view class="v">{{partySize}}</view><button bindtap="step" data-d="1">+</button></view>
+      <view class="sm muted" style="margin-top:6rpx">单次最多 {{maxParty}} 人</view>
     </view>
     <view class="field"><view class="label">备注（选填）</view><textarea placeholder="如有特殊需求请告知店家" value="{{note}}" bindinput="onNote"/></view>
   </view>

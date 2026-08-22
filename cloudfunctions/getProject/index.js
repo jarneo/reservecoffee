@@ -42,6 +42,7 @@ exports.main = async (event) => {
 
   const schedules = (sch.data || []).map(s => ({
     date: s.date,
+    closed: !!s.closed,
     sessions: (s.sessions || []).map(x => ({
       id: x.id,
       start: x.start,
@@ -58,6 +59,7 @@ exports.main = async (event) => {
   const project = {
     _id: p._id,
     name: p.name,
+    paused: !!p.paused,
     icon: p.icon,
     image: p.image,
     imageUrl: await resolveImage(p.image),
@@ -66,6 +68,9 @@ exports.main = async (event) => {
     needReview: !!p.needReview,
     dailyLimit: p.dailyLimit || 1,
     advanceDays: p.advanceDays || 7,
+    cutoff: p.cutoff || null,
+    maxParty: p.maxParty || 2,
+    subscribeNotify: !!p.subscribeNotify,
     openDays: p.openDays || [],
     useSlotTemplate: !!p.useSlotTemplate,
     slotTemplate: p.slotTemplate || []

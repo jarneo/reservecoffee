@@ -76,8 +76,10 @@ exports.main = async (event) => {
     useSlotTemplate: !!p.useSlotTemplate,
     slotTemplate: p.slotTemplate || [],
     smsEnabled: !!p.smsEnabled,
-    smsNotice: p.smsNotice || '',
-    cutoff: p.cutoff || { type: '当日', time: '18:00' },
+    cutoff: p.cutoff || { mode: 'before', minutes: 30 },
+    maxParty: p.maxParty || 2,
+    subscribeNotify: !!p.subscribeNotify,
+    mpNotify: !!p.mpNotify,
     fields: p.fields || ['name', 'phone']
   }
 

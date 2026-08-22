@@ -1,1 +1,6 @@
 .field.row { display:flex; align-items:center; justify-content:space-between; }
+
+/* 手机号：输入框 + 微信一键获取按钮 */
+.phone-row { display:flex; align-items:center; gap:16rpx; }
+.phone-row .phone-input { flex:1; }
+.phone-row .get-phone { margin:0; flex:none; font-size:24rpx; padding:0 22rpx; height:64rpx; line-height:64rpx; }

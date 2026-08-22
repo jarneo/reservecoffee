@@ -1,3 +1,6 @@
 .scard { background:#fff; border:1rpx solid var(--line); border-radius:12rpx; padding:18rpx; margin-bottom:14rpx; }
+.scard-row { display:flex; flex-direction:row; align-items:center; justify-content:space-between; }
+.scard-time { flex:1; min-width:0; }
+.scard-row .badge { flex-shrink:0; margin-left:16rpx; }
 .scard .actions { display:flex; gap:10rpx; margin-top:14rpx; flex-wrap:wrap; }
 .scard .actions .btn { margin:0; }

@@ -55,6 +55,7 @@
   .badge.shelf{color:var(--ink-3);border-style:dashed}
   .badge.review{color:var(--ink-2)}
   .badge.done{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+  .badge.expired{border-style:dashed;color:var(--ink-3)}
   /* chip */
   .chip{padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;cursor:pointer}
   .chip.on{border-color:var(--ink);font-weight:600}
@@ -93,6 +94,37 @@
   .legend .dot.open{background:#fff;border:2px solid var(--ink);margin-left:10px}
   .legend .dot.gray{background:var(--fill);border:2px solid var(--line);margin-left:10px}
   .legend .dot.today{background:#fff;border:2px solid var(--orange);margin-left:10px}
+  /* 顾客端：横向日期条（替代月历） */
+  .datestrip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch}
+  .datestrip::-webkit-scrollbar{height:0}
+  .dchip{flex:none;width:56px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;cursor:pointer;position:relative}
+  .dchip .wk{font-size:11px;color:var(--ink-3);line-height:1}
+  .dchip .dd{font-size:17px;font-weight:600;margin-top:5px;line-height:1.1}
+  .dchip .mo{font-size:10px;color:var(--ink-3);margin-top:2px;line-height:1}
+  .dchip.off{background:var(--fill);color:var(--ink-3);cursor:default}
+  .dchip.off .wk,.dchip.off .dd,.dchip.off .mo{color:var(--ink-3)}
+  .dchip.open{border-color:var(--ink);color:var(--ink)}
+  .dchip.open .wk{color:var(--ink-2)}
+  .dchip.today:not(.on){box-shadow:0 0 0 2px var(--orange);border-color:transparent}
+  .dchip.today:not(.on) .wk{color:var(--orange);font-weight:600}
+  .dchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .dchip.on .wk,.dchip.on .dd,.dchip.on .mo{color:#fff}
+  /* 日期整体状态标签：暂停 / 满员 / 已过期（与真机 booking 一致） */
+  .dchip.st-paused{border-color:var(--ink-3)}
+  .dchip.st-full{border-color:var(--ink-3)}
+  .dchip.st-expired{border-color:#8a8f99}
+  .chip-tag{margin-top:6rpx;font-size:10px;line-height:1;padding:3px 8px;border-radius:8px}
+  .chip-tag.paused{color:#fff;background:var(--ink-3)}
+  .chip-tag.full{color:#fff;background:#b06a2c}
+  .chip-tag.expired{color:#fff;background:#8a8f99}
+  .card.dis{opacity:.45}
+  /* 横向日期条：翻页箭头（固定两周，箭头移窗） */
+  .datestrip-wrap{display:flex;align-items:center;gap:6px}
+  .datestrip{flex:1;margin:0 2px}
+  .dnav{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink-2);
+        display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;user-select:none}
+  .dnav:active{border-color:var(--ink)}
+  .dnav.disabled{opacity:.25;cursor:not-allowed;pointer-events:none}
   /* 每日场次块 */
   .dayblock{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff}
   .dayblock .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px}
@@ -102,6 +134,7 @@
   .sess .sc{font-size:11px;color:var(--ink-2)}
   .ops{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
   .ops .btn{margin:0}
+  .cfgline{display:flex;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
   .note{color:var(--ink-3);text-align:center;padding:20px;font-size:12px}
   .empty-sess{color:var(--ink-3);font-size:12px;padding:8px 0}
   /* 底部弹出层（sheet） */
@@ -122,6 +155,32 @@
   .sheet .ck{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
   .sheet .ck:last-child{border-bottom:none}
   .sheet .ck .req{font-size:10px;color:var(--ink-3);margin-left:6px}
+  /* 本场预约人弹层（与小程序 admin/sessions 页弹层一致） */
+  .sheet-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+  .sheet-head .x{font-size:20px;color:var(--ink-3);line-height:1;cursor:pointer;padding:0 4px}
+  .pav{flex:none;width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  .person{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px;cursor:pointer}
+  .person:last-child{margin-bottom:0}
+  .person:active{background:var(--fill)}
+  .pinfo{flex:1;min-width:0}
+  .pinfo .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .pinfo .nm{font-size:14px;font-weight:600}
+  .pinfo .nm .pp{color:var(--ink-3);font-weight:500;font-size:12px;margin-left:4px}
+  .tel{font-size:13px;color:var(--ink);font-weight:500;margin-top:5px}
+  .ph-btn{flex:none;color:#fff;background:var(--brand);font-size:12px;padding:6px 13px;border-radius:999px;cursor:pointer;font-weight:600;border:none;line-height:1}
+  .ph-btn:active{opacity:.85}
+  .ph-btn.disabled{background:var(--fill);color:var(--ink-3);cursor:not-allowed}
+  /* 本场预约人弹层内审核按钮（对应小程序 sessions 页 review-row） */
+  .review-row{display:flex;gap:8px;margin-top:10px}
+  .rev-btn{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px 0;border-radius:10px;cursor:pointer;line-height:1}
+  .rev-btn.approve{background:#07c160;color:#fff}
+  .rev-btn.reject{background:#fff;color:#e34d59;border:1px solid #e34d59}
+  .rev-btn:active{opacity:.85}
+  /* 详情层（3 列网格） */
+  .drow{display:flex;gap:12px;margin-top:14px}
+  .dcell{flex:1}
+  .dcell .xs{margin-bottom:4px}
+  .dval{font-size:14px;color:var(--ink);font-weight:500}
   .time2{display:flex;align-items:center;gap:8px}
   .time2 input{font-size:14px;padding:8px;border:1px solid var(--line);border-radius:8px;width:90px;text-align:center;font-family:inherit;outline:none}
   /* 屏幕中央弹层（modal，用于添加场次） */
@@ -150,6 +209,10 @@
   .tab{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:12px}
   .tab .tb{flex:1;text-align:center;padding:9px;font-size:12px;cursor:pointer}
   .tab .tb.on{background:var(--ink);color:#fff}
+  /* 底部 tabBar（同步自真机 app.json tabBar：首页 / 我的预约） */
+  .bottom-nav{display:flex;border-top:1px solid var(--line);background:#fff;flex:none}
+  .bottom-nav .bn-item{flex:1;text-align:center;padding:12px 0 10px;font-size:13px;color:var(--ink-3);cursor:pointer}
+  .bottom-nav .bn-item.on{color:var(--ink);font-weight:600}
   .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
   .kv:last-child{border-bottom:none}
   .center{text-align:center}
@@ -180,10 +243,7 @@
   .fld:focus{border-color:var(--ink)}
   .verify{display:flex;align-items:center;gap:8px;margin-top:6px}
   .verify .ok{color:var(--ink);font-size:11px;font-weight:600}
-  .person{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
-  .person .nm{font-size:14px;font-weight:600}
-  .person .ln{font-size:12px;color:var(--ink-2);margin-top:3px}
-  .person .ph{font-size:12px;color:var(--ink);margin-top:3px;font-weight:600}
+  /* .person / .pav / .pinfo / .tel / .ph-btn 等弹层样式见上方「本场预约人弹层」区块（已对齐小程序 sessions 页） */
   .detail .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
   .detail .kv .k{color:var(--ink-2)}
   .toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
@@ -239,6 +299,10 @@
     <div class="rt" id="navRight"></div>
   </div>
   <div class="screen" id="screen"></div>
+  <div class="bottom-nav" id="bottomNav">
+    <div class="bn-item on" data-t="home" onclick="cHome()">首页</div>
+    <div class="bn-item" data-t="mine" onclick="cMine()">我的预约</div>
+  </div>
 </div>
 
 <!-- 底部弹出层 -->
@@ -259,6 +323,32 @@ const pad = n => String(n).padStart(2,'0');
 const ymd = (y,m,d)=>`${y}-${pad(m)}-${pad(d)}`;
 const TODAY = ymd(Y,M,today.getDate());
 
+/* ===================== 预约截止规则（与真机 util.js / projectConfig 一致） ===================== */
+// 归一化截止规则为新模型 { mode:'before'|'after', minutes }，兼容旧 {type:'场次前'|'当日',hours|time}
+function normCutoff(c) {
+  if (c && (c.mode === 'before' || c.mode === 'after') && Number(c.minutes) > 0)
+    return { mode: c.mode, minutes: Math.min(1440, Math.max(1, Number(c.minutes))) }
+  if (c && c.type === '场次前' && Number(c.hours) > 0)
+    return { mode: 'before', minutes: Math.min(1440, Math.max(1, Math.round(Number(c.hours) * 60))) }
+  return { mode: 'before', minutes: 30 }
+}
+function cutoffText(c) {
+  const n = normCutoff(c);
+  return (n.mode === 'before' ? '场次开始前 ' : '场次开始后 ') + n.minutes + ' 分钟';
+}
+// 某场次是否已超过预约截止（无规则/非法则视为不过期，避免旧项目突然全过期）——与真机 util.js 逐字一致
+function parseHm(hm) { const [h, m] = hm.split(':').map(Number); return h * 60 + m; }
+function isSessionExpired(dateStr, startStr, cutoff) {
+  if (!cutoff || (cutoff.mode !== 'before' && cutoff.mode !== 'after') || !(Number(cutoff.minutes) > 0)) return false;
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const base = new Date(y, mo - 1, d);
+  const mins = parseHm(startStr);
+  const deadline = new Date(base); deadline.setHours(0, 0, 0, 0); deadline.setMinutes(mins);
+  if (cutoff.mode === 'before') deadline.setMinutes(deadline.getMinutes() - Number(cutoff.minutes));
+  else deadline.setMinutes(deadline.getMinutes() + Number(cutoff.minutes));
+  return new Date().getTime() >= deadline.getTime();
+}
+
 const state = {
   role:'customer',         // customer | owner | manager
   project:null,
@@ -267,6 +357,8 @@ const state = {
   cust:null,              // 顾客资料 {nick, avatar}
   bookingDay:null,
   bookingSession:null,
+  dateAnchor:null,        // 顾客端日期条翻页锚点（首格日期）
+  _bookingPid:null,       // 当前预约项目（用于区分是否切换项目，避免翻页时重置锚点）
   party:2,
   myResv:[
     {project:'法兰绒深烘咖啡预约',date:ymd(Y,M,18),time:'10:00–11:30',party:2,status:'ok'},
@@ -276,30 +368,32 @@ const state = {
 
 const projects = [
   { id:'p1', name:'法兰绒深烘咖啡预约', published:true, paused:false, deleted:false,
-    openDays:[ymd(Y,M,8),ymd(Y,M,9),ymd(Y,M,10),ymd(Y,M,15),ymd(Y,M,16),ymd(Y,M,18)],
+    openDays:[ymd(Y,M,8),ymd(Y,M,9),ymd(Y,M,10),ymd(Y,M,15),ymd(Y,M,16),ymd(Y,M,17),ymd(Y,M,18)],
     sessions:{
       [ymd(Y,M,8)]:[{start:'10:00',end:'11:30',max:8},{start:'14:00',end:'15:30',max:8}],
       [ymd(Y,M,9)]:[{start:'10:00',end:'11:30',max:8}],
       [ymd(Y,M,15)]:[{start:'10:00',end:'11:30',max:8,booked:3,status:'open'},{start:'14:00',end:'15:30',max:8,booked:8,status:'paused'}],
+      [ymd(Y,M,17)]:[{start:'10:00',end:'11:30',max:8},{start:'19:30',end:'21:00',max:8}],
       [ymd(Y,M,18)]:[{start:'10:00',end:'11:30',max:8}]
     },
     introImages:[{url:"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='192'><rect width='300' height='192' fill='%23FAFAFA'/><rect x='6' y='6' width='288' height='180' fill='none' stroke='%237A5230' stroke-dasharray='6 5' rx='12'/><text x='150' y='92' font-size='20' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>预约须知</text><text x='150' y='118' font-size='12' fill='%23999' text-anchor='middle' font-family='sans-serif'>请准时到店 · 提前取消</text></svg>", caption:'预约须知：请准时到店，如需取消请提前在「我的预约」操作', sort:0}],
     image:"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'><rect width='400' height='300' fill='%23EDE6DD'/><text x='200' y='145' font-size='20' fill='%237A5230' text-anchor='middle' font-family='sans-serif'>店铺实景 / 菜单主图</text><text x='200' y='172' font-size='13' fill='%23999' text-anchor='middle' font-family='sans-serif'>（演示图，管理端可替换）</text></svg>",
     intro:'预约制咖啡空间 · 法兰绒滴滤。我们只做预约制手冲，选用深烘法兰绒滴滤，安静的空间适合慢享一杯。请按预约时间到场。',
-    g:{ needReview:true, paused:false, smsEnabled:true, smsNotice:'到店请报预约手机号',
+    g:{ needReview:true, paused:false, smsEnabled:true,
+        maxParty:2, subscribeNotify:true,
         limit:{period:'每天',count:2,adminFree:true},
         open:{type:'提前天数',adv:3},
-        cutoff:{type:'场次前',hours:2},
+        cutoff:{mode:'before',minutes:120},
         fields:['name','phone','wechat'] }
   },
   { id:'p2', name:'手冲单品咖啡预约', published:false, paused:false, deleted:false,
     openDays:[ymd(Y,M,12),ymd(Y,M,13)], sessions:{}, introImages:[],
-    g:{needReview:false,paused:false,smsEnabled:false,smsNotice:'',limit:{period:'每天',count:1,adminFree:true},
-       open:{type:'提前天数',adv:1},cutoff:{type:'当日',time:'18:00'},fields:['name','phone']} },
+    g:{needReview:false,paused:false,smsEnabled:false,maxParty:2,subscribeNotify:true,limit:{period:'每天',count:1,adminFree:true},
+       open:{type:'提前天数',adv:1},cutoff:{mode:'before',minutes:120},fields:['name','phone']} },
   { id:'p3', name:'周末清酒品鉴', published:true, paused:true, deleted:false,
     openDays:[ymd(Y,M,20),ymd(Y,M,15)], sessions:{[ymd(Y,M,15)]:[{start:'19:30',end:'21:00',max:12,booked:5,status:'open'}]}, introImages:[],
-    g:{needReview:true,paused:true,smsEnabled:false,smsNotice:'',limit:{period:'每周',count:3,adminFree:true},
-       open:{type:'提前天数',adv:5},cutoff:{type:'场次前',hours:4},fields:['name','phone','wechat']} }
+    g:{needReview:true,paused:true,smsEnabled:false,maxParty:2,subscribeNotify:false,limit:{period:'每周',count:3,adminFree:true},
+       open:{type:'提前天数',adv:5},cutoff:{mode:'before',minutes:240},fields:['name','phone','wechat']} }
 ];
 
 const templates = [
@@ -335,14 +429,15 @@ const visitors = [ // 最近访问者（一键授权数据源）
   {openid:'oX-visitor-bb22', at:'2分钟前'}
 ];
 const admins = [
-  {openid:'o4VIyxnS7Td7zUC1-O3cz9sSUKFU', role:'owner', note:'店主本人'},
-  {openid:'oX-mgr-3b7c', role:'manager', note:'店长'}
+  {openid:'o4VIyxnS7Td7zUC1-O3cz9sSUKFU', role:'owner', nickname:'老板', note:'店主本人'},
+  {openid:'oX-mgr-3b7c', role:'manager', nickname:'店长老王', note:'店长'}
 ];
 /* 普通管理员被授权的项目范围（演示用）；超级管理员看全部 */
 const mgrProjects = ['p1','p3'];
 
 /* ===================== 路由 ===================== */
 const stack = [];
+let viewKind = 'landing';   // 'landing' | 'customer' | 'admin' —— 控制底部 tabBar 显隐
 function nav(html, title, right){ stack.push({html,title,right}); render(html,title,right); }
 function navBack(){ if(stack.length>1){ stack.pop(); const prev=stack[stack.length-1]; render(prev.html,prev.title,prev.right);} else { render(stack[0].html,stack[0].title,stack[0].right);} }
 function render(html,title,right){
@@ -350,6 +445,9 @@ function render(html,title,right){
   document.getElementById('navTitle').textContent = title||'';
   document.getElementById('navRight').innerHTML = right||'';
   document.getElementById('screen').scrollTop = 0;
+  const bn=document.getElementById('bottomNav');
+  if(bn){ const show = viewKind==='customer'; bn.style.display = show?'flex':'none';
+    if(show){ bn.querySelectorAll('.bn-item').forEach(el=>el.classList.toggle('on', el.dataset.t===(title==='我的预约'?'mine':'home'))); } }
   if(stack.length){ const t=stack[stack.length-1]; t.html=html; t.title=title; t.right=right; }
 }
 
@@ -366,6 +464,7 @@ function toast(m){ const o=document.getElementById('toast'); o.textContent=m; o.
 
 /* ===================== 入口：角色选择 ===================== */
 function landing(){
+  viewKind='landing';
   const html = `
     <div class="hero">
       <div class="img"><div class="logo">二曜路8号</div><div class="tag">SLOW COFFEE · 预约制</div></div>
@@ -389,6 +488,7 @@ function enter(role){
 
 /* ===================== 顾客端 ===================== */
 function cHome(){
+  viewKind='customer';
   const cards = projects.filter(p=>p.published && !p.paused).map(p=>`
     <div class="card" onclick="cBooking('${p.id}')">
       <div class="row between"><div class="row"><span class="brand-dot"></span><span class="bold">${p.name}</span></div></div>
@@ -444,29 +544,96 @@ function saveLogin(){
 }
 function cBooking(pid){
   const p=projects.find(x=>x.id===pid);
-  const base=new Date(Y,M-1,1);
-  const days=[]; for(let i=1;i<=new Date(Y,M,0).getDate();i++) days.push(ymd(Y,M,i));
-  const maxDate=new Date(TODAY); maxDate.setDate(maxDate.getDate()+p.g.open.adv);
-  const dayBar=days.map(d=>{
-    const open=p.openDays.includes(d) && d<=ymd(maxDate.getFullYear(),maxDate.getMonth()+1,maxDate.getDate());
-    if(open) return `<div class="cell open ${state.bookingDay===d?'sel':''}" onclick="cPickDay('${pid}','${d}')">${+d.split('-')[2]}</div>`;
-    return `<div class="cell empty-look" style="background:var(--fill);color:var(--ink-3);border-radius:9px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px">${+d.split('-')[2]}</div>`;
-  }).join('');
+  /* 切换项目时重置翻页锚点；否则保留当前翻到的两周 */
+  if(state._bookingPid !== pid){ state._bookingPid = pid; state.dateAnchor = null; state.bookingDay = null; }
+  if(!state.dateAnchor) state.dateAnchor = new Date(Y, M-1, today.getDate());
+  /* 横向日期条：固定两周（14 天），以锚点为起点 */
+  const adv = (p.g.open && p.g.open.adv) || 0;
+  const t0 = new Date(Y, M-1, today.getDate());
+  const maxWin = new Date(t0); maxWin.setDate(maxWin.getDate() + adv);
+  const anchor = new Date(state.dateAnchor);
+  const WD = ['日','一','二','三','四','五','六'];
+  const tmr = new Date(t0); tmr.setDate(tmr.getDate()+1);
+  const strip = [];
+  let hasOpen = false, prevMonth = -1;
+  for(let i=0;i<14;i++){
+    const cur = new Date(anchor); cur.setDate(anchor.getDate()+i);
+    const iso = ymd(cur.getFullYear(), cur.getMonth()+1, cur.getDate());
+    const inWin = cur <= maxWin;
+    const isOpen = p.openDays.includes(iso) && inWin;
+    if(isOpen) hasOpen = true;
+    const isToday = cur.getTime()===t0.getTime();
+    const isTmr = cur.getTime()===tmr.getTime();
+    const wk = isToday ? '今天' : (isTmr ? '明天' : '周'+WD[cur.getDay()]);
+    const moLbl = (cur.getMonth()!==prevMonth) ? `${cur.getMonth()+1}月` : '';
+    prevMonth = cur.getMonth();
+    const sel = state.bookingDay===iso;
+    // 当日整体状态（仅对可约日有意义）：项目暂停→暂停；否则看当日场次
+    let dayStatus = '';
+    if (isOpen) {
+      const sess = (p.sessions[iso]||[]).map(s=>({
+        remaining:(s.max||0)-(s.booked||0),
+        paused:(s.status==='paused'),
+        expired:isSessionExpired(iso, s.start, p.cutoff)
+      }));
+      if (p.paused) dayStatus='paused';
+      else if (sess.length) {
+        const allPaused = sess.every(x=>x.paused);
+        const allExpired = sess.every(x=>x.expired);
+        const allFull = sess.every(x=>(x.remaining)<=0);
+        if (allPaused) dayStatus='paused';
+        else if (allExpired) dayStatus='expired';
+        else if (allFull) dayStatus='full';
+      }
+    }
+    const cls = ['dchip', isOpen?'open':'off', isToday?'today':'', sel?'on':'', dayStatus?('st-'+dayStatus):''].join(' ');
+    const click = isOpen ? `onclick="cPickDay('${pid}','${iso}')"` : '';
+    const tag = dayStatus ? `<div class="chip-tag ${dayStatus}">${dayStatus==='paused'?'暂停':(dayStatus==='full'?'满员':'已过期')}</div>` : '';
+    strip.push(`<div class="${cls}" ${click}>
+        ${moLbl?`<div class="mo">${moLbl}</div>`:''}
+        <div class="wk">${wk}</div>
+        <div class="dd">${cur.getDate()}</div>
+        ${tag}
+      </div>`);
+  }
+  const stripHTML = strip.join('');
+  const a0 = new Date(anchor), a1 = new Date(anchor); a1.setDate(a1.getDate()+13);
+  const rangeLabel = `${a0.getMonth()+1}/${a0.getDate()} – ${a1.getMonth()+1}/${a1.getDate()}`;
+  const canLeft = anchor > t0;
   let grid=`<div class="note">请选择上方可预约日期查看场次。</div>`;
   if(state.bookingDay){
-    const list=(p.sessions[state.bookingDay]||[]);
-    if(!list.length) grid=`<div class="note">该日已开放预约，但暂未设置场次，请联系店家。</div>`;
-    else grid=list.map(s=>`
-      <div class="card tap" style="cursor:pointer" onclick="cPickSession('${pid}','${state.bookingDay}','${s.start}')">
-        <div class="row between"><div style="font-weight:600">${s.start} – ${s.end}</div><span class="badge ok">可约</span></div>
-        <div class="xs muted" style="margin-top:6px">点击选择该场次</div>
-      </div>`).join('');
+    const raw=(p.sessions[state.bookingDay]||[]);
+    if(!raw.length) grid=`<div class="note">该日已开放预约，但暂未设置场次，请联系店家。</div>`;
+    else grid=raw.map(s=>{
+      const remaining=(s.max||0)-(s.booked||0);
+      const paused=(s.status==='paused');
+      const expired=isSessionExpired(state.bookingDay, s.start, p.cutoff);
+      const blocked=!!p.paused;            // 项目整体暂停时全部不可选（与真机一致）
+      let badge, sub, dis, bcls;
+      if (expired) { badge='已过期'; sub='本场已过期'; dis=true; bcls='expired'; }
+      else if (paused || blocked) { badge='已暂停'; sub='本场已暂停'; dis=true; bcls='paused'; }
+      else if (remaining<=0) { badge='已满'; sub='人数已满'; dis=true; bcls='full'; }
+      else { badge=`剩 ${remaining}/${s.max}`; sub='点击选择该场次'; dis=false; bcls='ok'; }
+      const cls='card tap'+(dis?' dis':'');
+      const click = dis ? '' : `onclick="cPickSession('${pid}','${state.bookingDay}','${s.start}')"`;
+      return `<div class="${cls}" ${click}>
+        <div class="row between"><div style="font-weight:600">${s.start} – ${s.end}</div><span class="badge ${bcls}">${badge}</span></div>
+        <div class="xs muted" style="margin-top:6px">${sub}</div>
+      </div>`;
+    }).join('');
   }
   const html=`<div class="card row between tap" onclick="cHome()"><div class="bold">${p.name}</div><div class="muted">换项目 ›</div></div>
     ${introBlock(p)}
-    <div class="cal"><div class="cal-title" style="margin-bottom:8px">选择日期（可约日期高亮）</div>
-      <div class="cal-grid">${dayBar}</div></div>
-    <div class="legend"><span class="dot open"></span>可预约<span class="dot gray"></span>不可预约</div>
+    <div class="card">
+      <div class="sec row between">选择日期<span class="muted" style="font-weight:400">${rangeLabel}</span></div>
+      <div class="datestrip-wrap">
+        <div class="dnav ${canLeft?'':'disabled'}" onclick="${canLeft?"cMoveDate(-14)":''}">‹</div>
+        <div class="datestrip">${stripHTML}</div>
+        <div class="dnav" onclick="cMoveDate(14)">›</div>
+      </div>
+      <div class="xs muted" style="margin-top:6px">可预约日期高亮，点击查看场次${canLeft?'；':'；已是最早（今天起）'}向左箭头可看更早日期。</div>
+      ${hasOpen?'':`<div class="note" style="padding:10px 0">当前预约窗口内暂无可约日期，请稍后再来或联系店家。</div>`}
+    </div>
     <div class="sec" style="margin-top:14px">可约场次</div>
     ${grid}`;
   nav(html,p.name);
@@ -492,6 +659,15 @@ function heroBlock(p){
   </div>`;
 }
 function cPickDay(pid,d){ state.bookingDay=d; cBooking(pid); }
+function cMoveDate(delta){
+  if(!state.dateAnchor) state.dateAnchor = new Date(Y, M-1, today.getDate());
+  const t0 = new Date(Y, M-1, today.getDate());
+  let na = new Date(state.dateAnchor); na.setDate(na.getDate()+delta);
+  if(na < t0) na = new Date(t0);          // 不允许翻到今天之前
+  state.dateAnchor = na;
+  state.bookingDay = null;                // 翻页后清空已选日期
+  cBooking(state._bookingPid);
+}
 function cPickSession(pid,d,s){ state.bookingSession={pid,day:d,start:s}; cConfirm(); }
 function cConfirm(){
   const {pid,day,start}=state.bookingSession; const p=projects.find(x=>x.id===pid);
@@ -502,8 +678,9 @@ function cConfirm(){
       <div class="xs muted" style="margin-top:4px">${day} · ${s.start}–${s.end}</div>
     </div>
     <div class="card">
-      <div class="field"><div class="label">到场人数</div>
-        <div class="stepper"><button onclick="stepParty(-1)">−</button><div class="v" id="party">${state.party}</div><button onclick="stepParty(1)">+</button></div></div>
+      <div class="field"><div class="label">到场人数（单次最多 ${p.g.maxParty||2} 人）</div>
+        <div class="stepper"><button onclick="stepParty(-1)">−</button><div class="v" id="party">${state.party}</div><button onclick="stepParty(1)">+</button></div>
+        <div class="xs muted" style="margin-top:6px">该项目单次预约上限为 ${p.g.maxParty||2} 人，超过将无法提交。</div></div>
       <div class="field"><div class="label">姓名 <span class="pill">必填</span></div><input id="fName" placeholder="如：拿铁小姐"></div>
       <div class="field"><div class="label">手机号 <span class="pill">必填</span></div><input id="fPhone" placeholder="11 位手机号" inputmode="numeric">
         <div class="verify"><button class="btn ghost sm" onclick="verifyPhone()">微信校验</button><span class="ok" id="vok" style="display:none">✓ 已校验</span></div></div>
@@ -514,7 +691,7 @@ function cConfirm(){
     <div class="tip">提交后若「预约成功」将自动向您发送短信通知（需店家在「项目配置」开启短信通知）。</div>`;
   nav(html,'确认预约');
 }
-function stepParty(n){ const v=document.getElementById('party'); v.textContent=Math.max(1,(+v.textContent)+n); }
+function stepParty(n){ const v=document.getElementById('party'); const {pid}=state.bookingSession||{}; const p=pid?projects.find(x=>x.id===pid):null; const maxP=(p&&p.g.maxParty)||20; const next=Math.max(1,Math.min(maxP,(+v.textContent)+n)); v.textContent=next; state.party=next; }
 function verifyPhone(){ const v=document.getElementById('fPhone').value.trim();
   if(/^1\d{10}$/.test(v)){ document.getElementById('vok').style.display='inline'; toast('微信校验通过'); }
   else toast('手机号格式不正确'); }
@@ -524,11 +701,14 @@ function cSubmit(pid,day,start){
   if(!name) return toast('请填写姓名');
   if(!/^1\d{10}$/.test(phone)) return toast('请填写正确的手机号');
   const p=projects.find(x=>x.id===pid);
+  const maxP=p.g.maxParty||2;
+  if(state.party>maxP) return toast('单次最多 '+maxP+' 人');
   state.myResv.unshift({project:p.name,date:day,time:`${start}–${(p.sessions[day]||[]).find(x=>x.start===start).end}`,party:state.party,status:p.g.needReview?'pending':'ok'});
   toast(p.g.needReview?'已提交，等待审核（微信通知）':'预约成功（微信通知已发送）');
   setTimeout(cMine,700);
 }
 function cMine(){
+  viewKind='customer';
   const map={ok:['预约成功','ok'],pending:['待审核','paused'],cancelled:['已取消','full']};
   const rows=state.myResv.map((m,i)=>{
     const [t,c]=map[m.status]||['',''];
@@ -598,6 +778,7 @@ function postReview(pid){
 
 /* ===================== 管理端 · 管理台 ===================== */
 function hub(){
+  viewKind='admin';
   const isOwner=state.role==='owner';
   const menus = isOwner
     ? [['aProjects','项目管理'],['aConfig','项目配置（时间/场次）'],['aCover','首图及介绍'],['aTemplates','场次模版'],['aProducts','店铺菜单管理'],['aReviews','评价管理'],['aDaily','当日场次管理'],['aView','查看预约'],['aReview','审核'],['aAdmins','管理员'],['aSms','短信通知配置']]
@@ -664,10 +845,11 @@ function saveNewProject(){
   projects.push({ id, name, published:false, paused:false, deleted:false,
     openDays:[], sessions:{}, introImages:[],
     image:'', intro,
-    g:{ needReview:false, paused:false, smsEnabled:false, smsNotice:'',
+    g:{ needReview:false, paused:false, smsEnabled:false,
+        maxParty:2, subscribeNotify:true,
         limit:{period:'每天',count:1,adminFree:true},
         open:{type:'提前天数',adv:1},
-        cutoff:{type:'当日',time:'18:00'},
+        cutoff:{mode:'before',minutes:30},
         fields:['name','phone'] } });
   closeModal();
   toast('已创建：'+name);
@@ -695,6 +877,24 @@ function aConfig(id){
       <div class="tip">图片存于云存储，删除会同步清理云文件，避免孤儿文件。</div>
     </div>
 
+    <!-- ③ 全局设定（由「全部设定」迁移） -->
+    <div class="card">
+      <div class="sec">全局设定</div>
+      <div class="field row between"><div class="label">提交后是否审核</div><div class="switch ${p.g.needReview?'on':''}" onclick="sw('needReview')"></div></div>
+      <div class="field row between tap" onclick="sheetLimit()"><div class="label">预约次数限制</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.limit.period} · ${p.g.limit.count} 次${p.g.limit.adminFree?' · 管理员不限':''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetOpen()"><div class="label">预约开放规则</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.open.type} ${p.g.open.adv?p.g.open.adv+'天':p.g.open.time||''}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetCutoff()"><div class="label">预约截止规则</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${cutoffText(p.g.cutoff)}</span><span class="muted">›</span></div></div>
+      <div class="field row between tap" onclick="sheetFields()"><div class="label">提交预约信息设置</div>
+        <div class="row"><span class="muted" style="margin-right:6px">${p.g.fields.length} 项</span><span class="muted">›</span></div></div>
+      <div class="field row between"><div class="label">开启短信通知（预约成功时推送）</div><div class="switch ${p.g.smsEnabled?'on':''}" onclick="gSms()"></div></div>
+      <div class="field row between"><div class="label">单次预约人数上限</div>
+        <div class="stepper" onclick="event.stopPropagation()"><button onclick="stepMax(-1)">−</button><div class="v" id="maxParty">${p.g.maxParty||2}</div><button onclick="stepMax(1)">+</button></div></div>
+      <div class="field row between"><div class="label">开启订阅消息通知（新预约推送）</div><div class="switch ${(p.g.subscribeNotify!==false)?'on':''}" onclick="gSub()"></div></div>
+    </div>
+
     <!-- ① 项目时间设置：日历多选 -->
     <div class="card">
       <div class="sec">项目时间设置 <span class="pill tag-brand">最先配置</span></div>
@@ -715,21 +915,6 @@ function aConfig(id){
     <div class="sec" style="margin:14px 2px 8px">已开放日期 · 场次（${p.openDays.length}）</div>
     ${dayBlocksHTML(p)}
 
-    <!-- ③ 全局设定（由「全部设定」迁移） -->
-    <div class="card" style="margin-top:14px">
-      <div class="sec">全局设定</div>
-      <div class="field row between"><div class="label">提交后是否审核</div><div class="switch ${p.g.needReview?'on':''}" onclick="sw('needReview')"></div></div>
-      <div class="field row between tap" onclick="sheetLimit()"><div class="label">预约次数限制</div>
-        <div class="row"><span class="muted" style="margin-right:6px">${p.g.limit.period} · ${p.g.limit.count} 次${p.g.limit.adminFree?' · 管理员不限':''}</span><span class="muted">›</span></div></div>
-      <div class="field row between tap" onclick="sheetOpen()"><div class="label">预约开放规则</div>
-        <div class="row"><span class="muted" style="margin-right:6px">${p.g.open.type} ${p.g.open.adv?p.g.open.adv+'天':p.g.open.time||''}</span><span class="muted">›</span></div></div>
-      <div class="field row between tap" onclick="sheetCutoff()"><div class="label">预约截止规则</div>
-        <div class="row"><span class="muted" style="margin-right:6px">${p.g.cutoff.type} ${p.g.cutoff.hours?p.g.cutoff.hours+'小时':p.g.cutoff.time||''}</span><span class="muted">›</span></div></div>
-      <div class="field row between tap" onclick="sheetFields()"><div class="label">提交预约信息设置</div>
-        <div class="row"><span class="muted" style="margin-right:6px">${p.g.fields.length} 项</span><span class="muted">›</span></div></div>
-      <div class="field row between"><div class="label">开启短信通知（预约成功时推送）</div><div class="switch ${p.g.smsEnabled?'on':''}" onclick="gSms()"></div></div>
-      <div class="field"><div class="label">短信注意事项（可选，填入模板变量）</div><textarea id="smsNote" rows="2" class="fld" style="height:56px" oninput="onSmsNotice(this)">${p.g.smsNotice||''}</textarea></div>
-    </div>
     <button class="btn block" onclick="aSave()">保存</button>
     <div class="note">时间设置 / 场次 / 全局设定 已合并到本页；发布与下架在「项目管理」。</div>`;
   nav(html,'项目配置');
@@ -766,7 +951,8 @@ function aPickProject(){
 function chooseProject(id){ closeSheet(); aConfig(id); }
 function sw(key){ const p=state.project; if(key==='needReview')p.g.needReview=!p.g.needReview; aConfig(); }
 function gSms(){ const p=state.project; p.g.smsEnabled=!p.g.smsEnabled; aConfig(); }
-function onSmsNotice(el){ if(state.project) state.project.g.smsNotice=el.value; }
+function gSub(){ const p=state.project; const cur=p.g.subscribeNotify!==false; p.g.subscribeNotify=!cur; aConfig(); }
+function stepMax(d){ const p=state.project; p.g.maxParty=Math.max(1,Math.min(20,(p.g.maxParty||2)+d)); aConfig(); }
 function aSave(){
   const p=state.project; if(!p) return;
   toast(p.published ? '已保存' : '项目已进入草稿');
@@ -847,6 +1033,7 @@ function dayBlocksHTML(p){
           <button class="btn ghost sm" onclick="addSession('${k}')">+ 添加</button>
           <button class="btn ghost sm" onclick="useTemplate('${k}')">模版</button>
           <button class="btn ghost sm" onclick="copyDay('${k}')">复制</button>
+          <button class="btn ghost sm" onclick="clearDaySessions('${k}')">清空</button>
         </div>
       </div>
       ${ sess.length ? sess.map(s=>`<div class="sess"><div class="st">${s.start} – ${s.end}</div>
@@ -855,6 +1042,12 @@ function dayBlocksHTML(p){
     </div>`;
   }).join('');
 }
+/* 清空当日场次配置（原型：清空该日 sessions，立即重渲染） */
+function clearDaySessions(k){
+  if(!confirm('清空 '+k+' 的全部场次配置？')) return;
+  state.project.sessions[k] = [];
+  aConfig(); toast('已清空 '+k+' 的场次');
+}
 /* 添加场次：屏幕中央弹层 */
 function addSession(k){
   openModal(`<div class="mt">添加场次 · ${k}</div>
@@ -862,8 +1055,22 @@ function addSession(k){
     <div class="grp"><div class="label" style="font-size:12px;color:var(--ink-3)">时间段</div>
       <div class="time2"><input type="time" id="ss" value="10:00"><span>–</span><input type="time" id="se" value="11:30"></div></div>
     <div class="grp"><div class="label" style="font-size:12px;color:var(--ink-3)">最大预约人数（默认 8）</div>
-      <input type="number" id="smax" value="8"></div>
+      <div class="row" id="capChips" style="gap:10px;margin-bottom:8px">
+        <div class="chip" onclick="pickCap(6)">6</div>
+        <div class="chip on" onclick="pickCap(8)">8</div>
+      </div>
+      <input type="number" id="smax" value="8" oninput="capInput()"></div>
     <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="doAddSession('${k}')">保存场次</button></div>`);
+}
+function pickCap(n){
+  const el=document.getElementById('smax'); if(el) el.value=n;
+  const box=document.getElementById('capChips');
+  if(box) box.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', +c.textContent===n));
+}
+function capInput(){
+  const el=document.getElementById('smax'); const v=el?(+el.value):8;
+  const box=document.getElementById('capChips');
+  if(box) box.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', +c.textContent===v));
 }
 function doAddSession(k){
   const s=document.getElementById('ss').value, e=document.getElementById('se').value, mx=+document.getElementById('smax').value||8;
@@ -928,19 +1135,24 @@ function sheetOpen(){
 }
 function saveOpen(){ const g=state.project.g.open; g.type=document.getElementById('ot').dataset.v||g.type; g.adv=+document.getElementById('oc').value||1; closeSheet(); aConfig(); }
 function sheetCutoff(){
-  const g=state.project.g.cutoff;
+  const c=normCutoff(state.project.g.cutoff);
   openSheet(`<div class="sh">预约截止规则</div>
-    <div class="grp"><div class="gl">口径</div><div class="seg" id="ct">
-      ${['场次前','当日'].map(x=>`<span class="chip ${g.type===x?'on':''}" onclick="segPick('ct',this,'${x}')">${x}</span>`).join('')}
+    <div class="grp"><div class="gl">截止基准</div><div class="seg" id="cm">
+      ${['before','after'].map(x=>`<span class="chip ${c.mode===x?'on':''}" onclick="segPick('cm',this,'${x}')">${x==='before'?'场次开始前':'场次开始后'}</span>`).join('')}
     </div></div>
-    <div class="grp"><div class="gl" id="ctlbl">${g.type==='场次前'?'提前小时数':'当日截止时间'}</div>
-      ${g.type==='场次前' ? `<input class="t" type="number" id="cv" value="${g.hours||''}" placeholder="如 2">` : `<input class="t" type="time" id="cv" value="${g.time||'18:00'}">`}</div>
+    <div class="grp"><div class="gl">提前 / 延后分钟数</div><div class="seg" id="cp">
+      ${[30,60,120,240].map(x=>`<span class="chip ${c.minutes===x?'on':''}" onclick="segPick('cp',this,'${x}')">${x}</span>`).join('')}
+    </div><input class="t" type="number" id="cv" value="${c.minutes}" placeholder="分钟" style="margin-top:8px"></div>
     <div class="ck"><div>管理员特权（不受限制）</div><div class="switch on"></div></div>
     <div class="opt" onclick="saveCutoff()"><div>保存</div></div>
     <div class="cancel" onclick="closeSheet()">取消</div>`);
 }
-function saveCutoff(){ const g=state.project.g.cutoff; g.type=document.getElementById('ct').dataset.v||g.type;
-  if(g.type==='场次前') g.hours=+document.getElementById('cv').value||2; else g.time=document.getElementById('cv').value; closeSheet(); aConfig(); }
+function saveCutoff(){
+  const mode=document.getElementById('cm').dataset.v||'before';
+  const minutes=Math.min(1440,Math.max(1,Number(document.getElementById('cv').value)||30));
+  state.project.g.cutoff={mode,minutes};
+  closeSheet(); aConfig();
+}
 function segPick(id,el,v){ document.getElementById(id).dataset.v=v; [...el.parentNode.children].forEach(c=>c.classList.remove('on')); el.classList.add('on'); }
 
 /* 提交预约信息设置 */
@@ -1004,41 +1216,167 @@ function saveTemplate(id){
 function aView(){
   if(!state.viewProject) state.viewProject=projects[0];
   const p=state.viewProject;
+  const t0=new Date(Y,M-1,today.getDate());
+  const WD=['日','一','二','三','四','五','六'];
+  const dA=new Date(t0); dA.setDate(dA.getDate()+2);
+  const dB=new Date(t0); dB.setDate(dB.getDate()+6);
   const demo=[
-    {name:'张女士',phone:'138****8021',party:2,review:'ok',day:ymd(Y,M,18),time:'10:00–11:30'},
-    {name:'李先生',phone:'139****3390',party:1,review:'pending',day:ymd(Y,M,8),time:'10:00–11:30'}
+    {name:'张女士',phone:'138****8021',party:2,review:'ok',day:ymd(dA.getFullYear(),dA.getMonth()+1,dA.getDate()),time:'10:00–11:30'},
+    {name:'李先生',phone:'139****3390',party:1,review:'pending',day:ymd(dB.getFullYear(),dB.getMonth()+1,dB.getDate()),time:'14:00–15:30'}
   ];
+  /* 横向日期条：固定两周（14 天），以锚点为起点；有预约的日期高亮 */
+  if(!state.viewAnchor) state.viewAnchor=new Date(Y,M-1,today.getDate());
+  const anchor=new Date(state.viewAnchor);
+  const demoDays=new Set(demo.map(d=>d.day));
+  const days=[];
+  for(let i=0;i<14;i++){
+    const cur=new Date(anchor); cur.setDate(anchor.getDate()+i);
+    const iso=ymd(cur.getFullYear(),cur.getMonth()+1,cur.getDate());
+    days.push({cur,iso,isToday:cur.getTime()===t0.getTime(),has:demoDays.has(iso)});
+  }
+  /* 默认选中：未选或所选当日无预约 → 选首个有预约的日期 */
+  if(!state.viewDay || !demoDays.has(state.viewDay)){
+    const first=days.find(d=>d.has);
+    state.viewDay=first?first.iso:null;
+  }
+  let prevMonth=-1;
+  const strip=days.map(({cur,iso,isToday,has})=>{
+    const wk=isToday?'今天':'周'+WD[cur.getDay()];
+    const moLbl=(cur.getMonth()!==prevMonth)?`${cur.getMonth()+1}月`:'';
+    prevMonth=cur.getMonth();
+    const sel=state.viewDay===iso;
+    const cls=['dchip',has?'open':'off',isToday?'today':'',sel?'on':''].join(' ');
+    const click=has?`onclick="vPickDay('${iso}')"`:'';
+    return `<div class="${cls}" ${click}>
+        ${moLbl?`<div class="mo">${moLbl}</div>`:''}
+        <div class="wk">${wk}</div>
+        <div class="dd">${cur.getDate()}</div>
+      </div>`;
+  }).join('');
+  const a0=new Date(anchor),a1=new Date(anchor); a1.setDate(a1.getDate()+13);
+  const rangeLabel=`${a0.getMonth()+1}/${a0.getDate()} – ${a1.getMonth()+1}/${a1.getDate()}`;
+  const canLeft=anchor>t0;
+  const list=state.viewDay?demo.filter(r=>r.day===state.viewDay):[];
   const html=`<div class="card row between tap" onclick="aPickView()">
       <div class="bold">${p.name}</div><div class="muted">切换 ›</div></div>
+    <div class="card">
+      <div class="sec row between">选择日期<span class="muted" style="font-weight:400">${rangeLabel}</span></div>
+      <div class="datestrip-wrap">
+        <div class="dnav ${canLeft?'':'disabled'}" onclick="${canLeft?"vMoveDate(-14)":''}">‹</div>
+        <div class="datestrip">${strip}</div>
+        <div class="dnav" onclick="vMoveDate(14)">›</div>
+      </div>
+      <div class="xs muted" style="margin-top:6px">有预约的日期高亮，点击查看当天预约人${canLeft?'；':''}向左箭头可看更早日期。</div>
+    </div>
     <div class="tab">
       <div class="tb on">待审核</div><div class="tb">已通过</div><div class="tb">已取消</div>
     </div>
-    ${demo.map((r,i)=>`
+    ${list.length?list.map((r,i)=>`
       <div class="person" onclick="showPerson('${r.name}','${r.phone}','${r.party}','${r.review}','${r.day}','${r.time}')">
-        <div class="nm">${r.name} <span class="tag-soft">${r.party}人</span> ${r.review==='pending'?'<span class="badge paused">待审</span>':(r.review==='ok'?'<span class="badge ok">已确认</span>':'')}</div>
-        <div class="ln">${r.day} · ${r.time}</div>
-        <div class="ph">☎ ${r.phone}</div>
-      </div>`).join('')}
+        <div class="pav">${r.name[0]}</div>
+        <div class="pinfo">
+          <div class="top"><div class="nm">${r.name}<span class="pp">· ${r.party}人</span></div>${pBadge(r)}</div>
+          <div class="tel">${r.phone?('☎ '+r.phone):'无号码'}</div>
+        </div>
+        <div class="ph-btn ${r.phone?'':'disabled'}" onclick="event.stopPropagation();dial('${r.phone}')">📞 拨打</div>
+      </div>`).join(''):`<div class="note">所选日期暂无预约人。</div>`}
     <div class="note">默认选中「法兰绒深烘咖啡预约」，点顶部可切换项目。</div>`;
   nav(html,'查看预约');
 }
 function aPickView(){
   openSheet(`<div class="sh">切换项目</div>${projects.map(p=>`<div class="opt" onclick="chooseView('${p.id}')"><div>${p.name}</div><div class="sub">${pubState(p)}</div></div>`).join('')}<div class="cancel" onclick="closeSheet()">取消</div>`);
 }
-function chooseView(id){ closeSheet(); state.viewProject=projects.find(p=>p.id===id); aView(); }
-function showPerson(name,phone,party,review,day,time){
-  openSheet(`<div class="sh">预约人详情</div>
-    <div class="detail">
-      <div class="kv"><span class="k">姓名</span><span>${name}</span></div>
-      <div class="kv"><span class="k">电话</span><span>${phone}</span></div>
-      <div class="kv"><span class="k">人数</span><span>${party} 人</span></div>
-      <div class="kv"><span class="k">日期场次</span><span>${day} ${time}</span></div>
-      <div class="kv"><span class="k">审核</span><span>${review==='ok'?'已通过':(review==='pending'?'待审核':'')}</span></div>
-    </div>
-    <div class="opt" onclick="dial('${phone}')"><div>📞 拨打电话</div></div>
-    <div class="cancel" onclick="closeSheet()">关闭</div>`);
+function vPickDay(iso){ state.viewDay=iso; aView(); }
+function vMoveDate(delta){
+  if(!state.viewAnchor) state.viewAnchor=new Date(Y,M-1,today.getDate());
+  const t0=new Date(Y,M-1,today.getDate());
+  let na=new Date(state.viewAnchor); na.setDate(na.getDate()+delta);
+  if(na<t0) na=new Date(t0);
+  state.viewAnchor=na;
+  state.viewDay=null;   // 翻页后清空选中，aView 会自动选首个有预约日
+  aView();
 }
-function dial(phone){ toast('调用 wx.makePhoneCall：'+phone); }
+function chooseView(id){ closeSheet(); state.viewProject=projects.find(p=>p.id===id); state.viewDay=null; state.viewAnchor=null; aView(); }
+let currentPerson=null;
+function showPerson(name,phone,party,review,day,time,note){
+  currentPerson={name,phone,party,review,day,time,note};
+  const revTxt = review==='pending'?'待审核':(review==='ok'?'已确认':(review==='cancel'?'已取消':'已确认'));
+  openSheet(`<div class="sheet-head">
+      <div class="col"><div class="bold" style="font-size:16px">${name}</div></div>
+      <div class="x" onclick="closeSheet()">✕</div>
+    </div>
+    <div class="drow">
+      <div class="dcell"><div class="xs muted">电话</div><div class="dval">${phone?phone:'无号码'}</div></div>
+      <div class="dcell"><div class="xs muted">人数</div><div class="dval">${party} 人</div></div>
+      <div class="dcell"><div class="xs muted">审核</div><div class="dval">${revTxt}</div></div>
+    </div>
+    ${note?`<div class="xs muted" style="margin-top:10px">备注：${note}</div>`:''}
+    ${review==='pending'?`<div class="row" style="margin-top:14px;gap:10px">
+      <button class="btn block" onclick="doReviewDetail('approve')">✓ 通过</button>
+      <button class="btn block ghost" onclick="doReviewDetail('reject')">✕ 不通过</button></div>`:''}
+    <button class="btn ghost block" style="margin-top:18px" ${phone?'':'disabled'} onclick="copyPhone('${phone}')">复制号码</button>
+    <button class="btn block" style="margin-top:10px" ${phone?'':'disabled'} onclick="dial('${phone}')">📞 拨打电话</button>`);
+}
+function doReviewDetail(decision){
+  if(!currentPerson||currentPerson.review!=='pending') return;
+  currentPerson.review = decision==='approve'?'ok':'cancel';
+  const r=sessionPeople.find(x=>x.name===currentPerson.name && x.phone===currentPerson.phone);
+  if(r) r.review=currentPerson.review;
+  toast(decision==='approve'?'已通过（微信通知用户）':'已拒绝，已释放名额');
+  showPerson(currentPerson.name,currentPerson.phone,currentPerson.party,currentPerson.review,currentPerson.day,currentPerson.time,currentPerson.note);
+}
+function copyPhone(phone){ if(!phone){toast('该预约人无号码');return;} try{ navigator.clipboard&&navigator.clipboard.writeText(phone);}catch(e){} toast('已复制：'+phone); }
+function dial(phone){ if(!phone){toast('该预约人无号码');return;} toast('调用 wx.makePhoneCall：'+phone); }
+
+/* ---- 本场预约人弹层（管理员预约管理页「查看本场预约人」触发，对应小程序 sessions 页弹层） ---- */
+function pBadge(r){
+  if(r.review==='pending') return '<span class="badge paused">待审</span>';
+  if(r.review==='cancel') return '<span class="badge full">已取消</span>';
+  return '<span class="badge ok">已确认</span>';
+}
+let sessionPeople=[], peopleCtx=null;
+function showSessionPeople(pId, idx){
+  const p=projects.find(x=>x.id===pId); const s=(p.sessions[TODAY]||[])[idx];
+  if(!s) return; peopleCtx={pId,idx,s};
+  /* 演示用预约人（实际由云函数 listSessionReservations 返回） */
+  sessionPeople=[
+    {name:'张女士',phone:'138****8021',party:2,review:'ok',note:'靠窗位'},
+    {name:'李先生',phone:'139****3390',party:1,review:'pending',note:''},
+    {name:'王先生',phone:'',party:4,review:'ok',note:''}
+  ];
+  renderSessionPeople();
+}
+function renderSessionPeople(){
+  if(!peopleCtx) return; const s=peopleCtx.s;
+  const peopleTitle=`${TODAY} · ${s.start}–${s.end}`;
+  const html=`<div class="sheet-head">
+      <div class="col">
+        <div class="bold" style="font-size:16px">本场预约人</div>
+        <div class="xs muted" style="margin-top:4px">${peopleTitle} · 共 ${sessionPeople.length} 人</div>
+      </div>
+      <div class="x" onclick="closeSheet()">✕</div>
+    </div>
+    ${sessionPeople.map((r,i)=>`
+      <div class="person" onclick="showPerson('${r.name}','${r.phone}','${r.party}','${r.review}','${TODAY}','${s.start}–${s.end}','${(r.note||'').replace(/'/g,"\\'")}')">
+        <div class="pav">${r.name[0]}</div>
+        <div class="pinfo">
+          <div class="top"><div class="nm">${r.name}<span class="pp">· ${r.party}人</span></div>${pBadge(r)}</div>
+          <div class="tel">${r.phone?('☎ '+r.phone):'无号码'}</div>
+          ${r.review==='pending'?`<div class="review-row" onclick="event.stopPropagation()">
+            <div class="rev-btn approve" onclick="event.stopPropagation();doReview(${i},'approve')">✓ 通过</div>
+            <div class="rev-btn reject" onclick="event.stopPropagation();doReview(${i},'reject')">✕ 不通过</div>
+          </div>`:''}
+        </div>
+        <div class="ph-btn ${r.phone?'':'disabled'}" onclick="event.stopPropagation();dial('${r.phone}')">📞 拨打</div>
+      </div>`).join('')}`;
+  openSheet(html);
+}
+function doReview(i, decision){
+  const r=sessionPeople[i]; if(!r||r.review!=='pending') return;
+  r.review = decision==='approve'?'ok':'cancel';
+  toast(decision==='approve'?'已通过（微信通知用户）':'已拒绝，已释放名额');
+  renderSessionPeople();
+}
 
 /* ---- 审核 ---- */
 function aReview(){
@@ -1086,6 +1424,7 @@ function aDaily(){
             <span class="badge ${open?'ok':'paused'}">${open?'开放预约':'暂停预约'}</span>
             <button class="btn ghost sm" onclick="dailyToggle('${p.id}',${idx})">${open?'暂停':'开放'}</button>
             <button class="btn ghost sm" onclick="dailyCap('${p.id}',${idx})">人数</button>
+            <span style="margin-left:auto;color:var(--brand);font-size:12px;cursor:pointer" onclick="showSessionPeople('${p.id}',${idx})">👥 查看本场预约人 ›</span>
           </div></div>`;
       });
       body += `<button class="btn ghost sm" style="margin-top:8px" onclick="dailyAdd('${p.id}')">+ 增加场次</button>`;
@@ -1145,9 +1484,13 @@ function aAdmins(){
     ${admins.map(a=>`
       <div class="card">
         <div class="row between"><div><div class="bold">${a.role==='owner'?'超级管理员':'普通管理员'}</div>
-          <div class="xs muted">OpenID：${a.openid}</div><div class="xs muted">${a.note}</div></div>
+          <div class="bold" style="margin-top:4px">${a.nickname||'未设置昵称'}</div>
+          <div class="xs muted">OpenID：${a.openid}</div>${a.note?`<div class="xs muted">备注：${a.note}</div>`:''}</div>
           <span class="badge ok">${a.role==='owner'?'全部权限':'查看/控场'}</span></div>
-        ${a.role!=='owner'?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="toast('已移除')">移除</button></div>`:''}
+        <div class="row" style="margin-top:10px;gap:10px">
+          <button class="btn sm" onclick="setAdminNickname('${a.openid}','${(a.nickname||'').replace(/'/g,"\\'")}')">设置昵称</button>
+          ${a.role!=='owner'?`<button class="btn ghost sm" onclick="toast('已移除')">移除</button>`:''}
+        </div>
       </div>`).join('')}
     <div class="sec" style="margin-top:14px">最近访问者（一键授权）</div>
     ${visitors.map(v=>`
@@ -1167,6 +1510,18 @@ function aAdmins(){
 }
 function grant(openid,role){ toast(openid.slice(0,10)+'… 已授权为'+(role==='owner'?'超级管理员':'普通管理员')); }
 function grantManual(){ const v=document.getElementById('newOpenid').value.trim(); if(!v)return toast('请填写 OpenID'); toast('已授权：'+v.slice(0,10)+'…'); }
+function setAdminNickname(openid,cur){
+  openModal(`<div class="mt">设置昵称</div>
+    <div class="mb">便于识别该管理员（如 店员小王）</div>
+    <input class="fld" id="nickInput" placeholder="输入便于识别的昵称" value="${cur||''}">
+    <div class="macts"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="saveAdminNickname('${openid}')">保存</button></div>`);
+}
+function saveAdminNickname(openid){
+  const v=document.getElementById('nickInput').value.trim();
+  if(!v) return toast('昵称不能为空');
+  const a=admins.find(x=>x.openid===openid); if(a) a.nickname=v;
+  closeModal(); aAdmins(); toast('昵称已保存');
+}
 
 /* ---- 短信通知配置（超级管理员：全店短信账号「钥匙」） ---- */
 let smsCfg = {signName:'法兰绒咖啡', templateId:'123456', smsSdkAppId:'1400000000', secretIdMask:'AKID****', hasSecret:true, noticeTemplate:''};
@@ -1224,7 +1579,7 @@ function toggleProduct(id){ const p=products.find(x=>x.id===id); p.status = p.st
 function delProduct(id){ const p=products.find(x=>x.id===id); products.splice(products.indexOf(p),1); toast('已删除'); aProducts(); }
 let _curImg='';
 function editProduct(id){
-  const p=id?products.find(x=>x.id===id):{name:'',image:'',price:30,desc:''};
+  const p=(id && products.find(x=>x.id===id)) || {name:'',image:'',price:30,desc:''};
   _curImg = p.image||'';
   openSheet(`<div class="sh">${id?'编辑':'新增'}产品</div>
     <div class="grp"><div class="gl">图片（菜品为图片，非图标）</div>
@@ -1244,7 +1599,8 @@ function saveProduct(id){
   const name=document.getElementById('pname').value.trim()||'未命名';
   const price=+document.getElementById('pprice').value||0;
   const desc=document.getElementById('pdesc').value.trim();
-  if(id){ const p=products.find(x=>x.id===id); p.name=name; p.price=price; p.desc=desc; p.image=_curImg; }
+  const existing = id ? products.find(x=>x.id===id) : null;
+  if(existing){ existing.name=name; existing.price=price; existing.desc=desc; existing.image=_curImg; }
   else products.push({id:'m'+Date.now(),name,emoji:'☕',image:_curImg,price,desc,status:'on',reviews:[]});
   closeSheet(); aProducts(); toast('已保存');
 }

@@ -1,14 +1,90 @@
 <view class="page">
   <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onPick">
-    <view class="card row between tap"><view class="bold">{{projects.length?projects[0].name:'选择项目'}}</view><view class="ma">切换 ›</view></view>
+    <view class="card row between tap"><view class="bold">{{projectName || '选择项目'}}</view><view class="ma">切换 ›</view></view>
   </picker>
 
-  <view class="chips">
-    <view wx:for="{{dates}}" wx:key="*this" class="chip {{item===selDate?'on':''}}" bindtap="onDate" data-d="{{item}}">{{item}}</view>
+  <view class="datestrip-wrap">
+    <view class="dnav {{canPrev?'':'disabled'}}" bindtap="moveDate" data-delta="-14">‹</view>
+    <scroll-view scroll-x class="datestrip" enhanced="{{true}}" show-scrollbar="{{false}}">
+      <view wx:for="{{dateChips}}" wx:key="ymd"
+        class="dchip {{item.has?'open':''}} {{item.today?'today':''}} {{item.sel?'on':''}} {{item.has?'':'off'}}"
+        data-ymd="{{item.ymd}}" bindtap="onDate">
+        <view wx:if="{{item.mo}}" class="mo">{{item.mo}}</view>
+        <view class="wk">{{item.wk}}</view>
+        <view class="dd">{{item.dd}}</view>
+      </view>
+    </scroll-view>
+    <view class="dnav" bindtap="moveDate" data-delta="14">›</view>
+  </view>
+  <view class="range-label">{{dateRangeLabel}}</view>
+
+  <view wx:if="{{selDate}}">
+    <view wx:if="{{sessions.length===0}}" class="note">该日暂无场次</view>
+    <view wx:for="{{sessions}}" wx:key="id" class="scard-wrap">
+      <sessionCard session="{{item}}" canChangeCap="{{canChangeCap}}" showCancel="{{false}}" bind:op="onOp" bindtap="onShowPeople" data-id="{{item.id}}"/>
+      <view class="people-link tap" bindtap="onShowPeople" data-id="{{item.id}}">👥 查看本场预约人（{{item.booked||0}} 人）›</view>
+    </view>
+  </view>
+  <view wx:else class="note">请选择上方有场次的日期</view>
+
+  <view class="tip">可暂停/取消/改名额；点击场次或「查看本场预约人」直接弹出本场预约人</view>
+
+  <!-- 本场预约人弹层：点击「查看本场预约人」直接弹出，不再跳转页面 -->
+  <view wx:if="{{peopleShow}}" class="sheet-mask" bindtap="closePeople">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-head">
+        <view class="col">
+          <view class="bold">本场预约人</view>
+          <view class="xs muted" style="margin-top:4rpx">{{peopleTitle}} · 共 {{list.length}} 人</view>
+        </view>
+        <view class="x" bindtap="closePeople">✕</view>
+      </view>
+      <view wx:if="{{peopleLoading}}" class="note">加载中…</view>
+      <view wx:elif="{{list.length===0}}" class="note">该场次暂无预约人</view>
+      <scroll-view wx:else scroll-y class="people-scroll">
+        <view wx:for="{{list}}" wx:key="_id" class="person" bindtap="showDetail" data-id="{{item._id}}">
+          <view class="avatar">{{item.name[0]}}</view>
+          <view class="pinfo">
+            <view class="row between" style="align-items:center">
+              <view class="bold">{{item.name}} <text class="muted">· {{item.partySize}}人</text></view>
+              <view class="head-actions">
+                <view class="badge {{item.review==='pending'?'paused':(item.status==='confirmed'?'ok':'full')}}">{{item.review==='pending'?'待审':(item.status==='confirmed'?'已确认':'已取消')}}</view>
+                <view wx:if="{{!peopleExpired}}" class="cancel-mini" catchtap="onCancel" data-id="{{item._id}}">取消预约</view>
+              </view>
+            </view>
+            <view class="row between" style="margin-top:10rpx;align-items:center">
+              <view class="phone">{{item.phone || '无号码'}}</view>
+              <view class="ph-btn {{item.phone?'':'disabled'}}" catchtap="onPhone" data-phone="{{item.phone}}">📞 拨打</view>
+            </view>
+            <view wx:if="{{item.review==='pending'}}" class="review-row" catchtap="noop">
+              <view class="rev-btn approve" catchtap="onReview" data-id="{{item._id}}" data-decision="approve">✓ 通过</view>
+              <view class="rev-btn reject" catchtap="onReview" data-id="{{item._id}}" data-decision="reject">✕ 不通过</view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
   </view>
 
-  <view wx:if="{{sessions.length===0}}" class="note">该日暂无场次</view>
-  <sessionCard wx:for="{{sessions}}" wx:key="id" session="{{item}}" canChangeCap="{{canChangeCap}}" showCancel="{{true}}" bind:op="onOp"/>
-
-  <view class="tip">{{role==='owner'?'可暂停/取消/改名额':'普通管理员可暂停或取消场次，不可改名额'}}</view>
+  <!-- 单个预约人详情（在弹层之上再浮一层） -->
+  <view wx:if="{{detail}}" class="sheet-mask" bindtap="closeDetail">
+    <view class="sheet" catchtap="noop">
+      <view class="row between" style="align-items:flex-start">
+        <view class="bold" style="font-size:34rpx">{{detail.name}}</view>
+        <view class="x" bindtap="closeDetail">✕</view>
+      </view>
+      <view class="drow" style="margin-top:18rpx">
+        <view class="dcell"><view class="xs muted">电话</view><view class="dval">{{detail.phone || '无号码'}}</view></view>
+        <view class="dcell"><view class="xs muted">人数</view><view class="dval">{{detail.partySize}} 人</view></view>
+        <view class="dcell"><view class="xs muted">审核</view><view class="dval">{{detail.review==='pending'?'待审核':(detail.review==='approved'?'已通过':(detail.review==='rejected'?'已拒绝':'已确认'))}}</view></view>
+      </view>
+      <view wx:if="{{detail.note}}" class="xs muted" style="margin-top:12rpx">备注：{{detail.note}}</view>
+      <view wx:if="{{detail.review==='pending'}}" class="row" style="margin-top:16rpx;gap:12rpx">
+        <button class="btn block" bindtap="onReview" data-id="{{detail._id}}" data-decision="approve">✓ 通过</button>
+        <button class="btn block ghost" bindtap="onReview" data-id="{{detail._id}}" data-decision="reject">✕ 不通过</button>
+      </view>
+      <button class="btn block ghost" style="margin-top:20rpx" bindtap="copyPhone" disabled="{{!detail.phone}}">复制号码</button>
+      <button class="btn block call-lg" style="margin-top:16rpx" bindtap="dial" disabled="{{!detail.phone}}">📞 拨打电话</button>
+    </view>
+  </view>
 </view>

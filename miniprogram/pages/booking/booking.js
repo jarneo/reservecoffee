@@ -1,16 +1,20 @@
 const { call } = require('../../utils/cloud')
-const { ymd, dateLabel, WEEK } = require('../../utils/util')
+const { ymd, isSessionExpired } = require('../../utils/util')
 
 function addDaysDate(n) { const t = new Date(); t.setDate(t.getDate() + n); return t }
 
 Page({
   data: {
     projectId: '', project: {}, introImages: [], schedules: [], openDays: [], advanceDays: 7,
-    calYear: 2026, calMonth: 8, selectedDate: '', bizWindow: '', sessions: []
+    dateAnchor: '', dateChips: [], dateRangeLabel: '', canPrev: false,
+    selectedDate: '', bizWindow: '', sessions: []
   },
 
   onLoad(q) {
-    this.setData({ projectId: q.projectId })
+    this.setData({
+      projectId: q.projectId || '',
+      dateAnchor: '', selectedDate: '', sessions: [], bizWindow: ''
+    })
     this.load()
   },
 
@@ -21,14 +25,124 @@ Page({
         const sched = d.schedules || []
         const openDays = p.openDays || []
         const adv = p.advanceDays || 7
-        const now = new Date()
         this.setData({
           project: p, introImages: p.introImages || [], schedules: sched,
-          openDays, advanceDays: adv,
-          calYear: now.getFullYear(), calMonth: now.getMonth() + 1
+          openDays, advanceDays: adv
+        }, () => {
+          this.buildDateChips()
+          // 默认展开「最近可约日」的场次（今天若可约则为今天，否则向后取第一个开放日）
+          this.autoSelectFirst()
         })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+  },
+
+  // 自动选中并展开最近的「可预约」日期（仅首次进入时）
+  autoSelectFirst() {
+    if (this.data.selectedDate) return
+    const first = (this.data.dateChips || []).find(c => c.open)
+    if (first) this.selectDay(first.ymd)
+  },
+
+  // 横向日期条：固定 14 天（两周），以 dateAnchor 为起点
+  buildDateChips() {
+    const openDays = this.data.openDays
+    // 已配置场次的日期集合：只显示「既开放、又有场次」的日期，避免顾客点到无场次日无法预约
+    const schedDates = new Set((this.data.schedules || []).map(s => s.date))
+    // 日期 → 场次列表，便于计算「当日整体状态」
+    const schedMap = {}
+    const closedMap = {}
+    ;(this.data.schedules || []).forEach(s => { schedMap[s.date] = s.sessions || []; closedMap[s.date] = !!s.closed })
+    const projPaused = !!this.data.project.paused
+    const adv = this.data.advanceDays || 7
+    const now = new Date()
+    const todayStr = ymd(now)
+    const maxWin = ymd(addDaysDate(adv))            // 可预约窗口上限（含）
+    let anchorStr = this.data.dateAnchor || todayStr
+    if (anchorStr < todayStr) anchorStr = todayStr   // 不允许翻到今天之前
+    const [ay, am, ad] = anchorStr.split('-').map(Number)
+    const anchor = new Date(ay, am - 1, ad)
+    const WD = ['日', '一', '二', '三', '四', '五', '六']
+    const tmrStr = ymd(addDaysDate(1))
+    const chips = []
+    let prevMonth = -1
+    for (let i = 0; i < 14; i++) {
+      const cur = new Date(anchor); cur.setDate(anchor.getDate() + i)
+      const iso = ymd(cur)
+      const inWin = iso <= maxWin
+      const isOpen = openDays.indexOf(iso) >= 0 && schedDates.has(iso) && inWin
+      const isToday = iso === todayStr
+      const isTmr = iso === tmrStr
+      const wk = isToday ? '今天' : (isTmr ? '明天' : '周' + WD[cur.getDay()])
+      const mo = (cur.getMonth() !== prevMonth) ? (cur.getMonth() + 1) + '月' : ''
+      prevMonth = cur.getMonth()
+      const sel = iso === this.data.selectedDate
+      // 当日整体状态（仅对可约日有意义）：项目暂停 → 全部暂停；否则看当日场次
+      let status = ''
+      if (isOpen) {
+        if (projPaused || closedMap[iso]) status = 'paused'
+        else {
+          const sess = schedMap[iso] || []
+          if (sess.length) {
+            const allPaused = sess.every(x => x.paused)
+            const allFull = sess.every(x => (x.capacity - x.booked) <= 0)
+            const allExpired = sess.every(x => isSessionExpired(iso, x.start, this.data.project.cutoff))
+            if (allPaused) status = 'paused'
+            else if (allExpired) status = 'expired'
+            else if (allFull) status = 'full'
+          }
+        }
+      }
+      chips.push({ ymd: iso, wk, dd: cur.getDate(), mo, open: isOpen, today: isToday, sel, status })
+    }
+    const a0 = new Date(anchor)
+    const a1 = new Date(anchor); a1.setDate(a1.getDate() + 13)
+    const rangeLabel = (a0.getMonth() + 1) + '/' + a0.getDate() + ' – ' + (a1.getMonth() + 1) + '/' + a1.getDate()
+    const canPrev = anchorStr > todayStr
+    this.setData({ dateChips: chips, dateRangeLabel: rangeLabel, canPrev, dateAnchor: anchorStr })
+  },
+
+  // 点击某一天：校验可约 + 取场次
+  pickDate(e) {
+    const y = e.currentTarget.dataset.ymd
+    if (!y) return
+    if (this.data.openDays.indexOf(y) < 0) return wx.showToast({ title: '该日暂未开放', icon: 'none' })
+    const max = ymd(addDaysDate(this.data.advanceDays))
+    if (y > max) return wx.showToast({ title: '超出可预约范围（提前 ' + this.data.advanceDays + ' 天）', icon: 'none' })
+    this.selectDay(y)
+  },
+
+  // 取某日场次并展开（供点击与默认展开共用）
+  selectDay(y) {
+    const s = this.data.schedules.find(x => x.date === y)
+    const dayClosed = !!(s && s.closed)
+    const sessions = (s ? s.sessions : []).map(x => ({
+      ...x,
+      remaining: x.capacity - x.booked,
+      blocked: !!this.data.project.paused || dayClosed,   // 项目整体暂停 或 当日整体暂停 时，所有场次视为不可选
+      expired: isSessionExpired(y, x.start, this.data.project.cutoff)  // 已过预约截止规则 → 已过期，不可选
+    }))
+    let win = ''
+    if (s && s.sessions.length) {
+      const starts = s.sessions.map(t => t.start).sort()
+      const ends = s.sessions.map(t => t.end).sort()
+      win = starts[0] + ' – ' + ends[ends.length - 1]
+    }
+    this.setData({ selectedDate: y, sessions, bizWindow: win }, () => this.buildDateChips())
+  },
+
+  // 左右箭头翻页（±14 天），左翻到今天页时禁用
+  moveDate(e) {
+    const delta = Number(e.currentTarget.dataset.delta) || 14
+    if (delta < 0 && !this.data.canPrev) return
+    const todayStr = ymd(new Date())
+    let anchorStr = this.data.dateAnchor || todayStr
+    const [ay, am, ad] = anchorStr.split('-').map(Number)
+    const anchor = new Date(ay, am - 1, ad)
+    anchor.setDate(anchor.getDate() + delta)
+    let na = ymd(anchor)
+    if (na < todayStr) na = todayStr
+    this.setData({ dateAnchor: na, selectedDate: '', sessions: [], bizWindow: '' }, () => this.buildDateChips())
   },
 
   // 点击介绍图放大预览
@@ -40,31 +154,16 @@ Page({
     wx.previewImage({ current: urls[i] || urls[0], urls })
   },
 
-  onCalSelect(e) {
-    const y = e.detail.ymd
-    if (!this.data.openDays.includes(y)) return wx.showToast({ title: '该日暂未开放', icon: 'none' })
-    const max = ymd(addDaysDate(this.data.advanceDays))
-    if (y > max) return wx.showToast({ title: '超出可预约范围（提前 ' + this.data.advanceDays + ' 天）', icon: 'none' })
-    const s = this.data.schedules.find(x => x.date === y)
-    const sessions = (s ? s.sessions : []).map(x => ({ ...x, remaining: x.capacity - x.booked }))
-    let win = ''
-    if (s && s.sessions.length) {
-      const starts = s.sessions.map(t => t.start).sort()
-      const ends = s.sessions.map(t => t.end).sort()
-      win = starts[0] + ' – ' + ends[ends.length - 1]
-    }
-    this.setData({ selectedDate: y, sessions, bizWindow: win })
-  },
-
   pickSession(e) {
     const sid = e.currentTarget.dataset.id
     const s = this.data.sessions.find(x => x.id === sid)
-    if (!s || s.paused || s.remaining <= 0) return
+    // 项目整体暂停 / 当日整体暂停 / 场次暂停 / 已满 / 已过期 均不可选
+    if (!s || this.data.project.paused || s.paused || s.blocked || s.expired || s.remaining <= 0) return
     wx.navigateTo({ url: `/pages/confirm/confirm?projectId=${this.data.projectId}&date=${this.data.selectedDate}&sessionId=${sid}` })
   },
 
-  // 跳转到店铺菜单（独立页面）
-  goMenu() {
-    wx.navigateTo({ url: '/pages/menu/menu?projectId=' + this.data.projectId })
+  // 换项目：返回首页重新选择预约项目
+  goIndex() {
+    wx.reLaunch({ url: '/pages/index/index' })
   }
 })

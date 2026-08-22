@@ -5,9 +5,13 @@
       <view class="bold">{{item.role==='owner'?'超级管理员':'普通管理员'}}</view>
       <view class="badge {{item.role==='owner'?'ok':'paused'}}">{{item.role==='owner'?'owner':'manager'}}</view>
     </view>
-    <view class="sm muted" style="margin-top:6rpx">openid：{{item.openid}}</view>
+    <view class="sm" style="margin-top:8rpx"><text class="bold">{{item.nickname || '未设置昵称'}}</text></view>
+    <view class="sm muted" style="margin-top:4rpx">openid：{{item.openid}}</view>
     <view wx:if="{{item.note}}" class="xs" style="margin-top:4rpx">备注：{{item.note}}</view>
-    <button wx:if="{{item.role!=='owner'}}" class="btn ghost sm" style="margin-top:14rpx" bindtap="remove" data-id="{{item._id}}">移除</button>
+    <view class="row" style="margin-top:14rpx;gap:12rpx">
+      <button wx:if="{{item.role!=='owner'}}" class="btn ghost sm" bindtap="remove" data-id="{{item._id}}">移除</button>
+      <button class="btn sm" bindtap="setNickname" data-openid="{{item.openid}}" data-cur="{{item.nickname}}">设置昵称</button>
+    </view>
   </view>
 
   <view class="card">

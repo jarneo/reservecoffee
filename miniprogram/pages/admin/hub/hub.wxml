@@ -8,5 +8,7 @@
       <view class="mt">{{item.t}}</view><view class="ma">›</view>
     </view>
   </view>
-  <view class="btn ghost block" bindtap="exit" style="margin-top:24rpx">退出管理端</view>
+  <view class="tip">如需接收「新预约 / 取消 / 待审核」管理推送，请点下方开启（微信一次性授权，用完即失效，可随时再点续订）。</view>
+  <view class="btn ghost block" bindtap="enableAdminNotify" style="margin-top:12rpx">开启管理推送</view>
+  <view class="btn ghost block" bindtap="exit" style="margin-top:12rpx">退出管理端</view>
 </view>

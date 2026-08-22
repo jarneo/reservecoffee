@@ -6,13 +6,12 @@ exports.main = async (event) => {
   const role = await getRole(OPENID)
   if (role.role !== 'owner') return fail('仅超级管理员可配置首页')
 
-  const data = {
-    logo: (event.logo || '二曜路8号咖啡和清酒').toString().slice(0, 30),
-    tag: (event.tag || 'SLOW COFFEE · 预约制').toString().slice(0, 40),
-    heroImage: event.heroImage || '',
-    intro: (event.intro || '').toString().slice(0, 500),
-    updatedAt: Date.now()
-  }
-  await db.collection(COL.homepage).doc('homepage').set({ data })
+  // 仅更新传入的字段，避免覆盖未提供的 logo/tag 等（封面页只传 heroImage/intro）
+  const data = { updatedAt: Date.now() }
+  if (event.logo !== undefined) data.logo = String(event.logo).slice(0, 30)
+  if (event.tag !== undefined) data.tag = String(event.tag).slice(0, 40)
+  if (event.heroImage !== undefined) data.heroImage = event.heroImage
+  if (event.intro !== undefined) data.intro = String(event.intro).slice(0, 500)
+  await db.collection(COL.homepage).doc('homepage').update({ data })
   return ok({ updated: true })
 }

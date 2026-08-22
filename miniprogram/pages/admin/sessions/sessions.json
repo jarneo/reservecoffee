@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "项目场次", "usingComponents": { "sessionCard": "/components/sessionCard/sessionCard" } }
+{ "navigationBarTitleText": "预约管理", "usingComponents": { "sessionCard": "/components/sessionCard/sessionCard" } }

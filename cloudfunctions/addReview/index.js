@@ -13,7 +13,7 @@ exports.main = async (event) => {
   const { OPENID } = wxCtx()
   if (!OPENID) return fail('无法识别身份')
 
-  const { productId, rating, text, name } = event
+  const { productId, rating, text, name, avatar, anonymous } = event
   if (!productId) return fail('缺少 productId')
   const r = Number(rating)
   if (!(r >= 1 && r <= 5)) return fail('请给出 1–5 星评分')
@@ -24,11 +24,14 @@ exports.main = async (event) => {
   const proj = await db.collection(COL.projects).doc(p.projectId).get().catch(() => null)
   if (!proj || !proj.data || !proj.data.published) return fail('项目不可访问')
 
+  const anon = !!anonymous
   const review = {
     projectId: p.projectId,
     productId,
     openid: OPENID,
-    name: (name && name.trim()) || '匿名顾客',
+    name: anon ? '匿名顾客' : ((name && name.trim()) || '匿名顾客'),
+    avatar: anon ? '' : String(avatar || '').trim(),
+    anonymous: anon,
     rating: r,
     text: String(text || '').slice(0, 300),
     status: 'normal',

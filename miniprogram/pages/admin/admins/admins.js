@@ -58,5 +58,27 @@ Page({
         if (r.confirm) call('removeAdmin', { adminId: id }).then(() => this.load()).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
       }
     })
+  },
+  setNickname(e) {
+    const { openid, cur } = e.currentTarget.dataset
+    wx.showModal({
+      title: '设置昵称',
+      editable: true,
+      placeholderText: '输入便于识别的昵称',
+      content: cur || '',
+      success: r => {
+        if (!r.confirm) return
+        const nickname = (r.content || '').trim()
+        if (!nickname) return wx.showToast({ title: '昵称不能为空', icon: 'none' })
+        wx.showLoading({ title: '保存中' })
+        call('updateAdminNickname', { openid, nickname })
+          .then(() => {
+            wx.hideLoading()
+            wx.showToast({ title: '已保存', icon: 'success' })
+            this.load()
+          })
+          .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
+      }
+    })
   }
 })

@@ -1,0 +1,9 @@
+{
+  "name": "mpAuth",
+  "version": "1.0.0",
+  "description": "服务号网页授权：用 code 换服务号 openid，写入 users.mpOpenid",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3"
+  }
+}

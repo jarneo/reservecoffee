@@ -1,0 +1,9 @@
+{
+  "name": "remindReservation",
+  "version": "1.0.0",
+  "description": "reservecoffee cloud function - 开场前提醒定时器",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3"
+  }
+}

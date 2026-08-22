@@ -1,2 +1,8 @@
 .note { color: var(--ink-3); font-size: 26rpx; text-align: center; padding: 60rpx; }
 .btn.ghost.sm { width: auto; }
+
+/* 我的资料卡片 */
+.avatar-btn { width: 120rpx; height: 120rpx; padding: 0; border-radius: 50%; background: var(--fill); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1rpx solid var(--line); flex: none; }
+.avatar-btn::after { border: none; }
+.avatar-img { width: 120rpx; height: 120rpx; border-radius: 50%; }
+.avatar-ph { font-size: 22rpx; color: var(--ink-3); text-align: center; line-height: 120rpx; width: 120rpx; height: 120rpx; border-radius: 50%; }

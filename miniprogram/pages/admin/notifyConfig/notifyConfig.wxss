@@ -1,0 +1,6 @@
+.banner { background:#fff8ec; border:1rpx solid #f0d9a0; color:#8a6d1d; font-size:23rpx; padding:16rpx 18rpx; border-radius:12rpx; margin-bottom:16rpx; line-height:1.6; }
+.sec { font-size:28rpx; font-weight:600; color:var(--ink); margin-bottom:14rpx; }
+.ma { color:var(--ink-3); }
+.tip { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:14rpx; }
+.field.row.between { display:flex; align-items:center; justify-content:space-between; padding:20rpx 0; }
+.field.row.between .label { margin-bottom:0; font-size:26rpx; color:var(--ink); }

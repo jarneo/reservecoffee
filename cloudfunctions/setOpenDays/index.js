@@ -1,6 +1,8 @@
 // setOpenDays — 批量开放/关闭可约日期（owner；关闭时保护「已有预约」的日期）
 const { db, _, COL, ok, fail, wxCtx, getRole } = require('./lib')
 
+function ymd(t) { const x = t || new Date(); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}` }
+
 // 统计某日是否有已占额（booked>0）的场次
 async function dayHasBookings(projectId, date) {
   const r = await db.collection(COL.schedules).where({ projectId, date }).get()
@@ -14,8 +16,13 @@ exports.main = async (event) => {
   const role = await getRole(OPENID)
   if (role.role !== 'owner') return fail('仅超级管理员可调整可约日期')
 
-  const { projectId, action, dates } = event
+  const { projectId, action } = event
+  let dates = event.dates || []
   if (!projectId || !Array.isArray(dates) || !dates.length) return fail('参数缺失')
+  // 忽略过去的日期（不可操作历史日期，避免写回 openDays）
+  const today = ymd(new Date())
+  dates = dates.filter(d => typeof d === 'string' && d >= today)
+  if (!dates.length) return fail('不能选择过去的日期')
 
   const pRes = await db.collection(COL.projects).doc(projectId).get().catch(() => ({ data: null }))
   const p = pRes.data

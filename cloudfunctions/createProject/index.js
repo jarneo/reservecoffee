@@ -28,6 +28,8 @@ exports.main = async (event) => {
     useSlotTemplate,
     slotTemplate,
     paused: false,
+    maxParty: 2,
+    subscribeNotify: true,
     openDays: [],
     ownerOpenid: OPENID,
     createdAt: Date.now(),

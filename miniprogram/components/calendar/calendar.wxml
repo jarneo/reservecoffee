@@ -9,7 +9,7 @@
   </view>
   <view class="cal-grid">
     <view wx:for="{{cells}}" wx:key="ymd"
-      class="cell {{item.empty?'empty':''}} {{item.open?'open':''}} {{item.sel?'sel':''}} {{item.today?'today':''}}"
+      class="cell {{item.empty?'empty':''}} {{item.open?'open':''}} {{item.sel?'sel':''}} {{item.today?'today':''}} {{item.disabled?'disabled':''}}"
       data-ymd="{{item.ymd}}" bindtap="tap">
       <view wx:if="{{!item.empty}}" class="cd">{{item.day}}</view>
     </view>

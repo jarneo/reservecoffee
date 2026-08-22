@@ -35,7 +35,13 @@
   <view wx:if="{{reviews.length}}">
     <view class="card rev" wx:for="{{reviews}}" wx:key="_id">
       <view class="row between">
-        <view class="bold">{{item.name}}</view>
+        <view class="rev-user">
+          <view class="ava">
+            <image wx:if="{{item.avatarUrl && !item.anonymous}}" src="{{item.avatarUrl}}" class="ava-img"/>
+            <view wx:else class="ava-def">匿</view>
+          </view>
+          <view class="bold">{{item.anonymous ? '匿名顾客' : item.name}}</view>
+        </view>
         <view class="xs muted">{{item.productName}}</view>
       </view>
       <view class="stars" style="margin:8rpx 0">{{item.stars}}</view>

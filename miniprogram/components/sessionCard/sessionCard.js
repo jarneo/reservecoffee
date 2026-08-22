@@ -2,7 +2,8 @@ Component({
   properties: {
     session: { type: Object, value: {} },
     canChangeCap: { type: Boolean, value: false },
-    showCancel: { type: Boolean, value: false }
+    showCancel: { type: Boolean, value: false },
+    showPause: { type: Boolean, value: true }
   },
   methods: {
     onPause() { this.triggerEvent('op', { action: 'pause', id: this.data.session.id }) },

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>开启服务号通知</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #f6f4ef; color: #2b2b2b; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+    .card { width: 100%; max-width: 360px; background: #fff; border-radius: 16px; padding: 28px 22px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.06); text-align: center; }
+    .h { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .p { font-size: 14px; color: #6b6b6b; line-height: 1.6; margin: 10px 0 18px; }
+    .warn { font-size: 13px; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa;
+      border-radius: 10px; padding: 10px 12px; margin: 0 0 16px; text-align: left; line-height: 1.5; }
+    .btn { display: inline-block; background: #2b6cb0; color: #fff; border: none; border-radius: 24px;
+      padding: 12px 26px; font-size: 15px; text-decoration: none; }
+    .btn.ghost { background: #eee; color: #333; margin-top: 10px; }
+    .ok { color: #2f855a; font-weight: 600; }
+    .err { color: #c53030; }
+    .code { font-size: 12px; color: #999; word-break: break-all; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="h">开启服务号通知</div>
+    <div class="warn">⚠️ 请先在微信中<b>关注服务号「二曜路8号咖啡和清酒」</b>。仅授权不关注，将无法收到服务号通知（微信要求接收人必须是服务号粉丝）。</div>
+    <div class="p" id="tip">点击下方按钮，授权本店服务号，即可接收预订/取消的实时通知。</div>
+    <a class="btn" id="act" href="javascript:void(0)">去授权</a>
+    <a class="btn ghost" id="follow" href="javascript:void(0)" style="display:none">关注服务号</a>
+    <div class="code" id="log"></div>
+  </div>
+
+  <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+  <script>
+    // 授权页只负责拿 code；拿到 code 后通过 wx.miniProgram 跳回小程序页面，
+    // 由小程序调用 Event 云函数 mpAuth 换 openid 写库（openid 由云上下文自动取，无需前端传）。
+    // 不跳外部网关域名（会被微信拦截）。OAuth 重定向后桥接可能晚注入，故轮询等待。
+    var MP_APPID = 'wx4d8d957ee8af6073'
+    var REDIRECT = encodeURIComponent(location.origin + location.pathname)
+
+    function getParam(k) {
+      var m = new RegExp('[?&]' + k + '=([^&]*)').exec(location.search)
+      return m ? decodeURIComponent(m[1]) : ''
+    }
+
+    var openid = getParam('openid')
+    var code = getParam('code')
+    var state = getParam('state')
+
+    var tip = document.getElementById('tip')
+    var act = document.getElementById('act')
+    var follow = document.getElementById('follow')
+
+    // 跳回小程序 mine 页，带上 code；openid 由服务端云上下文取，这里不必传
+    function backToMp(code) {
+      var url = '/pages/mine/mine?mpCode=' + encodeURIComponent(code)
+      var tries = 0
+      function attempt() {
+        if (window.wx && wx.miniProgram && (wx.miniProgram.redirectTo || wx.miniProgram.navigateTo)) {
+          (wx.miniProgram.redirectTo || wx.miniProgram.navigateTo)({ url: url })
+        } else if (tries++ < 60) {
+          setTimeout(attempt, 100) // 桥接晚注入时轮询
+        } else {
+          tip.innerHTML = '授权已完成，但未能自动返回。<br>请点击下方按钮返回小程序，绑定会自动完成。'
+          act.style.display = 'inline-block'
+          act.textContent = '返回小程序'
+          act.onclick = function () {
+            if (window.wx && wx.miniProgram && wx.miniProgram.navigateBack) wx.miniProgram.navigateBack()
+            else tip.innerHTML = '<span class="err">请手动从屏幕左上角返回小程序</span>'
+          }
+        }
+      }
+      attempt()
+    }
+
+    function goAuth() {
+      var url = 'https://open.weixin.qq.com/connect/oauth2/authorize?appid=' + MP_APPID +
+        '&redirect_uri=' + REDIRECT +
+        '&response_type=code&scope=snsapi_base&state=' + encodeURIComponent(openid || '') +
+        '#wechat_redirect'
+      location.href = url
+    }
+
+    if (code) {
+      tip.innerHTML = '授权成功，正在返回小程序…'
+      act.style.display = 'none'
+      backToMp(code)
+    } else {
+      if (!openid) {
+        tip.innerHTML = '缺少小程序标识，请从小程序内打开本页。'
+        act.style.display = 'none'
+      } else {
+        act.onclick = goAuth
+      }
+    }
+
+    follow.onclick = function () {
+      tip.innerHTML = '请在微信中搜索服务号「二曜路8号咖啡和清酒」并关注，' +
+        '关注后即可收到本店的服务号通知。'
+    }
+  </script>
+</body>
+</html>

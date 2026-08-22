@@ -44,7 +44,7 @@ exports.main = async () => {
       const add = await db.collection(COL.projects).add({
         data: {
           ...p, published: true, paused: false, useSlotTemplate: false, slotTemplate: [],
-          smsEnabled: false, smsNotice: '',
+          smsEnabled: false,
           openDays: [], ownerOpenid: OPENID, createdAt: Date.now(), updatedAt: Date.now()
         }
       })

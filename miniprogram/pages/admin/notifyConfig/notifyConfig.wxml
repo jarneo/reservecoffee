@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="banner">双重开关：项目配置里的「订阅/服务号」总开关 + 本页单模板开关，二者皆为开启才会真正推送；任一关闭都不发。</view>
+
+  <!-- 订阅消息 -->
+  <view class="card">
+    <view class="sec">订阅消息（微信订阅，需用户授权）</view>
+    <view class="field row between" wx:for="{{subList}}" wx:key="key">
+      <view class="label">{{item.label}}</view>
+      <switch checked="{{sub[item.key]}}" bindchange="toggleSub" data-k="{{item.key}}"/>
+    </view>
+    <view class="tip">订阅消息用完即失效，需用户再次授权；管理端「开启管理推送」可续订管理员授权。</view>
+  </view>
+
+  <!-- 短信 -->
+  <view class="card row between tap" bindtap="goSms">
+    <view>
+      <view class="sec" style="margin:0">短信通知配置</view>
+      <view class="muted xs">签名 / 模板 ID / 密钥</view>
+    </view>
+    <view class="ma">›</view>
+  </view>
+
+  <button class="btn block" bindtap="save">保存</button>
+</view>

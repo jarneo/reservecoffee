@@ -7,13 +7,18 @@ function stars(n) {
 }
 
 Page({
-  data: { projectId: '', products: [] },
+  data: { projectId: '', shopName: '', shopTag: '图片菜品 · 真实评价', products: [] },
   onLoad(q) {
     this.setData({ projectId: q.projectId || '' })
     this.load()
   },
   load() {
     if (!this.data.projectId) return wx.showToast({ title: '缺少项目', icon: 'none' })
+    // 加载项目名作为菜单品牌头（对齐 menu-design.html 的店铺菜单 hero）
+    call('getProject', { projectId: this.data.projectId })
+      .then(d => { if (d && d.project && d.project.name) this.setData({ shopName: d.project.name }) })
+      .catch(() => {})
+    // listProducts 已按 status:'on' 过滤，即「在售菜品」
     call('listProducts', { projectId: this.data.projectId })
       .then(d => {
         const products = (d.products || []).map(p => ({

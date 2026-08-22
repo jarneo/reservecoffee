@@ -1,8 +1,4 @@
 <view class="page">
-  <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onProjectPick">
-    <view class="card row between tap"><view class="bold">{{project?project.name:'选择项目'}}</view><view class="ma">切换 ›</view></view>
-  </picker>
-
   <view class="card">
     <view class="sec">店铺主图 &amp; 介绍（顾客首页头部展示）</view>
     <view class="cover-row">
@@ -13,7 +9,7 @@
         <button wx:if="{{cover}}" class="btn sm ghost" bindtap="clearCover">删除</button>
       </view>
     </view>
-    <view class="tip">建议宽 750px 竖图，单张 ≤1MB；将作为顾客首页顶部头图（取首个已发布项目的封面）。</view>
+    <view class="tip">建议宽 750px 竖图，单张 ≤1MB；将作为顾客首页顶部头图（店铺主图）。</view>
     <view class="field" style="margin-top:14rpx">
       <view class="label">店铺介绍（顾客首页展示，≤300字）</view>
       <textarea class="ta" value="{{intro}}" placeholder="如：预约制咖啡空间，法兰绒滴滤……" maxlength="300" bindinput="onIntro"/>

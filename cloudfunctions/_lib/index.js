@@ -13,18 +13,35 @@ const COL = {
   schedules: 'schedules',
   reservations: 'reservations',
   admins: 'admins',
+  users: 'users',
   stats: 'stats_daily',
   products: 'products',
   reviews: 'reviews'
 }
 
-// 订阅消息模板占位（申请到后替换字符串即可；未申请时发送失败不阻断主流程）
+// 订阅消息模板（已申请真实 ID；占位时的 TPL_ID_* 会被 sendSubscribe 自动跳过）
 const TPL = {
-  reserveSuccess: 'TPL_ID_RESERVE_SUCCESS',   // 预约成功
-  reserveReview: 'TPL_ID_RESERVE_REVIEW',     // 待审核
-  reserveCancel: 'TPL_ID_RESERVE_CANCEL',     // 预约取消
-  reviewResult: 'TPL_ID_REVIEW_RESULT'        // 审核结果
+  reserveSuccess: 'ShNSAxZvFsDgyZhFfi3OTbofXCzjsM5P1-sSD8ZU2e4',   // 预约成功（顾客）
+  reserveCancel: 'Y1VIDe6Y_DiQqzE_FaaBzvNyD2nErGogF5pCbLed_u8',     // 预约取消（顾客）
+  reminder: 'OTbjHkCiDnS2a5r0-6AIf2ze41-M2flVKAKbt6LWe6c',         // 开场前提醒（顾客）
+  adminNew: 'AJ8iCZgYFaNoSmwmrwwivnRTnJ3BvFu5sOeg4Wa-3aM',          // 新预约提醒（管理员 owner+manager）
+  adminCancel: 'TpTXSsqC4i8F_GtN_boeKh4TXjVI-1rXUwA01AIdO5Q',       // 预约取消提醒（管理员 owner+manager）
+  adminReview: 'UQJ5AfBWVUTQO-upC-3_W-UeDu_BgPPGoyj11Ei5Py8',       // 待审核提醒（管理员 owner+manager）
+  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo'       // 结束提醒（顾客，仅预订人）
 }
+
+// 服务号「订阅通知」模板 ID（公众号后台 → 订阅通知 申请，非已废弃的「模板消息」）。
+// ⚠️ 下面 4 个 ID 仍是【模板消息】旧 ID（已于 2023-10-01 废弃，45103 失效），待用户从「订阅通知」申请到新 ID 后替换！
+// 字段键（thing*/number*/const*）必须与用户后台「订阅通知」模板实际关键词一致；data 构造在各触发函数里，替换 ID 时需同步核对字段。
+const MP_TPL = {
+  adminNew: 'JQI4jXsKyQAa2zU_kbKuhrXPV4kQHW_n_6hPVUhoLIQ',      // TODO(订阅通知) 待替换：餐位被预订提醒（管理员 owner+manager）· 免审下单成功
+  reserveSuccess: '63vHJHcLMU2tW27b2MdwAmxp7LMwTWe6oRB4O_PcXYs', // TODO(订阅通知) 待替换：订座结果提醒·成功（顾客）· 免审成功 / 审核通过
+  reserveCancel: '63vHJHcLMU2tW27b2MdwAmxp7LMwTWe6oRB4O_PcXYs',  // TODO(订阅通知) 待替换：订座结果提醒·取消（顾客+管理员）· 与原同一模板 const 区分
+  adminReview: 'eBa1lSsI5HY37Funet_Hiz4QuY2W6kQanSDV94aPgxA'     // TODO(订阅通知) 待替换：收到新订餐订单通知（管理员 owner+manager）· 待审下单成功
+}
+
+// 店铺默认名（以店铺名义发订阅/短信）。优先读 config 集合文档 store.name，回退此常量。
+const DEFAULT_STORE_NAME = '二曜路8号咖啡和清酒'
 
 function ok(data) { return { code: 0, message: 'ok', data } }
 function fail(message, code = -1) { return { code, message, data: null } }
@@ -63,6 +80,22 @@ function addDays(n) {
   return ymd(t)
 }
 
+// 友好短日期：YYYY-MM-DD -> M月D日（如 8月20日），用于订阅/短信文案
+function monthDay(ymdStr) {
+  const [y, m, d] = String(ymdStr || '').split('-').map(Number)
+  if (!m || !d) return ymdStr || ''
+  return `${m}月${d}日`
+}
+
+// 读取店铺名（以店铺名义发消息）。优先 config 集合文档 store.name，回退默认常量。
+async function getStoreName(db) {
+  try {
+    const r = await db.collection('config').doc('store').get()
+    if (r && r.data && r.data.name) return r.data.name
+  } catch (e) { /* 文档不存在时用默认名 */ }
+  return DEFAULT_STORE_NAME
+}
+
 // 发送订阅消息（占位实现：捕获失败不抛出）
 async function sendSubscribe({ openid, templateId, data, page }) {
   if (!openid || !templateId || templateId.indexOf('TPL_ID_') === 0) {
@@ -81,7 +114,74 @@ async function sendSubscribe({ openid, templateId, data, page }) {
   }
 }
 
+// 取所有管理员（role 为 owner 或 manager）的 openid，使 owner + manager 都收管理侧通知
+async function listAdminOpenids(db) {
+  const res = await db.collection(COL.admins).where({ role: _.in(['owner', 'manager']) }).get().catch(() => ({ data: [] }))
+  return (res.data || []).map(a => a.openid).filter(Boolean)
+}
+
+// 给所有管理员（owner + manager）推送订阅消息（新预约 / 取消等管理侧通知）
+// 占位跳过 + 逐个发送 + 失败不阻断主流程
+async function notifyAdmins(db, { templateId, data, page }) {
+  if (!templateId || templateId.indexOf('TPL_ID_') === 0) {
+    console.log('[notifyAdmins] skip (template not configured):', templateId)
+    return
+  }
+  const ids = await listAdminOpenids(db)
+  if (!ids.length) {
+    console.log('[notifyAdmins] no admin(owner/manager) found')
+    return
+  }
+  for (const oid of ids) {
+    await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+  }
+}
+
+// ===== 服务号模板消息（templateMessage）相关 =====
+
+// 读取全局通知开关配置（config 集合的 mp 文档）。缺省视为「全部开启」。
+async function readMpSwitch(db) {
+  try {
+    const r = await db.collection('config').doc('mp').get()
+    return (r && r.data) || {}
+  } catch (e) { return {} }
+}
+// 单个服务号模板是否开启：config.mp[key] !== false 视为开（缺省开）
+function mpOn(mpCfg, key) { return mpCfg ? (mpCfg[key] !== false) : true }
+
+// 由小程序 openid 取得用户「服务号 openid」（users.mpOpenid）。
+// 服务号模板消息的 touser 必须是服务号 openid，否则无法送达。未采集（未关注服务号）返回 ''。
+async function getMpOpenid(db, openid) {
+  if (!openid) return ''
+  try {
+    const r = await db.collection(COL.users).doc(openid).get()
+    return (r && r.data && r.data.mpOpenid) || ''
+  } catch (e) { return '' }
+}
+
+// ===== 服务号通知（已整体下线，2026-08-23）=====
+// 微信自 2023-10-01 起全面下线公众号「模板消息」接口（45103 失效），其替代「订阅通知」授权链路
+// 在「小程序 web-view」场景下无法落地（需服务号 JS-SDK 签名，工程量过大）。经用户确认，服务号通知功能
+// 整体移除，仅保留【小程序订阅消息】+【短信】双通道。下方 sendMp / notifyAdminsMp 一律 no-op，
+// 不再尝试调用微信，避免无谓的 access_token 获取与 45103 日志噪音。MP_TPL 等常量保留仅作历史参考。
+
+// 发送服务号消息（已禁用）：no-op，仅留日志便于排查。
+async function sendMp() {
+  console.log('[mp] disabled: 服务号通知功能已移除，跳过发送')
+  return
+}
+// 兼容别名
+async function sendMpSubscribe() { return sendMp() }
+
+// 给所有管理员发服务号消息（已禁用）：no-op。
+async function notifyAdminsMp() {
+  console.log('[mp] disabled: 服务号通知功能已移除，跳过管理员发送')
+  return
+}
+
 module.exports = {
-  cloud, db, _, $, COL, TPL,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, sendSubscribe
+  cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
+  sendSubscribe, listAdminOpenids, notifyAdmins,
+  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, getMpAccessToken, notifyAdminsMp
 }
