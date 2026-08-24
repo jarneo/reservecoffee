@@ -23,7 +23,10 @@
       <view class="bold">{{item.name}}</view>
       <view class="badge {{item.deleted?'del':(!item.published?'full':(item.paused?'paused':'ok'))}}">{{item.deleted?'已删除':(!item.published?'未发布':(item.paused?'暂停预约':'已发布'))}}</view>
     </view>
-    <view class="xs muted" style="margin-top:6rpx">{{item.deleted?'已删除':(item.published?'已发布':'未发布')}} · {{item.paused?'暂停预约':'开放预约'}} · 可约日 {{item.openDays.length}} 天</view>
+    <view class="xs muted" style="margin-top:6rpx">
+      <block wx:if="{{item.deleted}}">已删除</block>
+      <block wx:else>{{item.published?'发布':'暂停'}} · {{item.paused?'暂定':'开放'}} · 可约日至 {{item.bookableUntil}}</block>
+    </view>
     <view class="ops">
       <button wx:if="{{item.published && !item.deleted}}" class="btn sm ghost" catchtap="togglePublish" data-id="{{item._id}}">下架</button>
       <button wx:elif="{{!item.deleted}}" class="btn sm" catchtap="togglePublish" data-id="{{item._id}}">发布</button>

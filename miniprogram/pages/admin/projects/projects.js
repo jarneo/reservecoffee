@@ -1,6 +1,16 @@
 const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
 
+// 最晚可约日期 = 今天 + 提前可预约天数(advanceDays)
+function bookableUntil(advanceDays) {
+  const d = new Date()
+  d.setDate(d.getDate() + (Number(advanceDays) || 0))
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 Page({
   behaviors: [guard],
   data: {
@@ -12,7 +22,10 @@ Page({
     this.guard(['owner']).then(role => { if (role) this.load() })
   },
   load() {
-    call('listProjects').then(d => this.setData({ list: d.list || [] })).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
+    call('listProjects').then(d => {
+      const list = (d.list || []).map(p => Object.assign({}, p, { bookableUntil: bookableUntil(p.advanceDays) }))
+      this.setData({ list })
+    }).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },
   toggleForm() { this.setData({ showForm: !this.data.showForm }) },
   onName(e) { this.setData({ 'form.name': e.detail.value }) },

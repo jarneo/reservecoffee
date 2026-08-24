@@ -19,7 +19,8 @@ exports.main = async () => {
       deleted: !!p.deleted,
       maxParty: p.maxParty || 2,
       subscribeNotify: !!p.subscribeNotify,
-      openDays: p.openDays || []
+      openDays: p.openDays || [],
+      advanceDays: p.advanceDays || 7
     }))
   return ok({ list })
 }
