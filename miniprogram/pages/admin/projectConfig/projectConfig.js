@@ -14,7 +14,7 @@ function normCutoff(c) {
 Page({
   behaviors: [guard],
   data: {
-    projects: [], projectId: '', project: null, projectName: '', introImages: [], openDays: [], allSchedules: [], dayList: [],
+    projects: [], projectId: '', project: null, projectName: '', intro: '', introImages: [], openDays: [], allSchedules: [], dayList: [],
     year: 2026, month: 8,
     showAdd: false, addDate: '', addForm: { start: '10:00', end: '11:30', capacity: 8 },
     global: { needReview: false, paused: false, dailyLimit: 1, advanceDays: 7, maxParty: 2, subscribeNotify: true, smsEnabled: false, cutoff: { mode: 'before', minutes: 30 }, fields: ['name', 'phone'] },
@@ -53,6 +53,9 @@ Page({
     this.selectProject(item._id)
   },
 
+  // 项目首页描述（顾客端首页卡片下方文字）：本地即时回显，随 saveAll 提交
+  onIntro(e) { this.setData({ intro: e.detail.value }) },
+
   async selectProject(id) {
     this.setData({ projectId: id })
     // 改用 getProjectAdmin：不限 published，草稿/下架项目也能进配置页
@@ -65,7 +68,7 @@ Page({
     }
     const now = new Date()
     this.setData({
-      project: p, introImages: p.introImages || [], openDays: p.openDays || [],
+      project: p, intro: p.intro || '', introImages: p.introImages || [], openDays: p.openDays || [],
       year: now.getFullYear(), month: now.getMonth() + 1,
       global: {
         needReview: !!p.needReview, paused: !!p.paused, dailyLimit: p.dailyLimit || 1,
@@ -265,7 +268,8 @@ Page({
       dailyLimit: g.dailyLimit, advanceDays: g.advanceDays,
       maxParty: g.maxParty, subscribeNotify: g.subscribeNotify,
       smsEnabled: g.smsEnabled,
-      cutoff: g.cutoff, fields: g.fields
+      cutoff: g.cutoff, fields: g.fields,
+      intro: this.data.intro
     }).then(() => {
         wx.hideLoading()
         wx.showToast({ title: '已保存', icon: 'success' })

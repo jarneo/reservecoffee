@@ -3,6 +3,14 @@
     <view class="card row between tap"><view class="bold">{{projectName || (project?project.name:'选择项目')}}</view><view class="ma">切换 ›</view></view>
   </picker>
 
+  <!-- 项目首页描述：顾客端首页该项目卡片下方文字，可自定义（替代固定占位文案） -->
+  <view class="card">
+    <view class="sec">项目首页描述</view>
+    <view class="tip" style="text-align:left;margin-top:0;margin-bottom:10rpx">展示在顾客端首页该项目卡片下方，可随时修改，保存后立即生效（≤300 字）。</view>
+    <textarea class="ta" value="{{intro}}" placeholder="如：每日限量手冲深烘，安静的吧台座位。" bindinput="onIntro" maxlength="300" auto-height/>
+    <view class="tip" style="text-align:right;margin-top:6rpx">{{intro.length}}/300</view>
+  </view>
+
   <!-- 介绍图片：上传 / 替换 / 删除 / 排序 / 说明 -->
   <view class="card">
     <view class="sec row between">
