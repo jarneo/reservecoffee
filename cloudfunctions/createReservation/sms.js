@@ -1,7 +1,8 @@
-// cloudfunctions/_lib/sms.js — 腾讯云短信发送辅助（多模板）
+// cloudfunctions/_lib/sms.js — 腾讯云短信发送辅助（多模板，无参数模板）
 // 依赖：tencentcloud-sdk-nodejs-sms（在调用方云函数的 package.json 中声明）
-// 合规说明：国内短信必须使用控制台「已审批」的签名 + 模板。本辅助支持多模板，
-// 变量顺序须与控制台已审批模板一致（见各模板的 {1}{2}{3}… 占位）。
+// 合规说明：国内短信必须使用控制台「已审批」的签名 + 模板。
+// 注意：本项目的三个业务模板（预定成功 2715328 / 预约临近 2716156 / 预约过期 2716682）
+// 均为「无参数模板」（除验证码模板外均不支持参数配置），故发送时不传 TemplateParamSet。
 // 店铺名由控制台签名 SignName 提供（=「二曜路8号咖啡和清酒」），模板正文不含签名前缀。
 
 const REGION = process.env.SMS_REGION || 'ap-guangzhou'
@@ -38,27 +39,14 @@ async function loadConfig(db) {
   }
 }
 
-// 构造模板变量数组。
-// 注意：三个模板的 {N} 变量顺序/数量可能与下方默认不同，须以腾讯云控制台模板内容为准。
-// 当前默认采用现有留座模板顺序：{1}称呼 {2}日期 {3}场次 {4}几人位。
-// 待用户提供三个模板的真实占位顺序后，在此按 type 分模板锁定（见 buildSmsParams 的 TODO）。
-function buildSmsParams(type, ctx) {
-  // TODO(待确认): 用户从腾讯云控制台粘贴三个模板的 {1}{2}{3}… 内容后，
-  // 按各模板真实变量顺序返回数组。目前统一用 称呼/日期/场次/几人位 占位。
-  const name = (ctx && ctx.name) || '顾客'
-  const date = (ctx && ctx.date) || ''
-  const time = (ctx && ctx.time) || ''
-  const seats = (ctx && ctx.seats) || ''
-  return [name, date, time, seats]
-}
-
 /**
- * 发送指定模板的短信（通用）
- * @param {object} o { db, phone, templateId, params }
- *   params: 字符串数组，顺序与模板 {1}{2}{3}… 一致
+ * 发送指定模板的短信（无参数模板）
+ * @param {object} o { db, phone, templateId }
+ *   templateId：腾讯云控制台已审批的模板 ID（字符串/数字均可）
+ * 说明：三个业务模板均为无参数模板，故 TemplateParamSet 恒为空数组。
  */
 async function sendTemplateSms(o) {
-  const { db, phone, templateId, params } = o
+  const { db, phone, templateId } = o
   if (!phone) return { skipped: true, reason: 'no phone' }
   if (!templateId) return { skipped: true, reason: 'no templateId' }
 
@@ -85,7 +73,7 @@ async function sendTemplateSms(o) {
       SmsSdkAppId: cfg.smsSdkAppId,
       SignName: cfg.signName,
       TemplateId: String(templateId),
-      TemplateParamSet: params || []
+      TemplateParamSet: []
     })
     console.log('[sms] sent ok', templateId, res && res.SendStatusSet)
     return { ok: true, res }
@@ -96,19 +84,16 @@ async function sendTemplateSms(o) {
 }
 
 /**
- * 发送预约留座短信（兼容旧调用）：使用 success 模板 + 4 变量占位
- * @param {object} o { db, phone, name, date, time, seats }
+ * 发送「预定成功」短信（兼容旧调用）：使用 success 模板（无参数）
+ * @param {object} o { db, phone }
  */
 async function sendReservationSms(o) {
-  const { db, phone, name, date, time, seats } = o
+  const { db, phone } = o
   const cfg = await loadConfig(db)
   if (!cfg) return { skipped: true, reason: 'sms not configured' }
   const tid = cfg.templates && cfg.templates.success
   if (!tid) return { skipped: true, reason: 'no success template' }
-  return sendTemplateSms({
-    db, phone, templateId: tid,
-    params: buildSmsParams('success', { name, date, time, seats })
-  })
+  return sendTemplateSms({ db, phone, templateId: tid })
 }
 
-module.exports = { sendReservationSms, sendTemplateSms, loadConfig, buildSmsParams }
+module.exports = { sendReservationSms, sendTemplateSms, loadConfig }

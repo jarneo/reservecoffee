@@ -1,6 +1,6 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
 const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
-const { sendTemplateSms, loadConfig, buildSmsParams } = require('./sms')
+const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 场次是否已过预约截止（与顾客端 isSessionExpired 同源规则）
 // cutoff: { mode:'before'|'after', minutes }；未配置 / 非法 则不限制
@@ -78,13 +78,28 @@ exports.main = async (event) => {
     })
 
     const needReview = !!p.needReview
+
+    // 短信全局配置（成功短信延迟计划）；失败不阻断主流程
+    let smsSw = {}
+    try {
+      const swRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+      smsSw = swRes && swRes.data ? swRes.data : {}
+    } catch (e) { /* ignore */ }
+    // 仅在「免审」路径于此处发送成功短信；待审路径由 reviewReservation 在审批通过时发送
+    const successEnabled = !needReview && p.smsEnabled && smsSw.success !== false
+    const successDelay = successEnabled ? (typeof smsSw.successDelay === 'number' ? smsSw.successDelay : 0) : -1
+
     const reservation = {
       projectId, scheduleId: schedule._id, sessionId,
       openid: OPENID, name: name.trim(), phone, partySize: pSize, note: note || '',
       date, sessionStart: session.start, sessionEnd: session.end,
       status: needReview ? 'pending' : 'confirmed',
       review: needReview ? 'pending' : 'none',
-      createdAt: Date.now(), reviewedAt: null
+      createdAt: Date.now(), reviewedAt: null,
+      // 成功短信发送计划：-1 不发送；0 立即（提交后由下方发送）；>0 延迟（到点由 remindReservation 发送）
+      // 延迟(>0)才标记为未发送并写入 smsSuccessAt，其余(立即/不发送)直接标记已发送，避免 remindReservation 重复补发
+      smsSuccessSent: successDelay > 0 ? false : true,
+      smsSuccessAt: successDelay > 0 ? Date.now() + successDelay * 60000 : 0
     }
     const add = await transaction.collection(COL.reservations).add({ data: reservation })
     await transaction.commit()
@@ -145,24 +160,14 @@ exports.main = async (event) => {
       }
     }
 
-    // 短信推送（全局开关 + 项目开关 双重控制）：仅发预订人
-    if (p.smsEnabled) {
+    // 短信推送（成功短信，仅免审路径在此发送；待审路径由 reviewReservation 在审批通过时发送）
+    // 全局开关 + 项目开关 双重控制，仅发预订人；延迟(successDelay>0)由 remindReservation 定时发送
+    // successDelay===0 时 reservation.smsSuccessSent 在创建时已置 true，此处仅执行发送，无需再更新标记
+    if (!needReview && successDelay === 0) {
       try {
-        const smsSwRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
-        const sw = smsSwRes && smsSwRes.data ? smsSwRes.data : {}
-        if (sw.success !== false) {
-          const smsApp = await loadConfig(db)
-          const tid = smsApp && smsApp.templates && smsApp.templates.success
-          if (tid) {
-            await sendTemplateSms({
-              db, phone, templateId: tid,
-              params: buildSmsParams('success', {
-                name: name.trim(), date: monthDay(date),
-                time: `${session.start}-${session.end}`, seats
-              })
-            })
-          }
-        }
+        const smsApp = await loadConfig(db)
+        const tid = smsApp && smsApp.templates && smsApp.templates.success
+        if (tid) await sendTemplateSms({ db, phone, templateId: tid })
       } catch (e) { console.warn('[createReservation] sms failed (ignored):', e.message) }
     }
 

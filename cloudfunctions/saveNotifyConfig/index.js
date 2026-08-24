@@ -1,12 +1,18 @@
 // saveNotifyConfig — 保存全局通知配置（owner）
 // 仅覆盖传入字段；subscribe：7 个订阅模板开关 + texts（可编辑固定语）
 // mp：appId / token（公众平台消息推送 Token）/ 4 个服务号模板开关（已废弃保留）
-// sms：3 个短信开关 success/approaching/expired + expiredDelay（预约过期延迟分钟）
+// sms：3 个短信开关 success/approaching/expired + 发送时间配置
+//   successDelay     预定成功后延迟分钟（0 / 10，默认 0）
+//   approachingWhen  临近短信：开始前/后（'before' | 'after'，默认 'before'）
+//   approachingOffset 临近偏移分钟（默认 60）
+//   expiredWhen      过期短信：结束前/后（'before' | 'after'，默认 'after'）
+//   expiredOffset    过期偏移分钟（默认 5）
 const { db, ok, fail, wxCtx, getRole } = require('./lib')
 
 const SUB_KEYS = ['reserveSuccess', 'reserveCancel', 'reminder', 'reminderEnd', 'adminNew', 'adminCancel', 'adminReview']
 const MP_KEYS = ['adminNew', 'reserveSuccess', 'reserveCancel', 'adminReview']
 const SMS_KEYS = ['success', 'approaching', 'expired']
+const SMS_TIMING = ['successDelay', 'approachingWhen', 'approachingOffset', 'expiredWhen', 'expiredOffset']
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -34,12 +40,16 @@ exports.main = async (event) => {
     else await db.collection('config').doc('mp').set({ data: Object.assign({ _id: 'mp' }, patch) })
   }
 
-  // ===== 短信开关（全局） =====
+  // ===== 短信开关 + 发送时间配置（全局） =====
   if (event.sms && typeof event.sms === 'object') {
     const s = event.sms
     const patch = {}
     SMS_KEYS.forEach(k => { if (typeof s[k] === 'boolean') patch[k] = s[k] })
-    if (typeof s.expiredDelay === 'number') patch.expiredDelay = Math.max(0, Math.min(1440, s.expiredDelay))
+    if (typeof s.successDelay === 'number') patch.successDelay = Math.max(0, Math.min(1440, s.successDelay))
+    if (s.approachingWhen === 'before' || s.approachingWhen === 'after') patch.approachingWhen = s.approachingWhen
+    if (typeof s.approachingOffset === 'number') patch.approachingOffset = Math.max(0, Math.min(1440, s.approachingOffset))
+    if (s.expiredWhen === 'before' || s.expiredWhen === 'after') patch.expiredWhen = s.expiredWhen
+    if (typeof s.expiredOffset === 'number') patch.expiredOffset = Math.max(0, Math.min(1440, s.expiredOffset))
     const ex = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
     if (ex.data) await db.collection('config').doc('smsnotify').update({ data: patch })
     else await db.collection('config').doc('smsnotify').set({ data: Object.assign({ _id: 'smsnotify' }, patch) })

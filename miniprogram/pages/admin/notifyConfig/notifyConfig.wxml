@@ -20,16 +20,59 @@
     <view class="ma">›</view>
   </view>
 
-  <!-- 短信开关（全局） -->
+  <!-- 短信开关 + 发送时间（全局，同栏） -->
   <view class="card">
     <view class="sec">短信通知开关（全局）</view>
-    <view class="field row between" wx:for="{{smsList}}" wx:key="key">
-      <view class="label">{{item.label}}</view>
-      <switch checked="{{sms[item.key]}}" bindchange="toggleSms" data-k="{{item.key}}"/>
-    </view>
-    <view class="field row between">
-      <view class="label">预约过期短信延迟（分钟）</view>
-      <input class="ta-c" type="number" value="{{expiredDelay}}" bindinput="onExpiredDelay" style="width:120rpx;text-align:right"/>
+    <view class="sms-row" wx:for="{{smsList}}" wx:key="key">
+      <view class="field row between">
+        <view class="label">{{item.label}}</view>
+        <switch checked="{{sms[item.key]}}" bindchange="toggleSms" data-k="{{item.key}}"/>
+      </view>
+
+      <!-- 成功短信：预定成功后延迟 -->
+      <view class="time-box" wx:if="{{item.key==='success'}}">
+        <text class="tl">发送时间：预定成功后</text>
+        <radio-group class="rg" bindchange="onSuccessDelay">
+          <label class="rg-item"><radio value="0" checked="{{sms.successDelay===0}}"/>立即</label>
+          <label class="rg-item"><radio value="10" checked="{{sms.successDelay===10}}"/>10 分钟后</label>
+        </radio-group>
+      </view>
+
+      <!-- 临近短信：开始前/后 + 偏移 -->
+      <view class="time-box" wx:elif="{{item.key==='approaching'}}">
+        <text class="tl">发送时间：预约时间</text>
+        <view class="picker-row">
+          <picker class="mini-picker" mode="selector" range="{{approachingWhenOpts}}" value="{{sms.approachingWhen==='after'?1:0}}" bindchange="onApproachingWhen">
+            <view class="picker">{{sms.approachingWhen==='after'?'开始后':'开始前'}} ▾</view>
+          </picker>
+          <picker class="mini-picker" mode="selector" range="{{approachingOffsetOpts}}" value="{{approachingOffsetIdx}}" bindchange="onApproachingOffset">
+            <view class="picker">{{approachingOffsetOpts[approachingOffsetIdx]}} ▾</view>
+          </picker>
+        </view>
+        <view class="custom-row" wx:if="{{approachingOffsetIdx===2}}">
+          <text>自定义</text>
+          <input class="ta-c" type="number" value="{{sms.approachingOffset}}" bindinput="onApproachingCustom" style="width:120rpx;text-align:right"/>
+          <text>分钟</text>
+        </view>
+      </view>
+
+      <!-- 过期短信：结束前/后 + 偏移 -->
+      <view class="time-box" wx:else>
+        <text class="tl">发送时间：预约时间</text>
+        <view class="picker-row">
+          <picker class="mini-picker" mode="selector" range="{{expiredWhenOpts}}" value="{{sms.expiredWhen==='after'?1:0}}" bindchange="onExpiredWhen">
+            <view class="picker">{{sms.expiredWhen==='after'?'结束后':'结束前'}} ▾</view>
+          </picker>
+          <picker class="mini-picker" mode="selector" range="{{expiredOffsetOpts}}" value="{{expiredOffsetIdx}}" bindchange="onExpiredOffset">
+            <view class="picker">{{expiredOffsetOpts[expiredOffsetIdx]}} ▾</view>
+          </picker>
+        </view>
+        <view class="custom-row" wx:if="{{expiredOffsetIdx===3}}">
+          <text>自定义</text>
+          <input class="ta-c" type="number" value="{{sms.expiredOffset}}" bindinput="onExpiredCustom" style="width:120rpx;text-align:right"/>
+          <text>分钟</text>
+        </view>
+      </view>
     </view>
     <view class="tip">全局开关与「项目配置 → 开启短信通知」需同时为开，才会真正下发短信。模板 ID 在上方「短信通知配置」中填写。</view>
   </view>

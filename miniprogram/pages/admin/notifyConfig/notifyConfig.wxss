@@ -4,3 +4,16 @@
 .tip { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:14rpx; }
 .field.row.between { display:flex; align-items:center; justify-content:space-between; padding:20rpx 0; }
 .field.row.between .label { margin-bottom:0; font-size:26rpx; color:var(--ink); }
+
+/* 每个短信模板一行（开关 + 时间设置） */
+.sms-row { padding:14rpx 0; border-top:1rpx solid #f0ece4; }
+.sms-row:first-child { border-top:none; }
+.time-box { margin-top:6rpx; padding:14rpx 16rpx; background:#faf8f4; border-radius:12rpx; }
+.tl { font-size:23rpx; color:var(--ink-3); }
+.rg { display:flex; flex-wrap:wrap; margin-top:10rpx; }
+.rg-item { display:flex; align-items:center; font-size:25rpx; color:var(--ink); margin-right:30rpx; }
+.picker-row { display:flex; flex-wrap:wrap; margin-top:10rpx; }
+.mini-picker { margin-right:18rpx; }
+.picker { font-size:25rpx; color:var(--ink); background:#fff; border:1rpx solid #ddd6c8; border-radius:10rpx; padding:10rpx 18rpx; }
+.custom-row { display:flex; align-items:center; margin-top:12rpx; font-size:24rpx; color:var(--ink-2); }
+.custom-row .ta-c { margin:0 10rpx; border:1rpx solid #ddd6c8; border-radius:10rpx; background:#fff; padding:6rpx 10rpx; }

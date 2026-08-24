@@ -1,9 +1,10 @@
-// remindReservation — 开场前提醒 + 结束提醒（由定时触发器每 15 分钟调用）
-// · 开场前提醒（reminder）：status='confirmed'、未提醒过、开场前 0~60 分钟内
-// · 结束提醒（reminderEnd）：场次已结束（now>=endTime+过期延迟）且未提醒过，仅预订人
-// 短信：open 全局开关(smsnotify) + 项目开关(smsEnabled) 双重控制
-const { db, _, COL, TPL, ok, wxCtx, ymd, monthDay, sendSubscribe } = require('./lib')
-const { sendTemplateSms, loadConfig, buildSmsParams } = require('./sms')
+// remindReservation — 成功短信延迟补发 + 开场前提醒 + 结束提醒（由定时触发器每 15 分钟调用）
+// · 成功短信：smsSuccessAt 到点且未发送过 → 发送 success 模板（仅预订人）
+// · 开场前/后提醒（reminder）：status='confirmed'、未提醒过、到达 approachFireAt
+// · 结束前/后提醒（reminderEnd）：到达 expiredFireAt 且未发过，仅预订人
+// 短信：全局开关(smsnotify) + 项目开关(smsEnabled) 双重控制；三个业务模板均为无参数模板
+const { db, _, COL, TPL, ok, sendSubscribe } = require('./lib')
+const { sendTemplateSms, loadConfig } = require('./sms')
 
 exports.main = async () => {
   const now = Date.now()
@@ -17,23 +18,43 @@ exports.main = async () => {
     const app = await loadConfig(db)
     tpls = app && app.templates ? app.templates : {}
   } catch (e) { /* 短信配置缺失时不影响订阅提醒 */ }
-  const expiredDelayMs = (typeof smsSw.expiredDelay === 'number' ? smsSw.expiredDelay : 0) * 60000
 
-  const res = await db.collection(COL.reservations)
-    .where({
-      status: 'confirmed',
-      reminded: _.neq(true),
-      ended: _.neq(true)
-    })
-    .limit(100)
-    .get()
-    .catch(() => ({ data: [] }))
+  // 时间配置（带默认值）
+  const approachingWhen = smsSw.approachingWhen === 'after' ? 'after' : 'before'   // 默认 开始前
+  const approachingOffset = typeof smsSw.approachingOffset === 'number' ? smsSw.approachingOffset : 60
+  const expiredWhen = smsSw.expiredWhen === 'after' ? 'after' : 'before'           // 默认 结束后
+  const expiredOffset = typeof smsSw.expiredOffset === 'number' ? smsSw.expiredOffset : 5
+  const smsSuccessOn = smsSw.success !== false
 
-  const items = res.data || []
+  let sentSuccess = 0
   let sentStart = 0
   let sentEnd = 0
   let skipped = 0
 
+  // ===== 成功短信延迟补发（smsSuccessAt 到点） =====
+  try {
+    const sRes = await db.collection(COL.reservations)
+      .where({ smsSuccessSent: _.neq(true), smsSuccessAt: _.lte(now), status: _.neq('cancelled') })
+      .limit(100).get().catch(() => ({ data: [] }))
+    for (const r of (sRes.data || [])) {
+      const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
+      const p = pRes.data || {}
+      if (smsSuccessOn && p.smsEnabled && tpls.success && r.phone) {
+        try {
+          await sendTemplateSms({ db, phone: r.phone, templateId: tpls.success })
+          sentSuccess++
+        } catch (e) { console.warn('[remindReservation] success sms failed (ignored):', e.message) }
+      }
+      await db.collection(COL.reservations).doc(r._id).update({ data: { smsSuccessSent: true } }).catch(() => {})
+    }
+  } catch (e) { console.warn('[remindReservation] success pass failed (ignored):', e.message) }
+
+  // ===== 临近 / 过期 提醒（开场前/后、结束前/后） =====
+  const res = await db.collection(COL.reservations)
+    .where({ status: 'confirmed', reminded: _.neq(true), ended: _.neq(true) })
+    .limit(100).get().catch(() => ({ data: [] }))
+
+  const items = res.data || []
   for (const r of items) {
     const [y, m, d] = String(r.date).split('-').map(Number)
     if (!y || !m || !d) { skipped++; continue }
@@ -42,73 +63,61 @@ exports.main = async () => {
     const [eh, em] = String(r.sessionEnd || '23:59').split(':').map(Number)
     const endTime = new Date(y, m - 1, d, eh, em).getTime()
 
-    // 读取项目名（结束提醒与开场提醒的 thing10 都需要）
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
     const p = pRes.data || {}
     const pName = p.name || '预约'
     const smsEnabled = !!p.smsEnabled
 
-    // 结束提醒：场次已结束（now>=endTime+过期延迟）且未发过 → reminderEnd（仅顾客）+ 过期短信
-    if (now >= endTime + expiredDelayMs) {
-      if (!TPL.reminderEnd || TPL.reminderEnd.indexOf('TPL_ID_') === 0) { skipped++; continue }
-      await sendSubscribe({
-        openid: r.openid,
-        templateId: TPL.reminderEnd,
-        data: {
-          thing10: { value: pName },
-          time12: { value: `${r.date} ${r.sessionStart}` },
-          time14: { value: `${r.date} ${r.sessionEnd}` },
-          thing9: { value: '您的预约已完成，感谢您的到来！如有疑问，可以联系店铺～' }
-        },
-        page: 'pages/mine/mine'
-      })
-      // 预约过期短信（2716682）：全局 + 项目双重开关
+    // 触发时刻：根据「开始前/后 + 偏移」与「结束前/后 + 偏移」计算
+    const approachFireAt = approachingWhen === 'after' ? start + approachingOffset * 60000 : start - approachingOffset * 60000
+    const expiredFireAt = expiredWhen === 'after' ? endTime + expiredOffset * 60000 : endTime - expiredOffset * 60000
+
+    // 过期提醒优先：到达 expiredFireAt 且未发过 → reminderEnd（仅顾客）+ 过期短信
+    if (now >= expiredFireAt) {
+      if (TPL.reminderEnd && TPL.reminderEnd.indexOf('TPL_ID_') !== 0) {
+        await sendSubscribe({
+          openid: r.openid,
+          templateId: TPL.reminderEnd,
+          data: {
+            thing10: { value: pName },
+            time12: { value: `${r.date} ${r.sessionStart}` },
+            time14: { value: `${r.date} ${r.sessionEnd}` },
+            thing9: { value: '您的预约已完成，感谢您的到来！如有疑问，可以联系店铺～' }
+          },
+          page: 'pages/mine/mine'
+        })
+      }
       if (smsSw.expired !== false && smsEnabled && tpls.expired) {
-        try {
-          await sendTemplateSms({
-            db, phone: r.phone, templateId: tpls.expired,
-            params: buildSmsParams('expired', {
-              name: r.name, date: monthDay(r.date),
-              time: `${r.sessionStart}-${r.sessionEnd}`, seats: `${r.partySize}人位`
-            })
-          })
-        } catch (e) { console.warn('[remindReservation] expired sms failed (ignored):', e.message) }
+        try { await sendTemplateSms({ db, phone: r.phone, templateId: tpls.expired }) }
+        catch (e) { console.warn('[remindReservation] expired sms failed (ignored):', e.message) }
       }
       await db.collection(COL.reservations).doc(r._id).update({ data: { ended: true } }).catch(() => {})
       sentEnd++
       continue
     }
 
-    // 开场前提醒：未开始 且 开场前 ≤ 60 分钟 → reminder（仅顾客）+ 临近短信
-    const diff = start - now
-    if (diff <= 0 || diff > 60 * 60 * 1000) { skipped++; continue }
-    if (!TPL.reminder || TPL.reminder.indexOf('TPL_ID_') === 0) { skipped++; continue }
-
-    await sendSubscribe({
-      openid: r.openid,
-      templateId: TPL.reminder,
-      data: {
-        thing10: { value: pName },
-        time1: { value: `${r.date} ${r.sessionStart}` },
-        thing5: { value: '预约时间很近了，记得还有一个预约，路上注意安全哦。' }
-      },
-      page: 'pages/mine/mine'
-    })
-    // 预约临近短信（2716156）：全局 + 项目双重开关
-    if (smsSw.approaching !== false && smsEnabled && tpls.approaching) {
-      try {
-        await sendTemplateSms({
-          db, phone: r.phone, templateId: tpls.approaching,
-          params: buildSmsParams('approaching', {
-            name: r.name, date: monthDay(r.date),
-            time: `${r.sessionStart}-${r.sessionEnd}`, seats: `${r.partySize}人位`
-          })
+    // 临近提醒：到达 approachFireAt 且未发过 → reminder（仅顾客）+ 临近短信
+    if (now >= approachFireAt) {
+      if (TPL.reminder && TPL.reminder.indexOf('TPL_ID_') !== 0) {
+        await sendSubscribe({
+          openid: r.openid,
+          templateId: TPL.reminder,
+          data: {
+            thing10: { value: pName },
+            time1: { value: `${r.date} ${r.sessionStart}` },
+            thing5: { value: '预约时间很近了，记得还有一个预约，路上注意安全哦。' }
+          },
+          page: 'pages/mine/mine'
         })
-      } catch (e) { console.warn('[remindReservation] approaching sms failed (ignored):', e.message) }
+      }
+      if (smsSw.approaching !== false && smsEnabled && tpls.approaching) {
+        try { await sendTemplateSms({ db, phone: r.phone, templateId: tpls.approaching }) }
+        catch (e) { console.warn('[remindReservation] approaching sms failed (ignored):', e.message) }
+      }
+      await db.collection(COL.reservations).doc(r._id).update({ data: { reminded: true } }).catch(() => {})
+      sentStart++
     }
-    await db.collection(COL.reservations).doc(r._id).update({ data: { reminded: true } }).catch(() => {})
-    sentStart++
   }
 
-  return ok({ checked: items.length, sentStart, sentEnd, skipped })
+  return ok({ checked: items.length, sentSuccess, sentStart, sentEnd, skipped })
 }
