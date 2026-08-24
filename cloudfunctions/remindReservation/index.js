@@ -1,10 +1,23 @@
 // remindReservation — 开场前提醒 + 结束提醒（由定时触发器每 15 分钟调用）
 // · 开场前提醒（reminder）：status='confirmed'、未提醒过、开场前 0~60 分钟内
-// · 结束提醒（reminderEnd）：场次已结束（now>=endTime）、未提醒过，仅预订人
+// · 结束提醒（reminderEnd）：场次已结束（now>=endTime+过期延迟）且未提醒过，仅预订人
+// 短信：open 全局开关(smsnotify) + 项目开关(smsEnabled) 双重控制
 const { db, _, COL, TPL, ok, wxCtx, ymd, monthDay, sendSubscribe } = require('./lib')
+const { sendTemplateSms, loadConfig, buildSmsParams } = require('./sms')
 
 exports.main = async () => {
   const now = Date.now()
+
+  // 全局短信开关 + 模板 ID（循环前读取一次）
+  let smsSw = {}
+  let tpls = {}
+  try {
+    const swRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+    smsSw = swRes && swRes.data ? swRes.data : {}
+    const app = await loadConfig(db)
+    tpls = app && app.templates ? app.templates : {}
+  } catch (e) { /* 短信配置缺失时不影响订阅提醒 */ }
+  const expiredDelayMs = (typeof smsSw.expiredDelay === 'number' ? smsSw.expiredDelay : 0) * 60000
 
   const res = await db.collection(COL.reservations)
     .where({
@@ -31,10 +44,12 @@ exports.main = async () => {
 
     // 读取项目名（结束提醒与开场提醒的 thing10 都需要）
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
-    const pName = (pRes.data && pRes.data.name) || '预约'
+    const p = pRes.data || {}
+    const pName = p.name || '预约'
+    const smsEnabled = !!p.smsEnabled
 
-    // 结束提醒：场次已结束（now>=endTime）且未发过 → reminderEnd（仅顾客）
-    if (now >= endTime) {
+    // 结束提醒：场次已结束（now>=endTime+过期延迟）且未发过 → reminderEnd（仅顾客）+ 过期短信
+    if (now >= endTime + expiredDelayMs) {
       if (!TPL.reminderEnd || TPL.reminderEnd.indexOf('TPL_ID_') === 0) { skipped++; continue }
       await sendSubscribe({
         openid: r.openid,
@@ -47,12 +62,24 @@ exports.main = async () => {
         },
         page: 'pages/mine/mine'
       })
+      // 预约过期短信（2716682）：全局 + 项目双重开关
+      if (smsSw.expired !== false && smsEnabled && tpls.expired) {
+        try {
+          await sendTemplateSms({
+            db, phone: r.phone, templateId: tpls.expired,
+            params: buildSmsParams('expired', {
+              name: r.name, date: monthDay(r.date),
+              time: `${r.sessionStart}-${r.sessionEnd}`, seats: `${r.partySize}人位`
+            })
+          })
+        } catch (e) { console.warn('[remindReservation] expired sms failed (ignored):', e.message) }
+      }
       await db.collection(COL.reservations).doc(r._id).update({ data: { ended: true } }).catch(() => {})
       sentEnd++
       continue
     }
 
-    // 开场前提醒：未开始 且 开场前 ≤ 60 分钟 → reminder（仅顾客）
+    // 开场前提醒：未开始 且 开场前 ≤ 60 分钟 → reminder（仅顾客）+ 临近短信
     const diff = start - now
     if (diff <= 0 || diff > 60 * 60 * 1000) { skipped++; continue }
     if (!TPL.reminder || TPL.reminder.indexOf('TPL_ID_') === 0) { skipped++; continue }
@@ -67,6 +94,18 @@ exports.main = async () => {
       },
       page: 'pages/mine/mine'
     })
+    // 预约临近短信（2716156）：全局 + 项目双重开关
+    if (smsSw.approaching !== false && smsEnabled && tpls.approaching) {
+      try {
+        await sendTemplateSms({
+          db, phone: r.phone, templateId: tpls.approaching,
+          params: buildSmsParams('approaching', {
+            name: r.name, date: monthDay(r.date),
+            time: `${r.sessionStart}-${r.sessionEnd}`, seats: `${r.partySize}人位`
+          })
+        })
+      } catch (e) { console.warn('[remindReservation] approaching sms failed (ignored):', e.message) }
+    }
     await db.collection(COL.reservations).doc(r._id).update({ data: { reminded: true } }).catch(() => {})
     sentStart++
   }

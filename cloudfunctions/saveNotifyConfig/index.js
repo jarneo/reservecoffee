@@ -1,10 +1,12 @@
 // saveNotifyConfig — 保存全局通知配置（owner）
 // 仅覆盖传入字段；subscribe：7 个订阅模板开关 + texts（可编辑固定语）
-// mp：appId / token（公众平台消息推送 Token）/ 4 个服务号模板开关
+// mp：appId / token（公众平台消息推送 Token）/ 4 个服务号模板开关（已废弃保留）
+// sms：3 个短信开关 success/approaching/expired + expiredDelay（预约过期延迟分钟）
 const { db, ok, fail, wxCtx, getRole } = require('./lib')
 
 const SUB_KEYS = ['reserveSuccess', 'reserveCancel', 'reminder', 'reminderEnd', 'adminNew', 'adminCancel', 'adminReview']
 const MP_KEYS = ['adminNew', 'reserveSuccess', 'reserveCancel', 'adminReview']
+const SMS_KEYS = ['success', 'approaching', 'expired']
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -30,6 +32,17 @@ exports.main = async (event) => {
     const ex = await db.collection('config').doc('mp').get().catch(() => ({ data: null }))
     if (ex.data) await db.collection('config').doc('mp').update({ data: patch })
     else await db.collection('config').doc('mp').set({ data: Object.assign({ _id: 'mp' }, patch) })
+  }
+
+  // ===== 短信开关（全局） =====
+  if (event.sms && typeof event.sms === 'object') {
+    const s = event.sms
+    const patch = {}
+    SMS_KEYS.forEach(k => { if (typeof s[k] === 'boolean') patch[k] = s[k] })
+    if (typeof s.expiredDelay === 'number') patch.expiredDelay = Math.max(0, Math.min(1440, s.expiredDelay))
+    const ex = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+    if (ex.data) await db.collection('config').doc('smsnotify').update({ data: patch })
+    else await db.collection('config').doc('smsnotify').set({ data: Object.assign({ _id: 'smsnotify' }, patch) })
   }
 
   return ok({ saved: true })

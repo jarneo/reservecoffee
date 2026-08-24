@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="banner">双重开关：项目配置里的「订阅/服务号」总开关 + 本页单模板开关，二者皆为开启才会真正推送；任一关闭都不发。</view>
+  <view class="banner">双重开关：项目配置里的「订阅/短信」总开关 + 本页单模板开关，二者皆为开启才会真正推送；任一关闭都不发。</view>
 
   <!-- 订阅消息 -->
   <view class="card">
@@ -15,9 +15,23 @@
   <view class="card row between tap" bindtap="goSms">
     <view>
       <view class="sec" style="margin:0">短信通知配置</view>
-      <view class="muted xs">签名 / 模板 ID / 密钥</view>
+      <view class="muted xs">签名 / 三个模板 ID / 密钥</view>
     </view>
     <view class="ma">›</view>
+  </view>
+
+  <!-- 短信开关（全局） -->
+  <view class="card">
+    <view class="sec">短信通知开关（全局）</view>
+    <view class="field row between" wx:for="{{smsList}}" wx:key="key">
+      <view class="label">{{item.label}}</view>
+      <switch checked="{{sms[item.key]}}" bindchange="toggleSms" data-k="{{item.key}}"/>
+    </view>
+    <view class="field row between">
+      <view class="label">预约过期短信延迟（分钟）</view>
+      <input class="ta-c" type="number" value="{{expiredDelay}}" bindinput="onExpiredDelay" style="width:120rpx;text-align:right"/>
+    </view>
+    <view class="tip">全局开关与「项目配置 → 开启短信通知」需同时为开，才会真正下发短信。模板 ID 在上方「短信通知配置」中填写。</view>
   </view>
 
   <button class="btn block" bindtap="save">保存</button>

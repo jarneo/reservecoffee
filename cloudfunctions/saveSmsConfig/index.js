@@ -1,5 +1,5 @@
 // saveSmsConfig — 保存短信全局配置（owner）
-// 字段：signName / templateId / smsSdkAppId / secretId / secretKey / noticeTemplate
+// 字段：signName / smsSdkAppId / secretId / secretKey / noticeTemplate / templates{success,approaching,expired}
 // 仅覆盖非空字段，避免误清空已配置的密钥。
 const { db, ok, fail, wxCtx, getRole } = require('./lib')
 
@@ -13,11 +13,16 @@ exports.main = async (event) => {
   const next = Object.assign({}, cur)
 
   if (event.signName) next.signName = String(event.signName).slice(0, 30)
-  if (event.templateId) next.templateId = String(event.templateId).slice(0, 60)
   if (event.smsSdkAppId) next.smsSdkAppId = String(event.smsSdkAppId).slice(0, 60)
   if (event.secretId) next.secretId = String(event.secretId).slice(0, 80)
   if (event.secretKey) next.secretKey = String(event.secretKey).slice(0, 120)
   if (typeof event.noticeTemplate === 'string') next.noticeTemplate = event.noticeTemplate.slice(0, 200)
+  // 三个短信模板 ID（任意非空即覆盖对应项）
+  const tpl = Object.assign({}, cur.templates || {})
+  if (event.tplSuccess) tpl.success = String(event.tplSuccess).slice(0, 60)
+  if (event.tplApproaching) tpl.approaching = String(event.tplApproaching).slice(0, 60)
+  if (event.tplExpired) tpl.expired = String(event.tplExpired).slice(0, 60)
+  next.templates = tpl
   next.updatedAt = Date.now()
 
   if (cur._id) {

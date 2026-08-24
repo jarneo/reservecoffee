@@ -9,14 +9,19 @@ exports.main = async () => {
 
   const doc = await db.collection('config_sms').doc('sms').get().catch(() => ({ data: null }))
   const c = doc.data || {}
+  const tpl = c.templates || {}
   return ok({
     config: {
       signName: c.signName || '',
-      templateId: c.templateId || '',
       smsSdkAppId: c.smsSdkAppId || '',
       secretIdMask: c.secretId ? c.secretId.slice(0, 4) + '****' : '',
       hasSecret: !!c.secretKey,
-      noticeTemplate: c.noticeTemplate || ''
+      noticeTemplate: c.noticeTemplate || '',
+      templates: {
+        success: tpl.success || '',
+        approaching: tpl.approaching || '',
+        expired: tpl.expired || ''
+      }
     }
   })
 }

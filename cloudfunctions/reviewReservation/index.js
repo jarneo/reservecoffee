@@ -1,6 +1,6 @@
 // reviewReservation — 审核通过/拒绝（owner）
 const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
-const { sendReservationSms } = require('./sms')
+const { sendTemplateSms, loadConfig, buildSmsParams } = require('./sms')
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -44,14 +44,25 @@ exports.main = async (event) => {
     const storeName = await getStoreName(db)
     const dt = `${monthDay(r.date)} ${r.sessionStart}-${r.sessionEnd}`
 
-    // 审核通过 → 短信通知「已为您留座」（单条留座，仅预订人）
+    // 审核通过 → 短信通知「已为您留座」（全局开关 + 项目开关 双重控制，仅预订人）
     if (decision === 'approve' && p && p.smsEnabled) {
-      sendReservationSms({
-        db, phone: r.phone, name: r.name,
-        date: monthDay(r.date),
-        time: `${r.sessionStart}-${r.sessionEnd}`,
-        seats: `${r.partySize}人位`
-      }).catch(() => {})
+      try {
+        const smsSwRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+        const sw = smsSwRes && smsSwRes.data ? smsSwRes.data : {}
+        if (sw.success !== false) {
+          const smsApp = await loadConfig(db)
+          const tid = smsApp && smsApp.templates && smsApp.templates.success
+          if (tid) {
+            await sendTemplateSms({
+              db, phone: r.phone, templateId: tid,
+              params: buildSmsParams('success', {
+                name: r.name, date: monthDay(r.date),
+                time: `${r.sessionStart}-${r.sessionEnd}`, seats: `${r.partySize}人位`
+              })
+            })
+          }
+        }
+      } catch (e) { console.warn('[reviewReservation] sms failed (ignored):', e.message) }
     }
 
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）

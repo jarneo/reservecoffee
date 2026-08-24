@@ -1,5 +1,5 @@
 // getNotifyConfig — 读取全局通知配置（owner）
-// 返回 config 集合的 subscribe（订阅消息）与 mp（服务号）文档。
+// 返回 config 集合的 subscribe（订阅消息）、mp（服务号，已废弃保留）、sms（短信开关）文档。
 const { db, ok, fail, wxCtx, getRole } = require('./lib')
 
 exports.main = async () => {
@@ -9,8 +9,10 @@ exports.main = async () => {
 
   const sub = await db.collection('config').doc('subscribe').get().catch(() => ({ data: null }))
   const mp = await db.collection('config').doc('mp').get().catch(() => ({ data: null }))
+  const sms = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
   return ok({
     subscribe: sub.data || {},
-    mp: mp.data || {}
+    mp: mp.data || {},
+    sms: sms.data || {}
   })
 }

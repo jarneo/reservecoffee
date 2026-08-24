@@ -1,6 +1,6 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
 const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
-const { sendReservationSms } = require('./sms')
+const { sendTemplateSms, loadConfig, buildSmsParams } = require('./sms')
 
 // 场次是否已过预约截止（与顾客端 isSessionExpired 同源规则）
 // cutoff: { mode:'before'|'after', minutes }；未配置 / 非法 则不限制
@@ -145,14 +145,25 @@ exports.main = async (event) => {
       }
     }
 
-    // 短信推送（每项目独立开关）：单条留座，仅发预订人，压成一条 ≤70 字
+    // 短信推送（全局开关 + 项目开关 双重控制）：仅发预订人
     if (p.smsEnabled) {
-      sendReservationSms({
-        db, phone, name: name.trim(),
-        date: monthDay(date),
-        time: `${session.start}-${session.end}`,
-        seats
-      }).catch(() => {})
+      try {
+        const smsSwRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+        const sw = smsSwRes && smsSwRes.data ? smsSwRes.data : {}
+        if (sw.success !== false) {
+          const smsApp = await loadConfig(db)
+          const tid = smsApp && smsApp.templates && smsApp.templates.success
+          if (tid) {
+            await sendTemplateSms({
+              db, phone, templateId: tid,
+              params: buildSmsParams('success', {
+                name: name.trim(), date: monthDay(date),
+                time: `${session.start}-${session.end}`, seats
+              })
+            })
+          }
+        }
+      } catch (e) { console.warn('[createReservation] sms failed (ignored):', e.message) }
     }
 
     return ok({ id: add._id, status: reservation.status, review: reservation.review })
