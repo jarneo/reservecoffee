@@ -1,5 +1,5 @@
 // addReview — 顾客端：发表评价（评分 + 文字）
-const { db, COL, ok, fail, wxCtx } = require('./lib')
+const { db, COL, ok, fail, wxCtx, cloud } = require('./lib')
 
 async function recompute(db, productId) {
   const r = await db.collection(COL.reviews).where({ productId, status: 'normal' }).get()
@@ -17,6 +17,25 @@ exports.main = async (event) => {
   if (!productId) return fail('缺少 productId')
   const r = Number(rating)
   if (!(r >= 1 && r <= 5)) return fail('请给出 1–5 星评分')
+
+  // 内容安全审核：评论场景(scene=2)；违规或检测异常均拒绝发布，保证小程序上线合规
+  const rawText = String(text || '').trim()
+  if (rawText) {
+    try {
+      await cloud.openapi.security.msgSecCheck({
+        content: rawText.slice(0, 500000), // ≤500KB
+        scene: 2,
+        version: 2,
+        openid: OPENID
+      })
+    } catch (e) {
+      const code = e && e.errCode
+      if (code === 87014) return fail('评论内容包含违规信息，未通过审核')
+      // 权限未配置 / 接口异常等：安全优先，拒绝发布（避免违规内容流入）
+      console.warn('[addReview] msgSecCheck error (rejected for safety):', code || (e && e.errMsg))
+      return fail('评论发布失败，请稍后重试')
+    }
+  }
 
   const pRes = await db.collection(COL.products).doc(productId).get().catch(() => null)
   const p = pRes && pRes.data

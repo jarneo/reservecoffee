@@ -190,5 +190,5 @@ module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
   ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
-  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, getMpAccessToken, notifyAdminsMp
+  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp
 }

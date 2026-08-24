@@ -22,13 +22,12 @@ Page({
     showCutoff: false, cutoffDraft: { mode: 'before', minutes: 30 },
     showFields: false, fieldsDraft: ['name', 'phone'],
     fieldCatalog: [
-      { key: 'name', label: '姓名', lock: true, req: true },
-      { key: 'phone', label: '手机号', lock: true, req: true },
+      { key: 'name', label: '姓名', lock: false, req: false },
+      { key: 'phone', label: '手机号', lock: false, req: false },
       { key: 'wechat', label: '微信', lock: false, req: false },
       { key: 'note', label: '备注', lock: false, req: false },
       { key: 'gender', label: '性别', lock: false, req: false },
-      { key: 'age', label: '年龄', lock: false, req: false },
-      { key: 'companion', label: '同行人数', lock: false, req: false }
+      { key: 'age', label: '年龄', lock: false, req: false }
     ]
   },
 

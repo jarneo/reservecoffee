@@ -25,9 +25,10 @@ exports.main = async (event) => {
   const { OPENID } = wxCtx()
   if (!OPENID) return fail('无法识别用户身份')
 
-  const { projectId, date, sessionId, name, phone, partySize, note } = event
+  const { projectId, date, sessionId, name, phone, partySize, note, wechat, gender, age } = event
   if (!projectId || !date || !sessionId) return fail('参数缺失')
-  if (!/^1[3-9]\d{9}$/.test(phone || '')) return fail('请填写正确的手机号')
+  // 手机号非必填：仅当填写时校验格式
+  if (phone && !/^1[3-9]\d{9}$/.test(phone)) return fail('请填写正确的手机号')
   if (!name || !name.trim()) return fail('请填写称呼')
   const pSize = Number(partySize) || 1
   if (pSize < 1) return fail('预约人数无效')
@@ -91,7 +92,8 @@ exports.main = async (event) => {
 
     const reservation = {
       projectId, scheduleId: schedule._id, sessionId,
-      openid: OPENID, name: name.trim(), phone, partySize: pSize, note: note || '',
+      openid: OPENID, name: name.trim(), phone: phone || '', partySize: pSize,
+      note: note || '', wechat: wechat || '', gender: gender || '', age: age || '',
       date, sessionStart: session.start, sessionEnd: session.end,
       status: needReview ? 'pending' : 'confirmed',
       review: needReview ? 'pending' : 'none',

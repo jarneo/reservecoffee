@@ -71,6 +71,8 @@ exports.main = async (event) => {
     cutoff: p.cutoff || null,
     maxParty: p.maxParty || 2,
     subscribeNotify: !!p.subscribeNotify,
+    smsEnabled: !!p.smsEnabled,
+    fields: p.fields || ['name', 'phone'],
     openDays: p.openDays || [],
     useSlotTemplate: !!p.useSlotTemplate,
     slotTemplate: p.slotTemplate || []

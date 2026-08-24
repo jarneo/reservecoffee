@@ -156,10 +156,10 @@
   <view class="modal-mask" wx:if="{{showFields}}" bindtap="closeFields">
     <view class="modal" catchtap="noop">
       <view class="modal-t">提交预约信息设置</view>
-      <view class="tip" style="text-align:left;margin-top:0;margin-bottom:8rpx">勾选顾客预约时需填写的信息；姓名、手机号为必填项，不可关闭。</view>
+      <view class="tip" style="text-align:left;margin-top:0;margin-bottom:8rpx">勾选顾客预约时需填写的信息；姓名、手机号默认开启，可在此关闭（姓名始终收集，手机号选填）。</view>
       <view wx:for="{{fieldCatalog}}" wx:key="key" class="field row between">
-        <view class="label">{{item.label}}{{item.req?'（必填）':''}}{{item.lock?' · 锁定':''}}</view>
-        <switch checked="{{fieldsDraft.indexOf(item.key)>=0}}" disabled="{{item.lock}}" bindchange="toggleField" data-k="{{item.key}}"/>
+        <view class="label">{{item.label}}</view>
+        <switch checked="{{fieldsDraft.indexOf(item.key)>=0}}" bindchange="toggleField" data-k="{{item.key}}"/>
       </view>
       <view class="row" style="gap:12rpx;margin-top:16rpx">
         <button class="btn ghost block" bindtap="closeFields">取消</button>
