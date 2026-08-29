@@ -3,7 +3,7 @@
     <view class="card row between tap"><view class="bold">{{projectName || '选择项目'}}</view><view class="ma">切换 ›</view></view>
   </picker>
 
-  <picker wx:if="{{products.length}}" mode="selector" range="{{products}}" range-key="name" bindchange="onProductPick">
+  <picker wx:if="{{productOptions.length}}" mode="selector" range="{{productOptions}}" range-key="name" bindchange="onProductPick">
     <view class="card row between tap"><view class="bold">菜品：{{productName || '请选择'}}</view><view class="ma">切换 ›</view></view>
   </picker>
 
@@ -21,6 +21,7 @@
           <view wx:else class="ava-def">{{item.initial}}</view>
         </view>
         <view class="rname">{{item.name}}<text class="badge {{item.pending?'wait':'ok'}}">{{item.statusText}}</text></view>
+        <view wx:if="{{item.productName}}" class="rprod">{{item.productName}}</view>
       </view>
       <view class="star">{{item.stars}}</view>
     </view>

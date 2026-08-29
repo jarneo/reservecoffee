@@ -22,6 +22,7 @@ Page({
     showAuth: false,
     authorized: false,
     pName: '', pAvatar: '',
+    nickFromWx: false,  // 昵称是否来自微信实名（bind:nicknamereview）；仅此后才允许确认授权
     images: [],          // 临时路径
     imageFiles: []       // 已上传 fileID（上传后回填）
   },
@@ -46,18 +47,24 @@ Page({
     if (this.data.authState === 'denied') return wx.showToast({ title: '你已拒绝授权，无法发表评价', icon: 'none' })
     if (!this.data.authorized) return this.setData({ showAuth: true })
   },
-  onAuthConfirm() { this.setData({ showAuth: false, authorized: true }) },
+  onAuthConfirm() {
+    if (!this.data.pAvatar) return wx.showToast({ title: '请获取微信头像', icon: 'none' })
+    if (!this.data.pName) return wx.showToast({ title: '请填写微信昵称', icon: 'none' })
+    // 昵称必须来自微信真实实名，禁止手填/篡改后提交（合规要求：真实微信昵称、不可修改）
+    if (!this.data.nickFromWx) return wx.showToast({ title: '请点击键盘上的「使用微信昵称」获取真实昵称', icon: 'none' })
+    this.setData({ showAuth: false, authorized: true })
+  },
   onAuthCancel() { this.setData({ showAuth: false, authState: 'denied' }) },
   setRating(e) { this.setData({ rating: Number(e.currentTarget.dataset.n) }) },
   onText(e) { this.setData({ text: e.detail.value }) },
-  // 昵称：打字即填充（解锁按钮），点了键盘「使用微信昵称」建议则覆盖为真实微信昵称
+  // 昵称：仅接受微信返回的实名（bind:nicknamereview）；bindinput 仅作解锁按钮的兜底，不视为已授权来源
   onPName(e) {
     const v = ((e.detail && e.detail.value) || '').trim()
     if (v) this.setData({ pName: v })
   },
   onNickNameReview(e) {
     const n = (e.detail && e.detail.nickname) || ''
-    if (n) this.setData({ pName: n })
+    if (n) this.setData({ pName: n, nickFromWx: true })
   },
   onChooseAvatar(e) {
     const url = e.detail.avatarUrl
@@ -109,7 +116,7 @@ Page({
         images: imageFiles
       })
       wx.showToast({ title: (res && res.message) || '已提交，审核通过后展示', icon: 'none' })
-      this.setData({ text: '', images: [], pAvatar: '', pName: '' })
+      this.setData({ text: '', images: [], pAvatar: '', pName: '', nickFromWx: false })
       this.load()
     } catch (e) {
       wx.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })

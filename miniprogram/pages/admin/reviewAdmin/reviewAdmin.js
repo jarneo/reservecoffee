@@ -16,7 +16,7 @@ function timeStr(ts) {
 Page({
   behaviors: [guard],
   data: {
-    projects: [], projectId: '', projectName: '', products: [], productId: '', productName: '',
+    projects: [], projectId: '', projectName: '', products: [], productOptions: [{ _id: '', name: '全部菜品' }], productId: '', productName: '全部菜品',
     reviews: [], tab: 'pending', pendingCount: 0
   },
   onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
@@ -30,18 +30,19 @@ Page({
   onProjectPick(e) { this.selectProject(this.data.projects[e.detail.value]._id) },
   selectProject(id) {
     const name = (this.data.projects.find(x => x._id === id) || {}).name || ''
-    this.setData({ projectId: id, projectName: name })
+    this.setData({ projectId: id, projectName: name, productId: '', productName: '全部菜品' })
     call('adminProducts', { projectId: id })
       .then(d => {
         const products = d.products || []
-        const first = products[0]
-        this.setData({ products, productId: first ? first._id : '', productName: first ? first.name : '' })
+        // 顶部追加「全部菜品」：进入默认展示该项目全部菜品的待审批评价，再按需切换具体菜品筛选
+        this.setData({ products, productOptions: [{ _id: '', name: '全部菜品' }].concat(products), productId: '', productName: '全部菜品' })
         this.loadReviews()
       })
       .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },
   onProductPick(e) {
-    const p = this.data.products[e.detail.value]
+    const p = this.data.productOptions[e.detail.value]
+    if (!p) return
     this.setData({ productId: p._id, productName: p.name })
     this.loadReviews()
   },
