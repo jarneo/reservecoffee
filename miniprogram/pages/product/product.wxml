@@ -88,13 +88,10 @@
         </button>
       </view>
 
-      <!-- 昵称：input type=nickname 取微信昵称，确认后锁定不可改 -->
+      <!-- 昵称：input type=nickname 取微信昵称；点键盘「使用微信昵称」即真实实名。授权前可改，授权后写评价卡片锁定不可改 -->
       <view class="field row between">
         <view class="label">微信昵称</view>
-        <block wx:if="{{pName}}">
-          <view class="locked">{{pName}}<text class="lock">已锁定</text></view>
-        </block>
-        <input wx:else class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" bind:nicknamereview="onNickNameReview"/>
+        <input class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" value="{{pName}}" bindinput="onPName" bind:nicknamereview="onNickNameReview"/>
       </view>
 
       <view class="modal-ops">
