@@ -50,7 +50,11 @@ Page({
   onAuthCancel() { this.setData({ showAuth: false, authState: 'denied' }) },
   setRating(e) { this.setData({ rating: Number(e.currentTarget.dataset.n) }) },
   onText(e) { this.setData({ text: e.detail.value }) },
-  onPName(e) { this.setData({ pName: e.detail.value }) },
+  // 昵称仅接受微信返回的实名（bind:nicknamereview），禁止手填，确保不可篡改
+  onNickNameReview(e) {
+    const n = (e.detail && e.detail.nickname) || ''
+    if (n) this.setData({ pName: n })
+  },
   onChooseAvatar(e) {
     const url = e.detail.avatarUrl
     if (url) this.setData({ pAvatar: url })

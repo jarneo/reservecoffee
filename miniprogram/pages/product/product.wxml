@@ -43,26 +43,18 @@
     </button>
     <view wx:if="{{authState==='denied'}}" class="hint">你已拒绝授权，无法发表评价。评价需展示真实微信头像与昵称。</view>
 
-    <!-- 已授权：真实头像/昵称采集 + 图片 + 提交 -->
+    <!-- 已授权：实名头像/昵称已锁定，仅评分 + 文字 + 图片 + 提交 -->
     <block wx:if="{{authorized}}">
+      <view class="idcard">
+        <view class="ava sm">
+          <image wx:if="{{pAvatar}}" src="{{pAvatar}}" class="ava-img"/>
+          <view wx:else class="ava-def">{{pName.slice(0,1)}}</view>
+        </view>
+        <view class="idname">{{pName}}<text class="lock">微信实名</text></view>
+      </view>
+
       <view class="stars-sel">
         <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="sbtn {{rating>=item?'on':''}}" bindtap="setRating" data-n="{{item}}">★</text>
-      </view>
-
-      <view class="field row between">
-        <view class="label">微信昵称</view>
-        <input class="nick" type="nickname" placeholder="点此使用微信昵称" value="{{pName}}" bindinput="onPName"/>
-      </view>
-
-      <view class="field row between">
-        <view class="label">微信头像</view>
-        <view class="row" style="gap:12rpx;align-items:center">
-          <view class="ava sm">
-            <image wx:if="{{pAvatar}}" src="{{pAvatar}}" class="ava-img"/>
-            <view wx:else class="ava-def">选</view>
-          </view>
-          <button class="btn ghost sm" size="mini" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">选择头像</button>
-        </view>
       </view>
 
       <view class="img-row">
@@ -79,14 +71,35 @@
     </block>
   </view>
 
-  <!-- 授权弹窗（要求 1） -->
+  <!-- 授权弹窗：头像 + 昵称一并授权，均来自微信且不可修改 -->
   <view wx:if="{{showAuth}}" class="modal-mask">
     <view class="modal">
-      <view class="modal-title">评价需授权</view>
-      <view class="modal-body">为展示真实评价，发表评价需要获取你的微信头像与微信昵称。我们仅用于评价展示，不会用于其他用途。</view>
+      <view class="modal-title">授权微信头像与昵称</view>
+      <view class="modal-body">为展示真实评价，需获取你的微信头像与微信昵称（均取自微信，不可修改，仅用于评价展示）。</view>
+
+      <!-- 头像：chooseAvatar 仅取微信头像，不允许相册上传 -->
+      <view class="auth-ava">
+        <view class="ava lg">
+          <image wx:if="{{pAvatar}}" src="{{pAvatar}}" class="ava-img"/>
+          <view wx:else class="ava-def">头</view>
+        </view>
+        <button class="btn ghost sm" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          {{pAvatar ? '重新获取头像' : '获取微信头像'}}
+        </button>
+      </view>
+
+      <!-- 昵称：input type=nickname 取微信昵称，确认后锁定不可改 -->
+      <view class="field row between">
+        <view class="label">微信昵称</view>
+        <block wx:if="{{pName}}">
+          <view class="locked">{{pName}}<text class="lock">已锁定</text></view>
+        </block>
+        <input wx:else class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" bind:nicknamereview="onNickNameReview"/>
+      </view>
+
       <view class="modal-ops">
         <button class="btn ghost" bindtap="onAuthCancel">拒绝</button>
-        <button class="btn" bindtap="onAuthConfirm">授权并填写</button>
+        <button class="btn" disabled="{{!(pAvatar && pName)}}" bindtap="onAuthConfirm">确认授权</button>
       </view>
     </view>
   </view>

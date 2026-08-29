@@ -31,8 +31,8 @@
     <view class="rtime">{{item.time}}<text wx:if="{{item.status==='hidden'}}" class="hidden"> · 已隐藏</text></view>
 
     <view class="ops" wx:if="{{item.pending}}">
-      <text class="ob ok" bindtap="approve" data-i="{{index}}">通过</text>
-      <text class="ob danger" bindtap="reject" data-i="{{index}}">拒绝</text>
+      <button class="btn-act ok" bindtap="approve" data-i="{{index}}">通过</button>
+      <button class="btn-act danger" bindtap="reject" data-i="{{index}}">拒绝</button>
     </view>
     <view class="ops" wx:else>
       <text class="ob" bindtap="toggleTop" data-i="{{index}}">{{item.top ? '取消置顶' : '置顶'}}</text>

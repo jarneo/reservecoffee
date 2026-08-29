@@ -10,10 +10,16 @@
 .rtext { font-size: 26rpx; color: var(--ink); margin-top: 8rpx; line-height: 1.6; }
 .rtime { font-size: 20rpx; color: var(--ink-3); margin-top: 8rpx; }
 .rtime .hidden { color: var(--warn); }
-.ops { display: flex; gap: 20rpx; margin-top: 12rpx; }
+.ops { display: flex; gap: 20rpx; margin-top: 16rpx; }
 .ob { color: var(--brand); font-size: 26rpx; }
 .ob.danger { color: #B23A3A; }
 .ob.ok { color: #1A7A3C; }
+
+/* 审核操作大按钮（通过 / 拒绝） */
+.btn-act { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 12rpx; font-size: 30rpx; font-weight: 600; padding: 0; border: none; margin: 0; }
+.btn-act::after { border: none; }
+.btn-act.ok { background: #1A7A3C; color: #fff; }
+.btn-act.danger { background: #B23A3A; color: #fff; }
 
 /* 审核 tab */
 .tabs { display: flex; gap: 16rpx; margin: 8rpx 4rpx 12rpx; }
