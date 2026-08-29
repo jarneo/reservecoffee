@@ -1,21 +1,4 @@
 <view class="page">
-  <!-- 首次进入：资料引导卡（微信昵称一键填 + 头像） -->
-  <view wx:if="{{showProfile}}" class="profile-mask">
-    <view class="profile-card">
-      <view class="pc-title">完善资料，预约更轻松</view>
-      <view class="pc-sub">可一键填入微信昵称，也可手动修改</view>
-      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-        <image wx:if="{{pAvatar}}" class="avatar-img" src="{{pAvatar}}" mode="aspectFill"/>
-        <view wx:else class="avatar-ph">头像</view>
-      </button>
-      <view class="field"><view class="label">称呼</view>
-        <input type="nickname" placeholder="点此填入微信昵称" value="{{pName}}" bindinput="onPName"/>
-      </view>
-      <button class="btn block" bindtap="saveProfileCard">保存</button>
-      <view class="pc-skip" bindtap="skipProfile">暂不设置</view>
-    </view>
-  </view>
-
   <view class="hero">
     <image wx:if="{{homepage.heroImageUrl}}" class="hero-img" src="{{homepage.heroImageUrl}}" mode="widthFix"/>
     <view wx:if="{{homepage.intro}}" class="intro">{{homepage.intro}}</view>
