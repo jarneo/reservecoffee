@@ -1,5 +1,8 @@
 <view class="page">
-  <view class="sec">待审核预约（{{list.length}}）</view>
+  <view class="row between" style="align-items:center;margin-bottom:8rpx">
+    <view class="sec" style="padding:0">待审核预约（{{list.length}}）</view>
+    <button class="btn sm" bindtap="reviewAll" wx:if="{{list.length>0}}">全部审核</button>
+  </view>
   <view wx:if="{{list.length===0}}" class="note">暂无待审核预约</view>
   <view wx:for="{{list}}" wx:key="_id" class="card">
     <view class="row between"><view class="bold">{{item.name}}</view><view class="badge paused">待审核</view></view>

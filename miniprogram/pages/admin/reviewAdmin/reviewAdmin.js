@@ -45,7 +45,10 @@ Page({
   loadReviews() {
     call('adminReviews', { projectId: this.data.projectId, productId: this.data.productId })
       .then(d => {
-        const reviews = (d.reviews || []).map(r => ({ ...r, stars: stars(r.rating), time: timeStr(r.createdAt) }))
+        const reviews = (d.reviews || []).map(r => {
+          const nm = r.anonymous ? '微信用户' : (r.name || '微信用户')
+          return { ...r, stars: stars(r.rating), time: timeStr(r.createdAt), name: nm, initial: nm.slice(0, 1) }
+        })
         this.setData({ reviews })
         // 解析评价头像 fileID → 临时 URL（管理端可见署名头像，便于辨别）
         const ids = [...new Set(reviews.map(r => r.avatar).filter(Boolean))]

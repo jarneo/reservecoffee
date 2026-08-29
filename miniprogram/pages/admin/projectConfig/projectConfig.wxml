@@ -1,3 +1,4 @@
+<wxs src="../../../utils/tools.wxs" module="tools" />
 <view class="page">
   <picker mode="selector" range="{{projects}}" range-key="name" bindchange="onProjectPick">
     <view class="card row between tap"><view class="bold">{{projectName || (project?project.name:'选择项目')}}</view><view class="ma">切换 ›</view></view>
@@ -159,7 +160,7 @@
       <view class="tip" style="text-align:left;margin-top:0;margin-bottom:8rpx">勾选顾客预约时需填写的信息；姓名、手机号默认开启，可在此关闭（姓名始终收集，手机号选填）。</view>
       <view wx:for="{{fieldCatalog}}" wx:key="key" class="field row between">
         <view class="label">{{item.label}}</view>
-        <switch checked="{{fieldsDraft.indexOf(item.key)>=0}}" bindchange="toggleField" data-k="{{item.key}}"/>
+        <switch checked="{{tools.indexOf(fieldsDraft, item.key) >= 0}}" bindchange="toggleField" data-k="{{item.key}}"/>
       </view>
       <view class="row" style="gap:12rpx;margin-top:16rpx">
         <button class="btn ghost block" bindtap="closeFields">取消</button>

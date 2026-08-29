@@ -1,19 +1,15 @@
-// reviewReservation — 审核通过/拒绝（owner）
-const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
+// reviewAllReservations — 批量审核通过所有待审核预约（owner/manager）
+// 与 reviewReservation 单条逻辑等价：逐条事务改状态 + 成功短信 + 预约成功/审核结果订阅，并汇总结果。
+// ⚠️ 单条审核逻辑与 reviewReservation/index.js 保持同步；后者改动时本函数须同步。
+const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
-exports.main = async (event) => {
-  const { OPENID } = wxCtx()
-  const role = await getRole(OPENID)
-  if (role.role !== 'owner' && role.role !== 'manager') return fail('仅管理员可审核')
-
-  const { reservationId, decision } = event
-  if (!reservationId || !['approve', 'reject'].includes(decision)) return fail('参数缺失')
-
+// 处理单条待审核预约（与 reviewReservation 内部逻辑一致）
+async function processOne(reservationId, decision) {
   const rRes = await db.collection(COL.reservations).doc(reservationId).get().catch(() => ({ data: null }))
   const r = rRes.data
-  if (!r) return fail('预约不存在')
-  if (r.review !== 'pending') return fail('该预约无须审核或已处理')
+  if (!r) return { ok: false, reservationId, reason: 'not found' }
+  if (r.review !== 'pending') return { ok: false, reservationId, reason: 'not pending' }
 
   const transaction = await db.startTransaction()
   try {
@@ -38,14 +34,11 @@ exports.main = async (event) => {
     }
     await transaction.commit()
 
-    // 项目信息 + 店铺名（提前读取，修复 p 作用域隐患）
+    // 项目信息（用于通知文案）
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
     const p = pRes.data
-    const storeName = await getStoreName(db)
-    const dt = `${monthDay(r.date)} ${r.sessionStart}-${r.sessionEnd}`
 
-    // 审核通过 → 短信通知「已为您留座」（全局开关 + 项目开关 双重控制，仅预订人）
-    // 成功短信延迟计划：successDelay<=0 立即发送；>0 延迟到点由 remindReservation 发送
+    // 审核通过 → 短信「已为您留座」（全局开关 + 项目开关 双重控制，仅预订人）
     if (decision === 'approve' && p && p.smsEnabled) {
       try {
         const smsSwRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
@@ -65,7 +58,7 @@ exports.main = async (event) => {
             }
           }
         }
-      } catch (e) { console.warn('[reviewReservation] sms failed (ignored):', e.message) }
+      } catch (e) { console.warn('[reviewAll] sms failed (ignored):', e.message) }
     }
 
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
@@ -82,11 +75,8 @@ exports.main = async (event) => {
         page: 'pages/mine/mine'
       })
     }
-    // 拒绝：不发送订阅消息（顾客在「我的预约」查看状态）
 
     // 审核结果 → 推送「待审核提醒」给管理员（owner+manager），闭环审核流
-    // thing1 前缀标注结果（已通过/已拒绝），thing 类型上限 20 字，安全
-    // 手机号选填：空值不下发 phone_number2，避免微信因空值字段返回 47003 静默吞掉整条通知
     const adminReviewData = {
       thing1: { value: p.name },
       time2: { value: `${r.date} ${r.sessionStart}` },
@@ -96,13 +86,36 @@ exports.main = async (event) => {
       templateId: TPL.adminReview,
       data: adminReviewData,
       page: 'pages/admin/review/review'
-    }).catch(e => { console.warn('[reviewReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
-    // 诊断：审核结果推送结果落库
+    }).catch(e => { console.warn('[reviewAll] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
     try { await db.collection(COL.reservations).doc(reservationId).update({ data: { adminNotifyReview } }) } catch (e) {}
 
-    return ok({ decision, status: decision === 'approve' ? 'confirmed' : 'cancelled' })
+    return { ok: true, reservationId, decision }
   } catch (e) {
     await transaction.rollback().catch(() => {})
-    return fail(e.message || '审核失败')
+    return { ok: false, reservationId, reason: e.message || 'failed' }
   }
+}
+
+exports.main = async (event) => {
+  const { OPENID } = wxCtx()
+  const role = await getRole(OPENID)
+  if (role.role !== 'owner' && role.role !== 'manager') return fail('仅管理员可审核')
+
+  const decision = ['approve', 'reject'].includes(event.decision) ? event.decision : 'approve'
+
+  // 与 listReviews 一致：所有待审核且状态仍为 pending 的预约 = 审核页可见的待审列表
+  const res = await db.collection(COL.reservations)
+    .where({ review: 'pending', status: 'pending' })
+    .orderBy('createdAt', 'asc').limit(200).get()
+  const pending = res.data || []
+
+  let approved = 0, skipped = 0, failed = 0
+  const errors = []
+  for (const r of pending) {
+    const out = await processOne(r._id, decision)
+    if (out.ok) approved++
+    else if (out.reason === 'not pending') skipped++
+    else { failed++; errors.push({ id: r._id, reason: out.reason }) }
+  }
+  return ok({ total: pending.length, approved, skipped, failed, errors })
 }

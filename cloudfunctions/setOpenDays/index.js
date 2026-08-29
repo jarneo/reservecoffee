@@ -11,6 +11,14 @@ async function dayHasBookings(projectId, date) {
   return (s.sessions || []).some(x => (x.booked || 0) > 0)
 }
 
+// 删除某日残留的场次文档（孤儿场次）。关闭/移除日期时调用：避免仅从 openDays 移除而 schedules 文档残留，
+// 日后重新开放该日时孤儿场次「复活」被顾客端误判为可约。调用方已对「有预约」日期做保护，此处仅清理 booked 全为 0 的日期。
+async function removeScheduleForDate(projectId, date) {
+  try {
+    await db.collection(COL.schedules).where({ projectId, date }).remove()
+  } catch (e) { console.warn('[setOpenDays] removeSchedule failed:', e && e.message) }
+}
+
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
   const role = await getRole(OPENID)
@@ -37,7 +45,11 @@ exports.main = async (event) => {
     for (const d of dates) {
       if (openDays.has(d) && await dayHasBookings(projectId, d)) protectedDays.push(d)
     }
-    dates.forEach(d => { if (!protectedDays.includes(d)) openDays.delete(d) })
+    for (const d of dates) {
+      if (protectedDays.includes(d)) continue
+      openDays.delete(d)
+      await removeScheduleForDate(projectId, d)   // 治本：同步清理孤儿场次，防止重新开放时复活
+    }
     if (protectedDays.length) {
       await db.collection(COL.projects).doc(projectId).update({ data: { openDays: [...openDays] } })
       return ok({ open: [...openDays], protectedDays, message: `该日期已有人预约，无法取消当日预约：${protectedDays.join('、')}` })
@@ -49,6 +61,10 @@ exports.main = async (event) => {
       if (!dates.includes(d) && await dayHasBookings(projectId, d)) keep.push(d)
     }
     const next = new Set([...dates, ...keep])
+    // 治本：清理被移除且无预约的日期的孤儿场次文档
+    for (const d of (p.openDays || [])) {
+      if (!next.has(d)) await removeScheduleForDate(projectId, d)
+    }
     await db.collection(COL.projects).doc(projectId).update({ data: { openDays: [...next] } })
     return ok({ open: [...next], protectedDays: keep })
   } else {

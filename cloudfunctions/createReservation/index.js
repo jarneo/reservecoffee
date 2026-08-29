@@ -134,23 +134,23 @@ exports.main = async (event) => {
       page: 'pages/mine/mine'
     })
 
-    // B 线 · 给所有管理员（owner + manager）
+    // B 线 · 给所有管理员（owner + manager）；结果记录到 adminNotify 供排查
+    let adminNotify = null
     if (p.subscribeNotify !== false) {
       if (needReview) {
-        // 待审：仅项目 · 预约时间 · 人数（便于登录审批，不带手机号/预订人详情）
-        await notifyAdmins(db, {
+        // 待审：字段须对齐微信后台「待审核提醒」模板（thing1 门店名称 / time2 计划就餐时间 / number3 用餐人数）
+        adminNotify = await notifyAdmins(db, {
           templateId: TPL.adminReview,
           data: {
-            thing5: { value: p.name },
-            thing1: { value: name.trim() },
-            time4: { value: `${date} ${session.start}` },
-            phone_number2: { value: phone }
+            thing1: { value: p.name },
+            time2: { value: `${date} ${session.start}` },
+            number3: { value: pSize }
           },
           page: 'pages/admin/review/review'
         })
       } else {
         // 免审：项目 · 预订人 · 日期场次（thing3 上限 20 字，仅放日期场次 dt，不拼人数）
-        await notifyAdmins(db, {
+        adminNotify = await notifyAdmins(db, {
           templateId: TPL.adminNew,
           data: {
             thing1: { value: p.name },
@@ -158,7 +158,7 @@ exports.main = async (event) => {
             thing3: { value: dt }
           },
           page: 'pages/admin/hub/hub'
-        }).catch(e => console.warn('[createReservation] notifyAdmins adminReview failed (ignored):', e && e.message))
+        }).catch(e => { console.warn('[createReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
       }
     }
 
@@ -171,6 +171,11 @@ exports.main = async (event) => {
         const tid = smsApp && smsApp.templates && smsApp.templates.success
         if (tid) await sendTemplateSms({ db, phone, templateId: tid })
       } catch (e) { console.warn('[createReservation] sms failed (ignored):', e.message) }
+    }
+
+    // 诊断：把管理侧订阅发送结果落库，便于排查「收不到待审核推送」（不阻断主流程）
+    if (add && add._id && adminNotify) {
+      try { await db.collection(COL.reservations).doc(add._id).update({ data: { adminNotify } }) } catch (e) {}
     }
 
     return ok({ id: add._id, status: reservation.status, review: reservation.review })

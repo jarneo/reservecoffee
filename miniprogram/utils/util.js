@@ -49,7 +49,11 @@ function requestSubscribe(tmplIds) {
   const valid = (tmplIds || []).filter(id => id && !String(id).startsWith('TPL_ID_'))
   if (!valid.length) return
   if (typeof wx !== 'undefined' && wx.requestSubscribeMessage) {
-    wx.requestSubscribeMessage({ tmplIds: valid, success() {}, fail() {} })
+    wx.requestSubscribeMessage({
+      tmplIds: valid,
+      success(res) { console.log('[subscribe] 授权结果:', JSON.stringify(res)) },
+      fail(err) { console.warn('[subscribe] 授权失败:', JSON.stringify(err)) }
+    })
   }
 }
 

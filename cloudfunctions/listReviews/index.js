@@ -4,7 +4,7 @@ const { db, _, COL, ok, fail, wxCtx, getRole } = require('./lib')
 exports.main = async () => {
   const { OPENID } = wxCtx()
   const role = await getRole(OPENID)
-  if (role.role !== 'owner') return fail('仅超级管理员可审核')
+  if (role.role !== 'owner' && role.role !== 'manager') return fail('仅管理员可审核')
 
   const res = await db.collection(COL.reservations)
     .where({ review: 'pending', status: 'pending' })

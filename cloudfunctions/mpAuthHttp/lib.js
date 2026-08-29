@@ -96,10 +96,11 @@ async function getStoreName(db) {
   return DEFAULT_STORE_NAME
 }
 
-// 发送订阅消息；返回结构化结果（不再静默吞，便于排查 43101/47003/47004）
+// 发送订阅消息（占位实现：捕获失败不抛出）
 async function sendSubscribe({ openid, templateId, data, page }) {
   if (!openid || !templateId || templateId.indexOf('TPL_ID_') === 0) {
-    return { ok: false, skipped: true, reason: 'template not configured', openid, templateId }
+    console.log('[subscribe] skip (template not configured):', templateId)
+    return
   }
   try {
     await cloud.openapi.subscribeMessage.send({
@@ -108,13 +109,8 @@ async function sendSubscribe({ openid, templateId, data, page }) {
       data,
       page: page || 'pages/index/index'
     })
-    return { ok: true, openid, templateId }
   } catch (e) {
-    // 关键错误码：43101=用户未授权订阅模板；47003=字段值/关键字非法；47004=模板不存在
-    const errCode = e && (e.errCode !== undefined ? e.errCode : e.code)
-    const errMsg = (e && e.message) ? e.message : String(e)
-    console.warn('[subscribe] send failed:', errCode, errMsg, 'tmpl=', templateId)
-    return { ok: false, openid, templateId, errCode, errMsg }
+    console.warn('[subscribe] send failed (ignored):', e.message)
   }
 }
 
@@ -125,23 +121,27 @@ async function listAdminOpenids(db) {
 }
 
 // 给所有管理员（owner + manager）推送订阅消息（新预约 / 取消等管理侧通知）
-// 占位跳过 + 逐个发送 + 失败不阻断主流程；返回每个管理员的发送结果数组供排查
+// 占位跳过 + 逐个发送 + 失败不阻断主流程
 async function notifyAdmins(db, { templateId, data, page }) {
   if (!templateId || templateId.indexOf('TPL_ID_') === 0) {
-    return [{ ok: false, skipped: true, reason: 'template not configured', templateId }]
+    console.log('[notifyAdmins] skip (template not configured):', templateId)
+    return
   }
   const ids = await listAdminOpenids(db)
   if (!ids.length) {
-    return [{ ok: false, skipped: true, reason: 'no admin(owner/manager) found' }]
+    console.log('[notifyAdmins] no admin(owner/manager) found')
+    return
   }
   console.log('[notifyAdmins] sending', templateId, 'to', ids.length, 'admin(s):', ids)
-  const results = []
   for (const oid of ids) {
-    const r = await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
-    r.role = 'admin'
-    results.push(r)
+    try {
+      await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+      console.log('[notifyAdmins] sent ok to', oid)
+    } catch (e) {
+      // 关键错误码：43101=用户未授权订阅模板；47003=字段值非法；47004=模板不存在
+      console.warn('[notifyAdmins] send failed to', oid, ':', e && e.message)
+    }
   }
-  return results
 }
 
 // ===== 服务号模板消息（templateMessage）相关 =====

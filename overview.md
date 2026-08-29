@@ -1,25 +1,37 @@
-# 服务通知（服务号模板消息）实现 · 概览
+# 审核通知收不到 —— 根因与修复（2026-08-25）
 
-**日期**：2026-08-22
-**状态**：代码已全部完成（本地），已同步 `lib.js` 并 `node --check` 全通过；**待部署**（本会话 CloudBase 工具未加载）。
+## 真实根因（已用诊断函数实证）
+不是授权问题、不是字段关键字问题、不是代码逻辑问题。
 
-## 做了什么
-- **后端**
-  - `_lib/index.js`：新增 `MP_TPL`（4 个服务号模板 ID）+ `sendMp` / `getMpOpenid` / `notifyAdminsMp` / `readMpSwitch` / `mpOn`。
-  - 新云函数 `mpCallback`（关注/取消关注事件 → 写 `users.mpOpenid`，按 unionid 关联，免 AppSecret/出网）。
-  - 新云函数 `getNotifyConfig` / `saveNotifyConfig`（读写 `config.subscribe` / `config.mp`）。
-  - `create` / `cancel` / `review` 接入服务号发送（双层开关：`projects.mpNotify` && `config.mp[key]`）；顺带修复 `cancel` 的 `pName` 提前使用、`review` 的 `p` 跨 if 作用域两处 ReferenceError（订阅消息也受影响）。
-  - `saveProfile` 存 `unionid`（关联服务号关键）。
-- **前端（管理台）**
-  - 新页面 `pages/admin/notifyConfig`：订阅 7 开关 / 服务号 4 开关 + AppID + Token / 短信跳转。
-  - `projectConfig` 新增「开启服务号通知」总开关（`mpNotify`）；`hub` 加入口；`app.json` 注册。
-- **文档**：`docs/服务通知实现与配置.md`（字段映射、双层开关、公众平台配置步骤、time 字段提醒、AppSecret 澄清）。
+用临时诊断函数 `diagNotify` 对全部 4 个管理员各发一次 `adminReview`，全部返回：
+```
+errCode: -501001
+errMsg: subscribeMessage.send:fail invalid wx openapi access_token
+```
+**根因 = 云环境 `cloud1-d8g9mhgxm32d2eac6` 没有配置小程序的 AppSecret（微信开发者凭证）。**
 
-## 关键结论
-- **不需要服务号 AppSecret**：服务号模板消息走 `cloud.openapi.templateMessage.send`，凭据由「云环境绑定服务号」托管（与订阅消息同理）。
-- **服务号送达前提**：① 用户关注服务号 ② 公众平台「消息推送」指向 `mpCallback` ③ 云环境已绑服务号。未关注自动跳过，不报错。
+所有 `cloud.openapi.*` 调用（订阅消息、手机号、内容安全）都依赖环境凭证去换取 access_token。
+凭证缺失 → 拿不到 token → 所有订阅消息统一静默失败。所以**不只是审核通知，预约成功 / 新预约 / 开场提醒 / 审核结果……其实全部发不出去**，只是你先测到了审核这一条。
 
-## 待办（阻塞/下一步）
-1. **重连 / 重开 chat 会话**加载 CloudBase 工具后，由 AI 部署 7 个云函数（`createReservation` `cancelReservation` `reviewReservation` `saveProfile` `mpCallback` `getNotifyConfig` `saveNotifyConfig`）。
-2. 前端上传体验版（`deploy/sync.js`）使 `notifyConfig` 页与 `mpNotify` 开关生效。
-3. 公众平台配置消息推送 Token 并回填到「全局通知配置 → 服务号 → Token」。
+前两轮"空手机号 47003""字段关键字不匹配"的假设均被排除（diag 直接调用发信函数也是 -501001，根本走不到字段校验）。
+
+## 必须由你完成的修复（控制台手动步骤，沙箱无法代操作）
+1. 打开 **CloudBase 控制台** → 进入环境 **`cloud1-d8g9mhgxm32d2eac6`**。
+2. **环境设置 → 微信开发者凭证**（或"微信小程序"凭证配置项）。
+3. 填入小程序 **AppID `wxb97578ed89c6e2c7`** 对应的 **AppSecret**（在小程序后台「开发管理 → 开发设置 → AppSecret」获取/重置），保存。
+4. 保存后，**管理台 hub 页再点一次「开启管理推送」** 续期授权（订阅为一次性，授权额度用一次少一次）。
+5. 提交一个「法兰绒研习社预约」（needReview=true）的待审预约（填手机号）。
+
+完成后告诉我，我用 `diagNotify` 复测：若不再报 -501001，说明凭证生效、通知链路已通。
+
+## 已落地的改动（不依赖你的控制台操作）
+- `_lib` 的 `sendSubscribe`/`notifyAdmins` 改为**返回结构化结果**（ok / skipped / errCode / errMsg），不再静默吞错误。
+- `createReservation` / `reviewReservation` 把管理侧发送结果落库到预约记录的 `adminNotify` / `adminNotifyReview`，便于后续复查。
+- `util.requestSubscribe` 把授权 accept/reject 结果打到控制台。
+- 前端已上传体验版 **6.5.10**；`createReservation` / `reviewReservation` 已重新部署（保留健康依赖）。
+- 临时诊断函数 `diagNotify` 暂留（验证通过后删除）。
+
+## 待你本机执行（沙箱 git 受限）
+```bash
+git add -A && git commit -m "fix: 订阅发送结果落库诊断；_lib 返回结构化错误" && git push && git push --tags
+```

@@ -388,11 +388,20 @@ Page({
   openCopy(e) {
     const date = e.currentTarget.dataset.d
     wx.showActionSheet({
-      itemList: ['复制到本月', '复制到未来6个月'],
+      itemList: ['复制到本月', '复制到下个月', '复制到全部'],
       success: r => {
-        const target = r.tapIndex === 0 ? 'month' : 'all'
+        const target = ['month', 'nextMonth', 'all'][r.tapIndex]
         call('copyDaySessions', { projectId: this.data.projectId, fromDate: date, target })
-          .then(() => { this.refreshSchedules(); wx.showToast({ title: '已复制', icon: 'success' }) })
+          .then(res => {
+            // 合并新增的目标日期到本地 openDays，否则「复制到本月」之外的目标日（如下月/全部里的未开放日）不会立即显示
+            const targets = (res && res.targets) || []
+            if (targets.length) {
+              const set = new Set([...(this.data.openDays || []), ...targets])
+              this.setData({ openDays: [...set] })
+            }
+            this.refreshSchedules()
+            wx.showToast({ title: '已复制', icon: 'success' })
+          })
           .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
       }
     })

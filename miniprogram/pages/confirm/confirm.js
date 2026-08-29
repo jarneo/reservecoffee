@@ -7,7 +7,8 @@ Page({
     projectId: '', date: '', sessionId: '',
     projectName: '', session: null,
     name: '', phone: '', partySize: 1, note: '', maxParty: 2,
-    fields: ['name', 'phone']
+    fields: ['name', 'phone'],
+    showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false
   },
 
   onLoad(q) {
@@ -21,11 +22,18 @@ Page({
         const p = d.project
         const s = (d.schedules.find(x => x.date === this.data.date) || {})
         const sess = (s.sessions || []).find(x => x.id === this.data.sessionId)
+        const fields = p.fields || ['name', 'phone']
         this.setData({
           projectName: p.name,
           session: sess ? { ...sess, remaining: sess.capacity - sess.booked } : null,
           maxParty: p.maxParty || 2,
-          fields: p.fields || ['name', 'phone']
+          fields,
+          // 预计算各可选字段显隐标志：WXML 不支持方法调用（如 .indexOf），故用 JS 预算布尔，避免字段不显示
+          showPhone: fields.indexOf('phone') >= 0,
+          showWechat: fields.indexOf('wechat') >= 0,
+          showGender: fields.indexOf('gender') >= 0,
+          showAge: fields.indexOf('age') >= 0,
+          showNote: fields.indexOf('note') >= 0
         })
         this.prefill()
       })

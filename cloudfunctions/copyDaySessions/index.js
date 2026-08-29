@@ -1,4 +1,5 @@
 // copyDaySessions — 复制某日场次到目标日期（owner）
+// target: 'nextMonth' 下个月全部已开放日 | 'month' 当月全部 openDays | 'all' 项目全部 openDays（所有月份）
 const { db, COL, ok, fail, wxCtx, getRole } = require('./lib')
 
 function ymd(t) { return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` }
@@ -26,7 +27,12 @@ exports.main = async (event) => {
   if (target === 'nextWeek') {
     const t = new Date(from); t.setDate(t.getDate() + 7); targets = [ymd(t)]
   } else if (target === 'nextMonth') {
-    const t = new Date(from.getFullYear(), from.getMonth() + 1, from.getDate()); targets = [ymd(t)]
+    // 下个月「所有已开放日」：取项目 openDays 中落在 from 的下一个月的日期（与「复制到本月」对称）
+    const pRes = await db.collection(COL.projects).doc(projectId).get().catch(() => ({ data: null }))
+    const openDays = (pRes.data && pRes.data.openDays) || []
+    const nm = new Date(from.getFullYear(), from.getMonth() + 1, 1)
+    const ym = `${nm.getFullYear()}-${String(nm.getMonth() + 1).padStart(2, '0')}`
+    targets = [...new Set(openDays.filter(d => typeof d === 'string' && d.indexOf(ym) === 0))]
   } else if (target === 'month') {
     // 当月「所有可预约日」：取项目 openDays 中落在 from 年月的日期（去重）
     const pRes = await db.collection(COL.projects).doc(projectId).get().catch(() => ({ data: null }))
@@ -34,10 +40,10 @@ exports.main = async (event) => {
     const ym = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}`
     targets = [...new Set(openDays.filter(d => typeof d === 'string' && d.indexOf(ym) === 0))]
   } else if (target === 'all') {
-    for (let i = 1; i <= 6; i++) {
-      const t = new Date(from.getFullYear(), from.getMonth() + i, from.getDate())
-      targets.push(ymd(t))
-    }
+    // 复制到全部：项目全部 openDays（所有月份），沿用「复制到本月」已验证的 openDays 过滤逻辑
+    const pRes = await db.collection(COL.projects).doc(projectId).get().catch(() => ({ data: null }))
+    const openDays = (pRes.data && pRes.data.openDays) || []
+    targets = [...new Set(openDays.filter(d => typeof d === 'string'))]
   } else {
     return fail('未知 target')
   }

@@ -1,0 +1,12 @@
+// utils/tools.wxs — WXML 模板可用的工具函数
+// 注意：微信 WXML 数据绑定表达式不支持 JS 方法调用（如 arr.indexOf()），
+// 只能通过 WXS 提供。此处实现与 Array.indexOf 等价的查找。
+function indexOf(arr, value) {
+  if (!arr || !arr.length) return -1
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i] === value) return i
+  }
+  return -1
+}
+
+module.exports.indexOf = indexOf

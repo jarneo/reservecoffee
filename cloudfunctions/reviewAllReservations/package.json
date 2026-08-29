@@ -1,0 +1,10 @@
+{
+  "name": "reviewReservation",
+  "version": "1.0.0",
+  "description": "reservecoffee cloud function",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3",
+    "tencentcloud-sdk-nodejs-sms": "^4.0.0"
+  }
+}

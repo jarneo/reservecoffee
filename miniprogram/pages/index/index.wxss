@@ -7,6 +7,15 @@
 .sec-title { font-size:26rpx; color:var(--ink-3); margin:8rpx 4rpx 16rpx; }
 .note { color:var(--ink-3); font-size:26rpx; text-align:center; padding:40rpx; }
 
+/* 首页项目卡：可预约状态（位于描述上方） */
+.bookinfo { display:flex; flex-wrap:wrap; align-items:center; gap:10rpx; margin-top:12rpx; }
+.bookinfo .tag { font-size:22rpx; line-height:1; padding:6rpx 14rpx; border-radius:999rpx; font-weight:600; }
+.bookinfo .tag.ok { color:#7A5230; background:rgba(122,82,48,.10); border:1rpx solid rgba(122,82,48,.25); }
+.bookinfo .tag.paused { color:#b3261e; background:rgba(179,38,30,.08); border:1rpx solid rgba(179,38,30,.25); }
+.bookinfo .tag.none { color:var(--ink-3); background:var(--fill); border:1rpx solid var(--line); }
+.bookinfo .date-chip { font-size:22rpx; line-height:1; padding:6rpx 12rpx; border-radius:8rpx; color:var(--ink-2); background:var(--fill); border:1rpx solid var(--line); }
+.bookinfo .more { font-size:22rpx; color:var(--ink-3); }
+
 /* 店铺菜单（首页内联） */
 .menu-card { display:flex; gap:20rpx; background:#fff; border:1rpx solid var(--line); border-radius:16rpx; padding:20rpx; margin-bottom:16rpx; }
 .menu-img { width:160rpx; height:160rpx; border-radius:12rpx; flex:none; background:var(--fill); }

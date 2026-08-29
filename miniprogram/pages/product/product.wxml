@@ -19,10 +19,10 @@
     <view class="row between">
       <view class="ruser">
         <view class="ava">
-          <image wx:if="{{item.avatarUrl && !item.anonymous}}" src="{{item.avatarUrl}}" class="ava-img"/>
-          <view wx:else class="ava-def">匿</view>
+          <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" class="ava-img"/>
+          <view wx:else class="ava-def">{{item.initial}}</view>
         </view>
-        <view class="rname">{{item.anonymous ? '匿名顾客' : item.name}}<text wx:if="{{item.top}}" class="top"> · 置顶</text></view>
+        <view class="rname">{{item.name}}<text wx:if="{{item.top}}" class="top"> · 置顶</text></view>
       </view>
       <view class="star">{{item.stars}}</view>
     </view>
@@ -51,12 +51,6 @@
         <button class="btn ghost sm" size="mini" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">选择头像</button>
       </view>
     </view>
-
-    <view class="field row between">
-      <view class="label">匿名发布</view>
-      <switch checked="{{anonymous}}" bindchange="toggleAnonymous" color="#1f6f54"/>
-    </view>
-    <view wx:if="{{anonymous}}" class="hint">开启后，评价将以「匿名顾客」展示，不显示昵称与头像。</view>
 
     <textarea class="ta" placeholder="说说你的感受…" value="{{text}}" bindinput="onText" maxlength="300"/>
     <button class="btn block" bindtap="submit" disabled="{{posting}}">提交评价</button>

@@ -37,10 +37,10 @@
       <view class="row between">
         <view class="rev-user">
           <view class="ava">
-            <image wx:if="{{item.avatarUrl && !item.anonymous}}" src="{{item.avatarUrl}}" class="ava-img"/>
-            <view wx:else class="ava-def">匿</view>
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" class="ava-img"/>
+            <view wx:else class="ava-def">{{item.initial}}</view>
           </view>
-          <view class="bold">{{item.anonymous ? '匿名顾客' : item.name}}</view>
+          <view class="bold">{{item.name}}</view>
         </view>
         <view class="xs muted">{{item.productName}}</view>
       </view>

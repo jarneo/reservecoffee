@@ -27,7 +27,10 @@ Page({
           priceText: '¥' + (p.price || 0),
           ratingText: (p.ratingCount ? Number(p.rating || 0).toFixed(1) : '—')
         }))
-        const reviews = (d.reviews || []).map(r => ({ ...r, stars: stars(r.rating) }))
+        const reviews = (d.reviews || []).map(r => {
+          const nm = r.anonymous ? '微信用户' : (r.name || '微信用户')
+          return { ...r, stars: stars(r.rating), name: nm, initial: nm.slice(0, 1) }
+        })
         this.setData({
           shop: d.shop || this.data.shop,
           products,

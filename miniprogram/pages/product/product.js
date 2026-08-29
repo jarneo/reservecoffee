@@ -17,8 +17,8 @@ Page({
   data: {
     productId: '', product: {}, reviews: [],
     rating: 5, text: '', posting: false,
-    // 评价署名：昵称 / 头像（fileID + 预览 URL）/ 是否改名 / 是否匿名
-    pName: '', pAvatar: '', pAvatarFile: '', pAvatarChanged: false, anonymous: false
+    // 评价署名：昵称 / 头像（fileID + 预览 URL）/ 是否改名
+    pName: '', pAvatar: '', pAvatarFile: '', pAvatarChanged: false
   },
   onLoad(q) {
     this.setData({ productId: q.productId || '' })
@@ -29,7 +29,10 @@ Page({
     call('getProduct', { productId: this.data.productId })
       .then(d => {
         const p = { ...d.product, stars: stars(d.product.rating), priceText: '¥' + (d.product.price || 0) }
-        const reviews = (d.reviews || []).map(r => ({ ...r, stars: stars(r.rating), time: timeStr(r.createdAt) }))
+        const reviews = (d.reviews || []).map(r => {
+        const nm = r.anonymous ? '微信用户' : (r.name || '微信用户')
+        return { ...r, stars: stars(r.rating), time: timeStr(r.createdAt), name: nm, initial: nm.slice(0, 1) }
+      })
         this.setData({ product: p, reviews })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
@@ -61,7 +64,6 @@ Page({
     const url = e.detail.avatarUrl
     if (url) this.setData({ pAvatar: url, pAvatarChanged: true })
   },
-  toggleAnonymous(e) { this.setData({ anonymous: !!e.detail.value }) },
   submit() {
     if (this.data.posting) return
     if (!this.data.text.trim()) return wx.showToast({ title: '写点评价吧', icon: 'none' })
@@ -73,8 +75,7 @@ Page({
         rating: this.data.rating,
         text: this.data.text,
         name: this.data.pName,
-        avatar: avatarFile,
-        anonymous: this.data.anonymous
+        avatar: avatarFile
       })
         .then(() => {
           wx.showToast({ title: '已提交', icon: 'success' })
