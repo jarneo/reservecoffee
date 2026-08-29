@@ -97,7 +97,7 @@
         </block>
         <input wx:else class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" value="{{pName}}" bindinput="onPName" bind:nicknamereview="onNickNameReview"/>
       </view>
-      <view wx:if="{{!nickFromWx}}" class="hint">请点击上方输入框，在弹出键盘上选择「使用微信昵称」获取真实昵称（不可手填）</view>
+      <view wx:if="{{!nickFromWx}}" class="hint">建议点击输入框后，在键盘上选择「使用微信昵称」获取真实昵称；也可直接输入</view>
 
       <view class="modal-ops">
         <button class="btn ghost" bindtap="onAuthCancel">拒绝</button>

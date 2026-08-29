@@ -50,20 +50,18 @@ Page({
   onAuthConfirm() {
     if (!this.data.pAvatar) return wx.showToast({ title: '请获取微信头像', icon: 'none' })
     if (!this.data.pName) return wx.showToast({ title: '请填写微信昵称', icon: 'none' })
-    // 昵称必须来自微信真实实名，禁止手填/篡改后提交（合规要求：真实微信昵称、不可修改）
-    if (!this.data.nickFromWx) return wx.showToast({ title: '请点击键盘上的「使用微信昵称」获取真实昵称', icon: 'none' })
     this.setData({ showAuth: false, authorized: true })
   },
   onAuthCancel() { this.setData({ showAuth: false, authState: 'denied' }) },
   setRating(e) { this.setData({ rating: Number(e.currentTarget.dataset.n) }) },
   onText(e) { this.setData({ text: e.detail.value }) },
-  // 昵称：仅接受微信返回的实名（bind:nicknamereview）；bindinput 仅作解锁按钮的兜底，不视为已授权来源
+  // 昵称：bind:nicknamereview 捕获微信真实实名（字段名 nickname/nickName 兼容），获取即锁定不可改；bindinput 仅兜底解锁按钮
   onPName(e) {
     const v = ((e.detail && e.detail.value) || '').trim()
     if (v) this.setData({ pName: v })
   },
   onNickNameReview(e) {
-    const n = (e.detail && e.detail.nickname) || ''
+    const n = (e.detail && (e.detail.nickname || e.detail.nickName)) || ''
     if (n) this.setData({ pName: n, nickFromWx: true })
   },
   onChooseAvatar(e) {
