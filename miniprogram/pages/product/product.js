@@ -49,14 +49,16 @@ Page({
   },
   onAuthConfirm() {
     if (!this.data.pAvatar) return wx.showToast({ title: '请获取微信头像', icon: 'none' })
-    if (!this.data.pName) return wx.showToast({ title: '请填写微信昵称', icon: 'none' })
+    // 昵称必须来自微信真实实名（bind:nicknamereview），禁止手填/篡改后提交（合规要求：真实微信昵称、不可修改）
+    if (!this.data.nickFromWx) return wx.showToast({ title: '请点击键盘上的「使用微信昵称」选择真实昵称', icon: 'none' })
     this.setData({ showAuth: false, authorized: true })
   },
   onAuthCancel() { this.setData({ showAuth: false, authState: 'denied' }) },
   setRating(e) { this.setData({ rating: Number(e.currentTarget.dataset.n) }) },
   onText(e) { this.setData({ text: e.detail.value }) },
-  // 昵称：bind:nicknamereview 捕获微信真实实名（字段名 nickname/nickName 兼容），获取即锁定不可改；bindinput 仅兜底解锁按钮
+  // 昵称：bind:nicknamereview 捕获微信真实实名（字段名 nickname/nickName 兼容），获取即锁定不可改；bindinput 仅作解锁兜底，且锁定后不再接受手填
   onPName(e) {
+    if (this.data.nickFromWx) return
     const v = ((e.detail && e.detail.value) || '').trim()
     if (v) this.setData({ pName: v })
   },
@@ -64,6 +66,8 @@ Page({
     const n = (e.detail && (e.detail.nickname || e.detail.nickName)) || ''
     if (n) this.setData({ pName: n, nickFromWx: true })
   },
+  // 重新选择：清空昵称，重新从微信获取（非手填修改）
+  resetName() { this.setData({ pName: '', nickFromWx: false }) },
   onChooseAvatar(e) {
     const url = e.detail.avatarUrl
     if (url) this.setData({ pAvatar: url })
@@ -114,7 +118,8 @@ Page({
         images: imageFiles
       })
       wx.showToast({ title: (res && res.message) || '已提交，审核通过后展示', icon: 'none' })
-      this.setData({ text: '', images: [], pAvatar: '', pName: '', nickFromWx: false })
+      // 保留已授权的微信头像/昵称与授权状态，仅清空本次评价内容，便于继续写评价
+      this.setData({ text: '', images: [] })
       this.load()
     } catch (e) {
       wx.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })

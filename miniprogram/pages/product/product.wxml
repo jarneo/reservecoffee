@@ -37,9 +37,9 @@
   <view class="card post">
     <view class="sec">写评价</view>
 
-    <!-- 未授权：仅显示入口按钮；已拒绝则无提交入口 -->
-    <button wx:if="{{authState!=='denied'}}" class="btn block ghost" bindtap="onWrite">
-      {{authorized ? '继续写评价' : '写评价（需授权微信头像与昵称）'}}
+    <!-- 未授权：仅显示入口按钮；已授权后表单直接展示，无需此入口；已拒绝则无提交入口 -->
+    <button wx:if="{{!authorized && authState!=='denied'}}" class="btn block ghost" bindtap="onWrite">
+      写评价（需授权微信头像与昵称）
     </button>
     <view wx:if="{{authState==='denied'}}" class="hint">你已拒绝授权，无法发表评价。评价需展示真实微信头像与昵称。</view>
 
@@ -98,6 +98,7 @@
         <input wx:else class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" value="{{pName}}" bindinput="onPName" bind:nicknamereview="onNickNameReview"/>
       </view>
       <view wx:if="{{!nickFromWx}}" class="hint">建议点击输入框后，在键盘上选择「使用微信昵称」获取真实昵称；也可直接输入</view>
+      <view wx:if="{{nickFromWx}}" class="resel" bindtap="resetName">重新选择昵称</view>
 
       <view class="modal-ops">
         <button class="btn ghost" bindtap="onAuthCancel">拒绝</button>
