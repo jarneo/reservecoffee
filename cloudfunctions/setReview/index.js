@@ -1,8 +1,8 @@
-// setReview — 管理端：置顶 / 隐藏 / 删除 单条评价
+// setReview — 管理端：人工审核（通过/拒绝）+ 置顶 / 隐藏 / 删除 单条评价
 const { db, COL, ok, fail, wxCtx, getRole } = require('./lib')
 
 async function recompute(db, productId) {
-  const r = await db.collection(COL.reviews).where({ productId, status: 'normal' }).get()
+  const r = await db.collection(COL.reviews).where({ productId, reviewStatus: 'approved' }).get()
   const list = r.data || []
   const count = list.length
   const avg = count ? Math.round(list.reduce((s, x) => s + (x.rating || 0), 0) / count * 10) / 10 : 0
@@ -21,7 +21,15 @@ exports.main = async (event) => {
   if (!r) return fail('评论不存在')
   const productId = r.productId
 
-  if (action === 'top') {
+  if (action === 'approve') {
+    // 人工审核通过 → 对外展示
+    await db.collection(COL.reviews).doc(reviewId).update({ data: { reviewStatus: 'approved' } })
+    await recompute(db, productId)
+  } else if (action === 'reject') {
+    // 人工审核拒绝 → 不对外展示
+    await db.collection(COL.reviews).doc(reviewId).update({ data: { reviewStatus: 'rejected' } })
+    await recompute(db, productId)
+  } else if (action === 'top') {
     await db.collection(COL.reviews).doc(reviewId).update({ data: { top: !!value } })
   } else if (action === 'hide') {
     const status = (value === undefined)

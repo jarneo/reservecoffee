@@ -27,32 +27,67 @@
       <view class="star">{{item.stars}}</view>
     </view>
     <view class="rtext">{{item.text}}</view>
+    <view wx:if="{{item.imagesUrl.length}}" class="rimg-row">
+      <image wx:for="{{item.imagesUrl}}" wx:for-item="im" wx:key="*this" src="{{im}}" class="rimg" mode="aspectFill"/>
+    </view>
     <view class="rtime">{{item.time}}</view>
   </view>
 
+  <!-- 写评价 -->
   <view class="card post">
     <view class="sec">写评价</view>
-    <view class="stars-sel">
-      <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="sbtn {{rating>=item?'on':''}}" bindtap="setRating" data-n="{{item}}">★</text>
-    </view>
 
-    <view class="field row between">
-      <view class="label">昵称</view>
-      <input class="nick" type="nickname" placeholder="点此使用微信昵称" value="{{pName}}" bindinput="onPName"/>
-    </view>
+    <!-- 未授权：仅显示入口按钮；已拒绝则无提交入口 -->
+    <button wx:if="{{authState!=='denied'}}" class="btn block ghost" bindtap="onWrite">
+      {{authorized ? '继续写评价' : '写评价（需授权微信头像与昵称）'}}
+    </button>
+    <view wx:if="{{authState==='denied'}}" class="hint">你已拒绝授权，无法发表评价。评价需展示真实微信头像与昵称。</view>
 
-    <view class="field row between">
-      <view class="label">头像</view>
-      <view class="row" style="gap:12rpx;align-items:center">
-        <view class="ava sm">
-          <image wx:if="{{pAvatar}}" src="{{pAvatar}}" class="ava-img"/>
-          <view wx:else class="ava-def">选</view>
+    <!-- 已授权：真实头像/昵称采集 + 图片 + 提交 -->
+    <block wx:if="{{authorized}}">
+      <view class="stars-sel">
+        <text wx:for="{{[1,2,3,4,5]}}" wx:key="*this" class="sbtn {{rating>=item?'on':''}}" bindtap="setRating" data-n="{{item}}">★</text>
+      </view>
+
+      <view class="field row between">
+        <view class="label">微信昵称</view>
+        <input class="nick" type="nickname" placeholder="点此使用微信昵称" value="{{pName}}" bindinput="onPName"/>
+      </view>
+
+      <view class="field row between">
+        <view class="label">微信头像</view>
+        <view class="row" style="gap:12rpx;align-items:center">
+          <view class="ava sm">
+            <image wx:if="{{pAvatar}}" src="{{pAvatar}}" class="ava-img"/>
+            <view wx:else class="ava-def">选</view>
+          </view>
+          <button class="btn ghost sm" size="mini" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">选择头像</button>
         </view>
-        <button class="btn ghost sm" size="mini" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">选择头像</button>
+      </view>
+
+      <view class="img-row">
+        <view wx:for="{{images}}" wx:key="*this" class="img-wrap">
+          <image src="{{item}}" class="img-thumb" mode="aspectFill"/>
+          <view class="img-del" bindtap="removeImage" data-i="{{index}}">×</view>
+        </view>
+        <view wx:if="{{images.length<9}}" class="img-add" bindtap="chooseImage">+</view>
+      </view>
+
+      <textarea class="ta" placeholder="说说你的感受…" value="{{text}}" bindinput="onText" maxlength="300"/>
+      <view class="privacy-line">提交即表示同意<text class="link" bindtap="openPrivacy">《隐私政策》</text>，评价将展示你的微信昵称与头像</view>
+      <button class="btn block" bindtap="submit" disabled="{{posting}}">提交评价</button>
+    </block>
+  </view>
+
+  <!-- 授权弹窗（要求 1） -->
+  <view wx:if="{{showAuth}}" class="modal-mask">
+    <view class="modal">
+      <view class="modal-title">评价需授权</view>
+      <view class="modal-body">为展示真实评价，发表评价需要获取你的微信头像与微信昵称。我们仅用于评价展示，不会用于其他用途。</view>
+      <view class="modal-ops">
+        <button class="btn ghost" bindtap="onAuthCancel">拒绝</button>
+        <button class="btn" bindtap="onAuthConfirm">授权并填写</button>
       </view>
     </view>
-
-    <textarea class="ta" placeholder="说说你的感受…" value="{{text}}" bindinput="onText" maxlength="300"/>
-    <button class="btn block" bindtap="submit" disabled="{{posting}}">提交评价</button>
   </view>
 </view>

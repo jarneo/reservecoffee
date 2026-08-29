@@ -13,3 +13,18 @@
 .ops { display: flex; gap: 20rpx; margin-top: 12rpx; }
 .ob { color: var(--brand); font-size: 26rpx; }
 .ob.danger { color: #B23A3A; }
+.ob.ok { color: #1A7A3C; }
+
+/* 审核 tab */
+.tabs { display: flex; gap: 16rpx; margin: 8rpx 4rpx 12rpx; }
+.tab { font-size: 26rpx; color: var(--ink-3); padding: 8rpx 20rpx; border-radius: 999rpx; border: 1rpx solid var(--line); }
+.tab.on { color: #fff; background: var(--brand); border-color: var(--brand); }
+
+/* 状态徽标 */
+.badge { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 999rpx; margin-left: 10rpx; }
+.badge.wait { color: #B26A00; background: #FFF3E0; }
+.badge.ok { color: #1A7A3C; background: #E6F4EA; }
+
+/* 评价图片 */
+.rimg-row { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 10rpx; }
+.rimg { width: 140rpx; height: 140rpx; border-radius: 10rpx; }

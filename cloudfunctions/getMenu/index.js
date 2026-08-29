@@ -43,28 +43,35 @@ exports.main = async (event) => {
     .orderBy('sort', 'asc').get()
   const products = await resolveImages(pRes.data || [])
 
-  // 可见评价（置顶优先，再按时间倒序）
+  // 可见评价（仅人工审核通过；置顶优先，再按时间倒序）
   const productIds = products.map(p => p._id)
   let flat = []
   if (productIds.length) {
     const rRes = await db.collection(COL.reviews)
-      .where({ productId: _.in(productIds), status: 'normal' })
+      .where({ productId: _.in(productIds), reviewStatus: 'approved' })
       .get()
     flat = (rRes.data || []).slice().sort((a, b) =>
       ((b.top ? 1 : 0) - (a.top ? 1 : 0)) || ((b.createdAt || 0) - (a.createdAt || 0))
     )
   }
 
-  // 解析评价头像 fileID → 临时 URL
-  const avatarIds = [...new Set(flat.map(r => r.avatar).filter(Boolean))]
-  let avatarMap = {}
-  if (avatarIds.length) {
+  // 解析评价头像 + 图片 fileID → 临时 URL
+  const ids = [...new Set([
+    ...flat.map(r => r.avatar).filter(Boolean),
+    ...flat.flatMap(r => (r.images || [])).filter(Boolean)
+  ])]
+  let urlMap = {}
+  if (ids.length) {
     try {
-      const ares = await cloud.getTempFileURL({ fileList: avatarIds })
-      ;(ares.fileList || []).forEach(f => { if (f.fileID) avatarMap[f.fileID] = f.tempFileURL })
-    } catch (e) { console.warn('[getMenu] avatar resolve failed:', e.message) }
+      const ares = await cloud.getTempFileURL({ fileList: ids })
+      ;(ares.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
+    } catch (e) { console.warn('[getMenu] media resolve failed:', e.message) }
   }
-  const flatWithAvatar = flat.map(r => ({ ...r, avatarUrl: avatarMap[r.avatar] || '' }))
+  const flatWithAvatar = flat.map(r => ({
+    ...r,
+    avatarUrl: urlMap[r.avatar] || '',
+    imagesUrl: (r.images || []).map(id => urlMap[id] || '')
+  }))
 
   // 关联菜品名称 + 回填到菜品对象
   const nameMap = {}

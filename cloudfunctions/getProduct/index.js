@@ -21,23 +21,31 @@ exports.main = async (event) => {
   if (!proj || !proj.data || !proj.data.published) return fail('项目不可访问')
 
   const imageUrl = await resolveImage(p.image)
-  const rev = await db.collection(COL.reviews).where({ productId, status: 'normal' }).get()
+  // 仅对外展示「人工审核通过」的评价
+  const rev = await db.collection(COL.reviews).where({ productId, reviewStatus: 'approved' }).get()
   let reviews = (rev.data || []).slice().sort((a, b) =>
     ((b.top ? 1 : 0) - (a.top ? 1 : 0)) || ((b.createdAt || 0) - (a.createdAt || 0))
   )
   const count = reviews.length
   const avg = count ? Math.round(reviews.reduce((s, x) => s + (x.rating || 0), 0) / count * 10) / 10 : 0
 
-  // 解析评价头像 fileID → 临时 URL
-  const avatarIds = [...new Set(reviews.map(r => r.avatar).filter(Boolean))]
-  let avatarMap = {}
-  if (avatarIds.length) {
+  // 解析评价头像 + 图片 fileID → 临时 URL
+  const ids = [...new Set([
+    ...reviews.map(r => r.avatar).filter(Boolean),
+    ...reviews.flatMap(r => (r.images || [])).filter(Boolean)
+  ])]
+  let urlMap = {}
+  if (ids.length) {
     try {
-      const ares = await cloud.getTempFileURL({ fileList: avatarIds })
-      ;(ares.fileList || []).forEach(f => { if (f.fileID) avatarMap[f.fileID] = f.tempFileURL })
-    } catch (e) { console.warn('[getProduct] avatar resolve failed:', e.message) }
+      const ares = await cloud.getTempFileURL({ fileList: ids })
+      ;(ares.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
+    } catch (e) { console.warn('[getProduct] media resolve failed:', e.message) }
   }
-  reviews = reviews.map(r => ({ ...r, avatarUrl: avatarMap[r.avatar] || '' }))
+  reviews = reviews.map(r => ({
+    ...r,
+    avatarUrl: urlMap[r.avatar] || '',
+    imagesUrl: (r.images || []).map(id => urlMap[id] || '')
+  }))
 
   const product = { ...p, imageUrl, rating: avg, ratingCount: count }
   return ok({ product, reviews })

@@ -17,83 +17,96 @@ Page({
   data: {
     productId: '', product: {}, reviews: [],
     rating: 5, text: '', posting: false,
-    // 评价署名：昵称 / 头像（fileID + 预览 URL）/ 是否改名
-    pName: '', pAvatar: '', pAvatarFile: '', pAvatarChanged: false
+    // 授权与真实署名（要求 1/3）：写评价前必须弹窗授权；拒绝则禁用提交入口
+    authState: 'none',   // none | denied
+    showAuth: false,
+    authorized: false,
+    pName: '', pAvatar: '',
+    images: [],          // 临时路径
+    imageFiles: []       // 已上传 fileID（上传后回填）
   },
   onLoad(q) {
     this.setData({ productId: q.productId || '' })
     this.load()
-    this.loadMyReviewProfile()
   },
   load() {
     call('getProduct', { productId: this.data.productId })
       .then(d => {
         const p = { ...d.product, stars: stars(d.product.rating), priceText: '¥' + (d.product.price || 0) }
         const reviews = (d.reviews || []).map(r => {
-        const nm = r.anonymous ? '微信用户' : (r.name || '微信用户')
-        return { ...r, stars: stars(r.rating), time: timeStr(r.createdAt), name: nm, initial: nm.slice(0, 1) }
-      })
+          const nm = r.name || '微信用户'
+          return { ...r, stars: stars(r.rating), time: timeStr(r.createdAt), name: nm, initial: nm.slice(0, 1), imagesUrl: r.imagesUrl || [] }
+        })
         this.setData({ product: p, reviews })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
   },
-  // 预填评价署名：优先取「我的资料」里的昵称/头像（已授权过的直接带出），可改
-  loadMyReviewProfile() {
-    call('getMyProfile')
-      .then(d => {
-        if (d && d.profile) {
-          const p = d.profile
-          this.setData({ pName: (this.data.pName && this.data.pName.trim()) || p.name || '' })
-          if (p.avatar) {
-            this.setData({ pAvatarFile: p.avatar })
-            wx.cloud.getTempFileURL({ fileList: [p.avatar] })
-              .then(r => {
-                const url = r.fileList && r.fileList[0] && r.fileList[0].tempFileURL
-                if (url) this.setData({ pAvatar: url })
-              })
-              .catch(() => {})
-          }
-        }
-      })
-      .catch(() => {})
+  // 写评价入口：未授权先弹窗；已拒绝则提示无入口
+  onWrite() {
+    if (this.data.authState === 'denied') return wx.showToast({ title: '你已拒绝授权，无法发表评价', icon: 'none' })
+    if (!this.data.authorized) return this.setData({ showAuth: true })
   },
+  onAuthConfirm() { this.setData({ showAuth: false, authorized: true }) },
+  onAuthCancel() { this.setData({ showAuth: false, authState: 'denied' }) },
   setRating(e) { this.setData({ rating: Number(e.currentTarget.dataset.n) }) },
   onText(e) { this.setData({ text: e.detail.value }) },
   onPName(e) { this.setData({ pName: e.detail.value }) },
   onChooseAvatar(e) {
     const url = e.detail.avatarUrl
-    if (url) this.setData({ pAvatar: url, pAvatarChanged: true })
+    if (url) this.setData({ pAvatar: url })
   },
-  submit() {
+  chooseImage() {
+    wx.chooseMedia({
+      count: 9 - this.data.images.length,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: res => {
+        const temp = (res.tempFiles || []).map(f => f.tempFilePath)
+        this.setData({ images: this.data.images.concat(temp) })
+      }
+    })
+  },
+  removeImage(e) {
+    const i = e.currentTarget.dataset.i
+    const images = this.data.images.slice()
+    images.splice(i, 1)
+    this.setData({ images })
+  },
+  openPrivacy() { wx.navigateTo({ url: '/pages/privacy/privacy' }) },
+  async submit() {
     if (this.data.posting) return
+    if (!this.data.authorized) return this.setData({ showAuth: true })
+    if (!this.data.pName.trim()) return wx.showToast({ title: '请填写微信昵称', icon: 'none' })
+    if (!this.data.pAvatar) return wx.showToast({ title: '请选择微信头像', icon: 'none' })
     if (!this.data.text.trim()) return wx.showToast({ title: '写点评价吧', icon: 'none' })
-    this.setData({ posting: true })
 
-    const doCall = (avatarFile) => {
-      call('addReview', {
+    this.setData({ posting: true })
+    const oid = (app.globalData && app.globalData.openid) || Date.now()
+    try {
+      // 上传微信头像（chooseAvatar 得到临时路径）
+      const avUp = await wx.cloud.uploadFile({ cloudPath: `avatars/${oid}_${Date.now()}.png`, filePath: this.data.pAvatar })
+      const avatarFile = avUp.fileID
+      // 上传评价图片
+      const imageFiles = []
+      for (const path of this.data.images) {
+        const up = await wx.cloud.uploadFile({ cloudPath: `reviews/${oid}_${Date.now()}_${Math.random().toString(36).slice(2)}.png`, filePath: path })
+        imageFiles.push(up.fileID)
+      }
+      const res = await call('addReview', {
         productId: this.data.productId,
         rating: this.data.rating,
         text: this.data.text,
         name: this.data.pName,
-        avatar: avatarFile
+        avatar: avatarFile,
+        images: imageFiles
       })
-        .then(() => {
-          wx.showToast({ title: '已提交', icon: 'success' })
-          this.setData({ text: '', pAvatarChanged: false })
-          this.load()
-        })
-        .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
-        .finally(() => this.setData({ posting: false }))
-    }
-
-    // 若重新选了头像则上传为新 fileID；否则复用资料里的头像 fileID
-    if (this.data.pAvatarChanged) {
-      const oid = (app.globalData && app.globalData.openid) || Date.now()
-      wx.cloud.uploadFile({ cloudPath: `avatars/${oid}_${Date.now()}.png`, filePath: this.data.pAvatar })
-        .then(res => doCall(res.fileID))
-        .catch(() => doCall(this.data.pAvatarFile))
-    } else {
-      doCall(this.data.pAvatarFile)
+      wx.showToast({ title: (res && res.message) || '已提交，审核通过后展示', icon: 'none' })
+      this.setData({ text: '', images: [], pAvatar: '', pName: '' })
+      this.load()
+    } catch (e) {
+      wx.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+    } finally {
+      this.setData({ posting: false })
     }
   }
 })

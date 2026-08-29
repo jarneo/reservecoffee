@@ -6,21 +6,31 @@ exports.main = async (event) => {
   const role = await getRole(OPENID)
   if (role.role !== 'owner' && role.role !== 'manager') return fail('无权限')
 
-  const { projectId, productId } = event
+  const { projectId, productId, reviewStatus } = event
   if (!projectId) return fail('缺少 projectId')
 
   const prodRes = await db.collection(COL.products).where({ projectId }).orderBy('sort', 'asc').get()
   const products = (prodRes.data || []).map(p => ({ _id: p._id, name: p.name }))
 
+  // 待审核总数（用于 tab 角标），与菜品筛选无关
+  let pendingCount = 0
+  try {
+    const pc = await db.collection(COL.reviews).where({ projectId, reviewStatus: 'pending' }).count()
+    pendingCount = (pc && pc.total) || 0
+  } catch (e) { /* count 不支持时忽略 */ }
+
   const where = { projectId }
   if (productId) where.productId = productId
+  if (reviewStatus === 'pending') where.reviewStatus = 'pending'
   const revRes = await db.collection(COL.reviews).where(where).get()
   const reviews = (revRes.data || []).slice().sort((a, b) =>
-    ((b.top ? 1 : 0) - (a.top ? 1 : 0)) || ((b.createdAt || 0) - (a.createdAt || 0))
+    ((a.reviewStatus === 'pending' ? 0 : 1) - (b.reviewStatus === 'pending' ? 0 : 1)) ||
+    ((b.top ? 1 : 0) - (a.top ? 1 : 0)) ||
+    ((b.createdAt || 0) - (a.createdAt || 0))
   )
   const nameMap = {}
   products.forEach(p => { nameMap[p._id] = p.name })
   reviews.forEach(r => { r.productName = nameMap[r.productId] || '' })
 
-  return ok({ reviews, products })
+  return ok({ reviews, products, pendingCount })
 }

@@ -20,7 +20,8 @@
     "pages/admin/notifyConfig/notifyConfig",
     "pages/admin/mpAuthWeb/mpAuthWeb",
     "pages/admin/templates/templates",
-    "pages/shareMenu/shareMenu"
+    "pages/shareMenu/shareMenu",
+    "pages/privacy/privacy"
   ],
   "window": {
     "backgroundColor": "#F5F5F5",

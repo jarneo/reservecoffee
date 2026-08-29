@@ -40,3 +40,6 @@
   padding: 28rpx 24rpx; color: var(--ink-3); font-size: 24rpx; text-align: center;
 }
 .foot { text-align: center; margin: 28rpx 0 12rpx; }
+
+.rev-imgs { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; }
+.rev-img { width: 130rpx; height: 130rpx; border-radius: 10rpx; }

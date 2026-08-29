@@ -1,0 +1,27 @@
+<view class="page">
+  <view class="title">隐私政策</view>
+  <view class="update">最近更新：2026-08-29</view>
+
+  <view class="sec">一、我们如何展示你的评价</view>
+  <view class="p">当你在本小程序发表菜品评价时，我们会请求你授权获取<text class="hl">微信头像与微信昵称</text>。你发表的评价将<text class="hl">公开展示你的微信昵称与微信头像</text>，不会以匿名或随机化名展示。</view>
+  <view class="p">评价内容（文字与图片）在发布前会经过机器内容安全检测，检测通过后进入人工审核；经平台审核通过的评价才会对外展示。</view>
+
+  <view class="sec">二、平台的内容审核与删除权</view>
+  <view class="p">为维护社区与平台秩序，本平台<text class="hl">有权对所有用户发布的内容（含评价、头像、昵称）进行审核、屏蔽或删除</text>，无需事先征得同意。若内容违反法律法规、微信平台规范或本政策，平台可不经通知予以处理。</view>
+
+  <view class="sec">三、我们收集的信息</view>
+  <view class="p">· 你主动提供的微信昵称、微信头像、评分与文字/图片评价；</view>
+  <view class="p">· 为完成预约所必要的联系方式（在你主动填写时）；</view>
+  <view class="p">· 用于登录与身份识别的微信 OpenID。</view>
+
+  <view class="sec">四、信息的使用与保护</view>
+  <view class="p">上述信息仅用于提供预约、展示评价、客服与必要的运营分析。我们采取合理措施保护你的信息，除法律法规要求或为你提供服务所必需外，不会向第三方提供。</view>
+
+  <view class="sec">五、你的权利</view>
+  <view class="p">你可通过小程序内反馈渠道要求更正或删除你的评价内容。撤回授权后将无法继续发表评价。</view>
+
+  <view class="sec">六、联系我们</view>
+  <view class="p">如对隐私政策有疑问，可通过小程序内客服联系二曜路8号咖啡和清酒。</view>
+
+  <view class="foot">本政策依《个人信息保护法》及微信开放平台规范制定。</view>
+</view>

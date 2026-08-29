@@ -46,6 +46,9 @@
       </view>
       <view class="stars" style="margin:8rpx 0">{{item.stars}}</view>
       <view class="sm" style="margin-top:2rpx">{{item.text}}</view>
+      <view wx:if="{{item.imagesUrl.length}}" class="rev-imgs">
+        <image wx:for="{{item.imagesUrl}}" wx:for-item="im" wx:key="*this" src="{{im}}" class="rev-img" mode="aspectFill"/>
+      </view>
     </view>
   </view>
   <view wx:else class="note">暂无评价，欢迎到店体验后分享~</view>

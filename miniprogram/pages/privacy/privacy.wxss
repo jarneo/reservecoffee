@@ -1,0 +1,7 @@
+.page { padding: 28rpx 28rpx 60rpx; }
+.title { font-size: 38rpx; font-weight: 700; color: var(--ink); }
+.update { font-size: 22rpx; color: var(--ink-3); margin: 8rpx 0 24rpx; }
+.sec { font-size: 30rpx; font-weight: 600; color: var(--ink); margin: 28rpx 0 10rpx; }
+.p { font-size: 26rpx; color: var(--ink-2); line-height: 1.8; }
+.hl { color: var(--brand); font-weight: 600; }
+.foot { font-size: 22rpx; color: var(--ink-3); margin-top: 36rpx; line-height: 1.7; }
