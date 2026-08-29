@@ -77,15 +77,16 @@
       <view class="modal-title">授权微信头像与昵称</view>
       <view class="modal-body">为展示真实评价，需获取你的微信头像与微信昵称（均取自微信，不可修改，仅用于评价展示）。</view>
 
-      <!-- 头像：chooseAvatar 仅取微信头像，不允许相册上传 -->
+      <!-- 头像：chooseAvatar 仅取微信头像，不允许相册上传；获取后锁定不可改 -->
       <view class="auth-ava">
         <view class="ava lg">
           <image wx:if="{{pAvatar}}" src="{{pAvatar}}" class="ava-img"/>
           <view wx:else class="ava-def">头</view>
         </view>
-        <button class="btn ghost sm" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-          {{pAvatar ? '重新获取头像' : '获取微信头像'}}
-        </button>
+        <block wx:if="{{pAvatar}}">
+          <view class="locked">微信头像<text class="lock">已锁定</text></view>
+        </block>
+        <button wx:else class="btn ghost sm" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">获取微信头像</button>
       </view>
 
       <!-- 昵称：input type=nickname 取微信昵称；点键盘「使用微信昵称」即真实实名并锁定，不可手填或修改 -->
