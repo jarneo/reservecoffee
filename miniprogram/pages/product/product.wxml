@@ -89,16 +89,16 @@
         <button wx:else class="btn ghost sm" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">获取微信头像</button>
       </view>
 
-      <!-- 昵称：input type=nickname 取微信昵称；点键盘「使用微信昵称」即真实实名并锁定，不可手填或修改 -->
+      <!-- 昵称：input type=nickname 取微信昵称；点键盘「使用微信昵称」即真实实名并立即锁定；手填失焦后亦锁定，不可再改 -->
       <view class="field row between">
         <view class="label">微信昵称</view>
-        <block wx:if="{{nickFromWx}}">
+        <block wx:if="{{nameLocked}}">
           <view class="locked">{{pName}}<text class="lock">已锁定</text></view>
         </block>
-        <input wx:else class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" value="{{pName}}" bindinput="onPName" bind:nicknamereview="onNickNameReview"/>
+        <input wx:else class="nick" type="nickname" placeholder="点击后选『使用微信昵称』" value="{{pName}}" bindinput="onPName" bindblur="onNameBlur" bind:nicknamereview="onNickNameReview"/>
       </view>
-      <view wx:if="{{!nickFromWx}}" class="hint">建议点击输入框后，在键盘上选择「使用微信昵称」获取真实昵称；也可直接输入</view>
-      <view wx:if="{{nickFromWx}}" class="resel" bindtap="resetName">重新选择昵称</view>
+      <view wx:if="{{!nameLocked}}" class="hint">点击输入框后，在键盘上选择「使用微信昵称」获取真实昵称；也可直接输入，选好后失焦即锁定</view>
+      <view wx:if="{{nameLocked}}" class="resel" bindtap="resetName">重新选择昵称</view>
 
       <view class="modal-ops">
         <button class="btn ghost" bindtap="onAuthCancel">拒绝</button>

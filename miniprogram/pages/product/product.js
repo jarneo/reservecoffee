@@ -22,7 +22,8 @@ Page({
     showAuth: false,
     authorized: false,
     pName: '', pAvatar: '',
-    nickFromWx: false,  // 昵称是否来自微信实名（bind:nicknamereview）；仅此后才允许确认授权
+    nickFromWx: false,  // 昵称是否来自微信实名（bind:nicknamereview）
+    nameLocked: false,  // 昵称是否已锁定（取微信实名或失焦后锁定，不可再改）
     images: [],          // 临时路径
     imageFiles: []       // 已上传 fileID（上传后回填）
   },
@@ -49,25 +50,27 @@ Page({
   },
   onAuthConfirm() {
     if (!this.data.pAvatar) return wx.showToast({ title: '请获取微信头像', icon: 'none' })
-    // 昵称必须来自微信真实实名（bind:nicknamereview），禁止手填/篡改后提交（合规要求：真实微信昵称、不可修改）
-    if (!this.data.nickFromWx) return wx.showToast({ title: '请点击键盘上的「使用微信昵称」选择真实昵称', icon: 'none' })
-    this.setData({ showAuth: false, authorized: true })
+    // 不再依赖 bind:nicknamereview 是否触发：只要昵称有值（无论是微信实名还是手动输入）即可确认；锁定由 nameLocked 控制
+    if (!this.data.pName) return wx.showToast({ title: '请填写或选择微信昵称', icon: 'none' })
+    this.setData({ showAuth: false, authorized: true, nameLocked: true })
   },
   onAuthCancel() { this.setData({ showAuth: false, authState: 'denied' }) },
   setRating(e) { this.setData({ rating: Number(e.currentTarget.dataset.n) }) },
   onText(e) { this.setData({ text: e.detail.value }) },
-  // 昵称：bind:nicknamereview 捕获微信真实实名（字段名 nickname/nickName 兼容），获取即锁定不可改；bindinput 仅作解锁兜底，且锁定后不再接受手填
+  // 昵称：bindinput 填值（微信实名或手动）；bind:nicknamereview 取到微信真实实名则立即锁定；bindblur 失焦后也锁定（防反复修改）
   onPName(e) {
-    if (this.data.nickFromWx) return
     const v = ((e.detail && e.detail.value) || '').trim()
     if (v) this.setData({ pName: v })
   },
+  onNameBlur() {
+    if (this.data.pName) this.setData({ nameLocked: true })
+  },
   onNickNameReview(e) {
     const n = (e.detail && (e.detail.nickname || e.detail.nickName)) || ''
-    if (n) this.setData({ pName: n, nickFromWx: true })
+    if (n) this.setData({ pName: n, nickFromWx: true, nameLocked: true })
   },
   // 重新选择：清空昵称，重新从微信获取（非手填修改）
-  resetName() { this.setData({ pName: '', nickFromWx: false }) },
+  resetName() { this.setData({ pName: '', nickFromWx: false, nameLocked: false }) },
   onChooseAvatar(e) {
     const url = e.detail.avatarUrl
     if (url) this.setData({ pAvatar: url })
