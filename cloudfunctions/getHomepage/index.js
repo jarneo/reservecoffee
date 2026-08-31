@@ -1,6 +1,9 @@
 // getHomepage — 顾客端首页数据：首页配置 + 已发布且未删除项目列表 + 在售店铺菜单
 const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDay } = require('./lib')
 
+// 首页店铺菜单最多展示数量（按 sort 升序取前 N 个）
+const MENU_LIMIT = 10
+
 async function resolveImage(fileId) {
   if (!fileId) return ''
   try {
@@ -116,7 +119,7 @@ exports.main = async () => {
   if (projectIds.length) {
     const pRes = await db.collection(COL.products)
       .where({ projectId: _.in(projectIds), status: 'on' })
-      .orderBy('sort', 'asc').get()
+      .orderBy('sort', 'asc').limit(MENU_LIMIT).get()
     products = await resolveProducts(pRes.data || [])
 
     const productIds = products.map(p => p._id)

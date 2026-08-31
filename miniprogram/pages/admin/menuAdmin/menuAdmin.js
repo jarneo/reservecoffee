@@ -6,7 +6,7 @@ Page({
   data: {
     projects: [], projectId: '', projectName: '', products: [],
     showForm: false, editingId: '',
-    form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '' }
+    form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: 0 }
   },
   onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
   loadProjects() {
@@ -31,18 +31,20 @@ Page({
       .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },
   openNew() {
-    this.setData({ showForm: true, editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '' } })
+    const maxSort = this.data.products.reduce((m, p) => Math.max(m, Number(p.sort) || 0), 0)
+    this.setData({ showForm: true, editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: maxSort + 1 } })
   },
   openEdit(e) {
     const p = this.data.products[e.currentTarget.dataset.i]
     this.setData({
       showForm: true, editingId: p._id,
-      form: { name: p.name, price: String(p.price), desc: p.desc || '', status: p.status !== 'off', image: p.image || '', imageUrl: p.imageUrl || '' }
+      form: { name: p.name, price: String(p.price), desc: p.desc || '', status: p.status !== 'off', image: p.image || '', imageUrl: p.imageUrl || '', sort: (p.sort != null ? p.sort : 0) }
     })
   },
   onName(e) { this.setData({ 'form.name': e.detail.value }) },
   onPrice(e) { this.setData({ 'form.price': e.detail.value }) },
   onDesc(e) { this.setData({ 'form.desc': e.detail.value }) },
+  onSort(e) { this.setData({ 'form.sort': e.detail.value }) },
   onStatus(e) { this.setData({ 'form.status': e.detail.value }) },
   pickImage() {
     wx.chooseMedia({
@@ -72,7 +74,8 @@ Page({
     wx.showLoading({ title: '保存中' })
     call('saveProduct', {
       projectId: this.data.projectId, productId: this.data.editingId || undefined,
-      name: f.name, price: Number(f.price), desc: f.desc, status: f.status ? 'on' : 'off', image: f.image
+      name: f.name, price: Number(f.price), desc: f.desc, status: f.status ? 'on' : 'off', image: f.image,
+      sort: (f.sort === '' || f.sort == null) ? 0 : Number(f.sort)
     })
       .then(() => { wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }); this.setData({ showForm: false }); this.loadProducts() })
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message, icon: 'none' }) })
