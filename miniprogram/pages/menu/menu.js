@@ -30,5 +30,15 @@ Page({
   },
   goProduct(e) {
     wx.navigateTo({ url: '/pages/product/product?productId=' + e.currentTarget.dataset.id })
+  },
+
+  // 转发给好友 / 分享朋友圈：分享菜品菜单
+  onShareAppMessage() {
+    const name = this.data.shopName || '二曜路8号咖啡和清酒'
+    return { title: name + ' · 菜单', path: '/pages/menu/menu?projectId=' + (this.data.projectId || '') }
+  },
+  onShareTimeline() {
+    const name = this.data.shopName || '二曜路8号咖啡和清酒'
+    return { title: name + ' · 菜单', query: 'projectId=' + (this.data.projectId || '') }
   }
 })

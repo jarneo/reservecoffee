@@ -35,5 +35,21 @@ Page({
 
   goAdmin() {
     wx.navigateTo({ url: '/pages/admin/hub/hub' })
+  },
+
+  // 转发给好友 / 分享朋友圈：分享店铺首页
+  onShareAppMessage() {
+    const hp = this.data.homepage || {}
+    return {
+      title: hp.logo || '二曜路8号咖啡和清酒',
+      path: '/pages/index/index'
+    }
+  },
+  onShareTimeline() {
+    const hp = this.data.homepage || {}
+    return {
+      title: hp.logo || '二曜路8号咖啡和清酒',
+      query: ''
+    }
   }
 })

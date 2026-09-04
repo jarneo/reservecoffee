@@ -165,5 +165,21 @@ Page({
   // 换项目：返回首页重新选择预约项目
   goIndex() {
     wx.reLaunch({ url: '/pages/index/index' })
+  },
+
+  // 转发给好友 / 分享朋友圈：分享当前预约项目
+  onShareAppMessage() {
+    const p = this.data.project || {}
+    return {
+      title: p.name || '二曜路8号咖啡和清酒 · 预约',
+      path: '/pages/booking/booking?projectId=' + (this.data.projectId || '')
+    }
+  },
+  onShareTimeline() {
+    const p = this.data.project || {}
+    return {
+      title: p.name || '二曜路8号咖啡和清酒 · 预约',
+      query: 'projectId=' + (this.data.projectId || '')
+    }
   }
 })

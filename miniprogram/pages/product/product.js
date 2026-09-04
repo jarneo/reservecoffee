@@ -129,5 +129,21 @@ Page({
     } finally {
       this.setData({ posting: false })
     }
+  },
+
+  // 转发给好友 / 分享朋友圈：分享菜品评价页
+  onShareAppMessage() {
+    const p = this.data.product || {}
+    return {
+      title: (p.name ? p.name + ' · ' : '') + '二曜路8号咖啡和清酒 · 菜品评价',
+      path: '/pages/product/product?productId=' + (this.data.productId || '')
+    }
+  },
+  onShareTimeline() {
+    const p = this.data.product || {}
+    return {
+      title: (p.name ? p.name + ' · ' : '') + '二曜路8号咖啡和清酒 · 菜品评价',
+      query: 'productId=' + (this.data.productId || '')
+    }
   }
 })

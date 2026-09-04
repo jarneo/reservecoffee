@@ -38,5 +38,15 @@ Page({
         })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+  },
+
+  // 转发给好友 / 分享朋友圈：分享店铺菜单
+  onShareAppMessage() {
+    const logo = (this.data.shop && this.data.shop.logo) || '二曜路8号咖啡和清酒'
+    return { title: logo + ' · 店铺菜单', path: '/pages/shareMenu/shareMenu?projectId=' + (this.data.projectId || '') }
+  },
+  onShareTimeline() {
+    const logo = (this.data.shop && this.data.shop.logo) || '二曜路8号咖啡和清酒'
+    return { title: logo + ' · 店铺菜单', query: 'projectId=' + (this.data.projectId || '') }
   }
 })
