@@ -11,6 +11,8 @@ exports.main = async (event) => {
   const doc = await db.collection('config_sms').doc('sms').get().catch(() => ({ data: null }))
   const cur = doc.data || {}
   const next = Object.assign({}, cur)
+  // ⚠️ CloudBase 的 update 不允许 data 中携带 _id，否则抛 INVALID_PARAM；删除后再更新
+  delete next._id
 
   if (event.signName) next.signName = String(event.signName).slice(0, 30)
   if (event.smsSdkAppId) next.smsSdkAppId = String(event.smsSdkAppId).slice(0, 60)

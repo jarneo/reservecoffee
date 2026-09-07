@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="nbIjewrCVy5sXUnFlrpSOX">
+<head data-page-node-id="hdHVnHUp2cXRswsDEv61BK">
+<meta charset="UTF-8" data-page-node-id="ZEMc7ISOaU7WA3PLcMSMVy" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" data-page-node-id="xwehaczXvLA17H6bYhTeV8" />
+<title>步进器（数字选择）统一样式预览</title>
+<style>
+  :root {
+    --ink:#1A1A1A; --ink-2:#555; --ink-3:#999; --line:#E7E7E7;
+    --fill:#F5F5F5; --fill-2:#FAFAFA; --brand:#7A5230;
+  }
+  * { box-sizing: border-box; font-family: -apple-system,"PingFang SC","Helvetica Neue",sans-serif; }
+  body { margin:0; background:#EEE; padding:24px; color:var(--ink); }
+  .wrap { max-width: 390px; margin:0 auto; }
+  h3 { font-size:14px; color:var(--ink-2); font-weight:600; margin:0 0 12px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:20px; }
+  .field { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); }
+  .field:last-child { border-bottom:none; }
+  .label { font-size:12px; color:var(--ink-3); }
+  .hint { font-size:11px; color:var(--ink-3); margin-top:3px; }
+
+  /* ===== 统一后的步进器（与 app.wxss 同规范，rpx→px 0.5 比例） ===== */
+  .stepper {
+    display:inline-flex; align-items:stretch;
+    border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff;
+  }
+  .stepper button {
+    display:flex; align-items:center; justify-content:center;
+    width:30px; height:30px; padding:0; margin:0; background:#fff; color:var(--ink);
+    font-size:18px; font-weight:400; line-height:1; border:none; border-radius:0; cursor:pointer;
+  }
+  .stepper button::after { border:none; }
+  .stepper button:active { background:var(--fill); }
+  .stepper .v {
+    display:flex; align-items:center; justify-content:center;
+    min-width:36px; padding:0 5px; color:var(--ink);
+    font-size:14px; font-weight:600; line-height:1;
+    border-left:1px solid var(--line); border-right:1px solid var(--line);
+  }
+
+  /* 对照：未修复前的旧写法（line-height 撑高 + 微信默认 ::after 边框未去） */
+  .stepper-old { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:5px; background:#fff; }
+  .stepper-old button { width:28px; height:28px; line-height:28px; background:#fff; font-size:16px; border:1px solid #ccc; border-radius:0; }
+  .stepper-old .v { min-width:32px; text-align:center; }
+</style>
+</head>
+<body data-page-node-id="o8PRkw9FcOg4xgCozuw2Us">
+<div class="wrap" data-page-node-id="VQpmZof1yfuQFIf29TKPve">
+  <h3 data-page-node-id="nqcnay0CCGayX6M9ZEkWQq">① 预约提交页 · 人数</h3>
+  <div class="card" data-page-node-id="A2YkuX6mzF59MAlecU9PEW">
+    <div class="field" data-page-node-id="IvBqXmmN6uhJYYtx2lXocf">
+      <div data-page-node-id="hF8x59ijgHMjG4F70aRBuU"><div class="label" data-page-node-id="TR6LMGeYJbowZGZ64jKCA8">人数</div><div class="hint" data-page-node-id="D7mpZvYfXB5ViehyiqMsfX">单次最多 8 人</div></div>
+      <div class="stepper" data-page-node-id="GzfIFPgZ9zyjbxfOnHr2zr"><button data-page-node-id="Hp2rUZURlYCYgBOofEqF1H">−</button><view class="v" data-page-node-id="j8hX50vbQkkUFj4f4Xrarx">2</view><button data-page-node-id="aFPaUy9pBKjQ5Go93844bK">+</button></div>
+    </div>
+  </div>
+
+  <h3 data-page-node-id="tVbqYEW94D2DOn0N8wCik3">② 项目配置页 · 全局设定</h3>
+  <div class="card" data-page-node-id="WGmGq1JVj6h6fn8HabOWip">
+    <div class="field" data-page-node-id="87ihbY9Y84toEZDE5Y3LL4"><div class="label" data-page-node-id="Dq835OxWiULGKjSbOzYIIL">每日预约次数上限</div>
+      <div class="stepper" data-page-node-id="4anLgse9gId1CEGabJa5rH"><button data-page-node-id="btxej5Y4epE6aOjcLEPwGH">−</button><view class="v" data-page-node-id="B8dkQJdi9DU9BAn8EGil8J">1</view><button data-page-node-id="R7qArn0gE1GXdLnwnODpZY">+</button></div></div>
+    <div class="field" data-page-node-id="cEG9XRbgGAoULI5qTCi5rx"><div class="label" data-page-node-id="Az9rE3Gis5X5geXitbMohR">预约提前开放天数</div>
+      <div class="stepper" data-page-node-id="Y8pXgKGSeZsyYD6tY79yEX"><button data-page-node-id="1TZ6LL6Aq7IaeoD1MyGPbJ">−</button><view class="v" data-page-node-id="1brCjgP7rvYARM9aHOmZaD">7</view><button data-page-node-id="xnprGxk6uJwxSuOVtbSt6a">+</button></div></div>
+    <div class="field" data-page-node-id="pznr2mWVrlWWiTjZxyvkJC"><div class="label" data-page-node-id="J0zkrbldIgPNyV0bUIgfRx">单次预约人数上限</div>
+      <div class="stepper" data-page-node-id="H4q6amKX8dvdA6pE4r3ui0"><button data-page-node-id="AwdZ4L6FgmNOOCZ7BF4TZG">−</button><view class="v" data-page-node-id="m27qCYOaGOGv36P5Kny8wn">2</view><button data-page-node-id="sagZEHQK9wVF871KYoCBnk">+</button></div></div>
+  </div>
+
+  <h3 data-page-node-id="361y9wMB2hdvBc4787s3Ey">对照 · 旧写法（± 偏上、按钮边框错位）</h3>
+  <div class="card" data-page-node-id="cwPBpFhBrV3FWIIlVHB4mD">
+    <div class="field" data-page-node-id="0D6gdgLnAocVf4VMIdml9V"><div class="label" data-page-node-id="1DSkPjJH1rBPFWVzTd0FPS">单次预约人数上限（旧）</div>
+      <div class="stepper-old" data-page-node-id="WV8fRIqABIVR7YQpUEz6UK"><button data-page-node-id="FeE0PacXFb0WKKgjTP7mWn">−</button><view class="v" data-page-node-id="r5Bqqlg7APguYtiUrB0Z8Q">2</view><button data-page-node-id="YQ1EyfQHvMrWAmLl83wAH4">+</button></div></div>
+  </div>
+</div>
+</body>
+</html>
