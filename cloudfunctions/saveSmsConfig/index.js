@@ -13,6 +13,9 @@ exports.main = async (event) => {
   const next = Object.assign({}, cur)
   // ⚠️ CloudBase 的 update 不允许 data 中携带 _id，否则抛 INVALID_PARAM；删除后再更新
   delete next._id
+  // ⚠️ 短信 API 地域固定为 ap-guangzhou（由 sms.js 内部处理），config_sms 里不应存 region，
+  // 否则旧值（如 ap-shanghai）会误导且曾导致全部短信静默失败；此处主动丢弃该字段。
+  delete next.region
 
   if (event.signName) next.signName = String(event.signName).slice(0, 30)
   if (event.smsSdkAppId) next.smsSdkAppId = String(event.smsSdkAppId).slice(0, 60)

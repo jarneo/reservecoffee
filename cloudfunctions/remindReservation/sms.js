@@ -63,7 +63,11 @@ async function sendTemplateSms(o) {
 
   const client = new SmsClient({
     credential: { secretId: cfg.secretId, secretKey: cfg.secretKey },
-    region: cfg.region || REGION,
+    // ⚠️ 腾讯云短信 SendSms API 仅支持 ap-guangzhou 这一个 API 地域；
+    // 真实发送地域由 SmsSdkAppId 决定。配置里若误填 region（如 ap-shanghai）
+    // 会触发 "The action does not support this region." 使全部短信静默失败。
+    // 故此处固定使用 REGION（=ap-guangzhou），忽略 config_sms 里的 region 字段。
+    region: REGION,
     profile: { httpProfile: { endpoint: 'sms.tencentcloudapi.com' } }
   })
 
