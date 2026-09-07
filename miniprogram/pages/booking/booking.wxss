@@ -1,5 +1,4 @@
 .topbar { padding: 12rpx 4rpx 20rpx; display: flex; align-items: center; justify-content: space-between; }
-.menu-link { color: var(--brand); font-size: 26rpx; }
 
 /* 介绍图片区域（日历上方） */
 .intro-area { margin-bottom: 20rpx; }

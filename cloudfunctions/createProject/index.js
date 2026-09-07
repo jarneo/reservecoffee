@@ -18,7 +18,8 @@ exports.main = async (event) => {
 
   const doc = {
     name,
-    icon: event.icon || 'coffee',
+    icon: event.icon || '',
+    iconFileId: event.iconFileId || '',
     image: event.image || '',
     intro: (event.intro || '').toString().slice(0, 300),
     published: false,
@@ -30,6 +31,7 @@ exports.main = async (event) => {
     paused: false,
     maxParty: 2,
     subscribeNotify: true,
+    showSeatInfo: true,
     openDays: [],
     ownerOpenid: OPENID,
     createdAt: Date.now(),

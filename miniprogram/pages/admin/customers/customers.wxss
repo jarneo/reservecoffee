@@ -1,0 +1,85 @@
+.searchbar {
+  padding: 8rpx 0 16rpx;
+}
+.search-input {
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 12rpx;
+  padding: 18rpx 24rpx;
+  font-size: 28rpx;
+}
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+}
+/* 筛选/排序 chips（横向滚动，避免窄屏换行挤压） */
+.chips {
+  white-space: nowrap;
+  margin-bottom: 12rpx;
+}
+.sortbar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+  flex-wrap: wrap;
+}
+.sort-l {
+  font-size: 24rpx;
+  color: var(--ink-3);
+  flex: none;
+}
+.chip {
+  display: inline-block;
+  font-size: 24rpx;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 999rpx;
+  padding: 10rpx 22rpx;
+  margin-right: 12rpx;
+}
+.chip.sm {
+  padding: 8rpx 18rpx;
+  font-size: 22rpx;
+}
+.chip.on {
+  color: #fff;
+  background: var(--ink);
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.chip .cnt {
+  opacity: .8;
+}
+/* 卡片内状态 pill */
+.pill {
+  display: inline-block;
+  font-size: 20rpx;
+  border-radius: 999rpx;
+  padding: 2rpx 12rpx;
+  margin-right: 10rpx;
+  line-height: 1.6;
+}
+.pill.today { color: var(--brand); background: rgba(122, 82, 48, .1); }
+.pill.cancel { color: var(--danger); background: rgba(163, 45, 45, .1); }
+.pill.cross { color: var(--ink-2); background: var(--fill); }
+.pill.new { color: #2D6FA3; background: rgba(45, 111, 163, .1); }
+.name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.meta {
+  margin-top: 10rpx;
+}
+.num-ink {
+  color: var(--ink);
+  font-weight: 600;
+}
+.phone {
+  margin-top: 6rpx;
+}
+.tagrow {
+  margin-top: 14rpx;
+}

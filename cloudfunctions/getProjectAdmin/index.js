@@ -63,6 +63,7 @@ exports.main = async (event) => {
     _id: p._id,
     name: p.name,
     icon: p.icon,
+    iconUrl: await resolveImage(p.iconFileId),
     image: p.image,
     imageUrl: await resolveImage(p.image),
     intro: p.intro,
@@ -80,6 +81,7 @@ exports.main = async (event) => {
     maxParty: p.maxParty || 2,
     subscribeNotify: !!p.subscribeNotify,
     mpNotify: !!p.mpNotify,
+    showSeatInfo: p.showSeatInfo !== false,
     fields: p.fields || ['name', 'phone']
   }
 

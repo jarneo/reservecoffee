@@ -20,6 +20,10 @@
     "pages/admin/notifyConfig/notifyConfig",
     "pages/admin/mpAuthWeb/mpAuthWeb",
     "pages/admin/templates/templates",
+    "pages/admin/customers/customers",
+    "pages/admin/customers/detail",
+    "pages/admin/blacklist/blacklist",
+    "pages/admin/stats/stats",
     "pages/shareMenu/shareMenu",
     "pages/privacy/privacy"
   ],

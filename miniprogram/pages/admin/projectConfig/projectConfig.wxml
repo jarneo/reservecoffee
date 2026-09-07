@@ -12,6 +12,21 @@
     <view class="tip" style="text-align:right;margin-top:6rpx">{{intro.length}}/300</view>
   </view>
 
+  <!-- 项目图标：顾客端首页项目卡片左侧展示 -->
+  <view class="card">
+    <view class="sec">项目图标</view>
+    <view class="tip" style="text-align:left;margin-top:0;margin-bottom:10rpx">显示在顾客端首页「预约项目」列表左侧；不上传则显示默认占位。</view>
+    <view class="icon-row">
+      <image wx:if="{{iconUrl}}" class="icon-preview" src="{{iconUrl}}" mode="aspectFill"/>
+      <view wx:else class="icon-preview ph">图标</view>
+      <view class="icon-acts">
+        <button class="btn sm" bindtap="pickIcon">{{iconFileId?'替换':'上传'}}</button>
+        <button wx:if="{{iconFileId}}" class="btn sm ghost" bindtap="clearIcon">删除</button>
+      </view>
+    </view>
+    <view class="tip">建议正方形，120×120px 以上，单张 ≤1MB。</view>
+  </view>
+
   <!-- 介绍图片：上传 / 替换 / 删除 / 排序 / 说明 -->
   <view class="card">
     <view class="sec row between">
@@ -68,6 +83,7 @@
     </view>
     <view class="field row between"><view class="label">开启短信通知（预约成功时推送）</view><switch checked="{{global.smsEnabled}}" bindchange="gSms"/></view>
     <view class="field row between"><view class="label">开启订阅消息通知（预约状态推送给预订人 / 管理员）</view><switch checked="{{global.subscribeNotify}}" bindchange="gSub"/></view>
+    <view class="field row between"><view class="label">预约页显示剩余/已约座位信息</view><switch checked="{{global.showSeatInfo}}" bindchange="gSeat"/></view>
   </view>
 
   <!-- ① 项目时间设置：直接点选日期切换可约/不可约 -->
@@ -82,7 +98,7 @@
   <view wx:if="{{dayList.length===0}}" class="note">先在上方日历勾选可约日期，再为每日添加场次。</view>
   <view class="dayblock" wx:for="{{dayList}}" wx:key="date">
     <view class="dh">
-      <view class="dt">{{item.date}} <view class="badge {{item.closed?'paused':'ok'}}">{{item.closed?'已暂停':'开放'}}</view></view>
+      <view class="dt">{{item.label}} <view class="badge {{item.closed?'paused':'ok'}}">{{item.closed?'已暂停':'开放'}}</view></view>
       <view class="ops">
         <view class="pause-toggle">
           <text class="muted xs">{{item.closed?'暂停中':'可预约'}}</text>

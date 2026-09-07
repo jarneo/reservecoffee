@@ -4,14 +4,20 @@
     <button class="btn sm" bindtap="reviewAll" wx:if="{{list.length>0}}">全部审核</button>
   </view>
   <view wx:if="{{list.length===0}}" class="note">暂无待审核预约</view>
-  <view wx:for="{{list}}" wx:key="_id" class="card">
-    <view class="row between"><view class="bold">{{item.name}}</view><view class="badge paused">待审核</view></view>
+  <view wx:for="{{list}}" wx:key="_id" class="card {{item.isBlacklisted ? 'bl-card' : ''}}">
+    <view class="row between">
+      <view class="bold">{{item.name}}<text wx:if="{{item.isBlacklisted}}" class="tag danger" style="margin-left:12rpx">黑名单</text></view>
+      <view class="badge paused">待审核</view>
+    </view>
+    <view wx:if="{{item.isBlacklisted}}" class="bl-bar">⚠ 该顾客已在黑名单中，批量「全部审核」将自动跳过，请人工确认后再处理</view>
+    <view wx:if="{{item.isBlacklisted && item.blacklistReason}}" class="xs muted" style="margin-top:6rpx">拉黑原因：{{item.blacklistReason}}</view>
     <view class="sm muted" style="margin-top:6rpx">{{item.projectName}} · {{item.date}} {{item.time}} · {{item.partySize}} 人</view>
     <view class="sm muted">电话：{{item.phone}}</view>
     <view wx:if="{{item.note}}" class="xs" style="margin-top:6rpx">备注：{{item.note}}</view>
     <view class="row" style="margin-top:16rpx;gap:16rpx">
       <button class="btn sm" bindtap="approve" data-id="{{item._id}}">通过</button>
       <button class="btn ghost sm" bindtap="reject" data-id="{{item._id}}">拒绝</button>
+      <button wx:if="{{item.openid}}" class="btn ghost sm" bindtap="goCustomer" data-openid="{{item.openid}}">顾客档案</button>
     </view>
   </view>
 </view>

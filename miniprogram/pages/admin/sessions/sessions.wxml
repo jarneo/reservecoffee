@@ -42,20 +42,22 @@
       <view wx:if="{{peopleLoading}}" class="note">加载中…</view>
       <view wx:elif="{{list.length===0}}" class="note">该场次暂无预约人</view>
       <scroll-view wx:else scroll-y class="people-scroll">
-        <view wx:for="{{list}}" wx:key="_id" class="person" bindtap="showDetail" data-id="{{item._id}}">
+        <view wx:for="{{list}}" wx:key="_id" class="person {{item.isBlacklisted ? 'bl' : ''}}" bindtap="showDetail" data-id="{{item._id}}">
           <view class="avatar">{{item.name[0]}}</view>
           <view class="pinfo">
             <view class="row between" style="align-items:center">
-              <view class="bold">{{item.name}} <text class="muted">· {{item.partySize}}人</text></view>
+              <view class="bold">{{item.name}} <text class="muted">· {{item.partySize}}人</text><text wx:if="{{item.isBlacklisted}}" class="tag danger" style="margin-left:12rpx">黑名单</text></view>
               <view class="head-actions">
                 <view class="badge {{item.review==='pending'?'paused':(item.status==='confirmed'?'ok':'full')}}">{{item.review==='pending'?'待审':(item.status==='confirmed'?'已确认':'已取消')}}</view>
                 <view wx:if="{{!peopleExpired}}" class="cancel-mini" catchtap="onCancel" data-id="{{item._id}}">取消预约</view>
               </view>
             </view>
+            <view wx:if="{{item.isBlacklisted}}" class="bl-bar">⚠ 该顾客已被加入黑名单，无法再次预约<text wx:if="{{item.blacklistReason}}">（{{item.blacklistReason}}）</text></view>
             <view class="row between" style="margin-top:10rpx;align-items:center">
               <view class="phone">{{item.phone || '无号码'}}</view>
               <view class="ph-btn {{item.phone?'':'disabled'}}" catchtap="onPhone" data-phone="{{item.phone}}">📞 拨打</view>
             </view>
+            <view class="cust-link" catchtap="goCustomer" data-openid="{{item.openid}}" wx:if="{{item.openid}}">查看顾客分析 ›</view>
             <view wx:if="{{item.review==='pending'}}" class="review-row" catchtap="noop">
               <view class="rev-btn approve" catchtap="onReview" data-id="{{item._id}}" data-decision="approve">✓ 通过</view>
               <view class="rev-btn reject" catchtap="onReview" data-id="{{item._id}}" data-decision="reject">✕ 不通过</view>

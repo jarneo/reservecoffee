@@ -4,3 +4,28 @@
 .phone-row { display:flex; align-items:center; gap:16rpx; }
 .phone-row .phone-input { flex:1; }
 .phone-row .get-phone { margin:0; flex:none; font-size:24rpx; padding:0 22rpx; height:64rpx; line-height:64rpx; }
+
+/* 黑名单阻断态：顶部警示块 + 禁用提交按钮 */
+.bl-block {
+  background: rgba(163, 45, 45, .07);
+  border: 1rpx solid rgba(163, 45, 45, .25);
+  border-radius: 16rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 20rpx;
+}
+.bl-block .bl-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--danger);
+}
+.bl-block .bl-text {
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.btn.blk-disabled {
+  background: var(--fill);
+  color: var(--ink-3);
+  border-color: var(--line);
+}

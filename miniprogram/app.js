@@ -21,6 +21,20 @@ App({
     })
     // 进入即探测角色（用于底部 tab / 入口自适应）
     this.refreshRole()
+    // 首启采集来源 scene（用于顾客「初次来源」标签）；失败静默，不阻断启动
+    try {
+      const opt = (wx.getEnterOptionsSync && wx.getEnterOptionsSync()) || {}
+      require('./utils/cloud').call('markLaunch', { scene: opt.scene || '' }).catch(() => {})
+    } catch (e) { /* ignore */ }
+    // 埋点：访问小程序（转化漏斗第1层 + 「只看不约」用户识别）。
+    // ⚠️ 必须在 refreshRole().then 之后触发：首云调用的 OPENID 上下文可能尚未就绪，
+    // 若与 refreshRole 并行发出，trackEvent 会因「未登录」静默丢弃 → 访问UV 长期为 0。
+    // 链式调用保证 OPENID 已可用（refreshRole 的 getRole 已证明其可用）。
+    this.refreshRole().then(() => {
+      try {
+        require('./utils/cloud').call('trackEvent', { type: 'visit' }).catch(() => {})
+      } catch (e) { /* ignore */ }
+    }).catch(() => {})
   },
 
   // 获取/刷新管理员角色（写入 globalData）

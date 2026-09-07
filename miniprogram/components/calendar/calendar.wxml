@@ -11,7 +11,7 @@
     <view wx:for="{{cells}}" wx:key="ymd"
       class="cell {{item.empty?'empty':''}} {{item.open?'open':''}} {{item.sel?'sel':''}} {{item.today?'today':''}} {{item.disabled?'disabled':''}}"
       data-ymd="{{item.ymd}}" bindtap="tap">
-      <view wx:if="{{!item.empty}}" class="cd">{{item.day}}</view>
+      <view wx:if="{{!item.empty}}" class="cd">{{item.md}}</view>
     </view>
   </view>
   <view class="cal-legend"><view class="dot open"></view>可约<view class="dot closed"></view>不可约<view class="dot today"></view>今天</view>

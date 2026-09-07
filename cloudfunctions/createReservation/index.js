@@ -25,6 +25,14 @@ exports.main = async (event) => {
   const { OPENID } = wxCtx()
   if (!OPENID) return fail('无法识别用户身份')
 
+  // 黑名单拦截（事务前，避免无效占额）
+  try {
+    const u = await db.collection(COL.users).doc(OPENID).get().catch(() => null)
+    if (u && u.data && u.data.isBlacklisted) {
+      return fail('该账号已被加入黑名单，暂无法预约')
+    }
+  } catch (e) { /* 查询失败不阻断主流程 */ }
+
   const { projectId, date, sessionId, name, phone, partySize, note, wechat, gender, age } = event
   if (!projectId || !date || !sessionId) return fail('参数缺失')
   // 手机号非必填：仅当填写时校验格式

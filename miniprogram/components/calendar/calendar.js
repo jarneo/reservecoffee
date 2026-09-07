@@ -21,9 +21,10 @@ Component({
       for (let i = 0; i < first; i++) cells.push({ empty: true })
       for (let d = 1; d <= days; d++) {
         const ymd = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        const md = `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
         // 今天之前的日期禁用（只读，不可勾选）
         const disabled = ymd < todayStr
-        cells.push({ empty: false, ymd, day: d, open: this.data.openDays.indexOf(ymd) >= 0, sel: this.data.selected.indexOf(ymd) >= 0, today: ymd === todayStr, disabled })
+        cells.push({ empty: false, ymd, day: d, md, open: this.data.openDays.indexOf(ymd) >= 0, sel: this.data.selected.indexOf(ymd) >= 0, today: ymd === todayStr, disabled })
       }
       this.setData({ cells })
     },

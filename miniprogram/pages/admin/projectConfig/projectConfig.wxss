@@ -42,6 +42,12 @@
 .modal-t { font-weight:600; font-size:30rpx; text-align:center; margin-bottom:18rpx; }
 .picker { font-size:28rpx; text-align:right; color:var(--ink); }
 
+/* 项目图标 */
+.icon-row { display:flex; align-items:center; gap:18rpx; }
+.icon-preview { width:140rpx; height:140rpx; border-radius:16rpx; flex:none; background:var(--fill); border:1rpx solid var(--line); }
+.icon-preview.ph { display:flex; align-items:center; justify-content:center; color:var(--ink-3); font-size:24rpx; border-style:dashed; }
+.icon-acts { display:flex; flex-direction:column; gap:12rpx; }
+
 /* 全局设定中的可点击行 + 行末值 */
 .field.row.between.tap { padding: 20rpx 0; }
 .val { color: var(--ink-3); font-size: 26rpx; }

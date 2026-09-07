@@ -12,6 +12,7 @@ exports.main = async (event) => {
   const patch = {}
   if (event.name !== undefined) patch.name = String(event.name).slice(0, 30)
   if (event.icon !== undefined) patch.icon = event.icon
+  if (event.iconFileId !== undefined) patch.iconFileId = event.iconFileId
   if (event.image !== undefined) patch.image = event.image
   if (event.intro !== undefined) patch.intro = String(event.intro).slice(0, 300)
   if (event.needReview !== undefined) patch.needReview = !!event.needReview
@@ -42,6 +43,7 @@ exports.main = async (event) => {
   }
   // 短信通知：每项目独立开关
   if (event.smsEnabled !== undefined) patch.smsEnabled = !!event.smsEnabled
+  if (event.showSeatInfo !== undefined) patch.showSeatInfo = !!event.showSeatInfo
   // 软删除（标记后可恢复，不影响历史预约）
   if (event.deleted !== undefined) patch.deleted = !!event.deleted
   // 预约截止规则：{ mode:'before'|'after', minutes }（场次开始前/开始后 N 分钟）

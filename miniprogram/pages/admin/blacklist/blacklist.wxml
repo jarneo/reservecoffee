@@ -1,0 +1,31 @@
+<view class="page">
+  <!-- 当前黑名单 -->
+  <view class="sec">当前黑名单（{{list.length}}）</view>
+  <view wx:if="{{list.length === 0}}" class="card muted sm">暂无被拉黑的用户。</view>
+  <view wx:for="{{list}}" wx:key="openid" class="card">
+    <view class="row between">
+      <view class="bold">{{item.name || '未命名'}}</view>
+      <view class="tag danger">黑名单</view>
+    </view>
+    <view class="row" style="margin-top:8rpx;gap:12rpx">
+      <view wx:if="{{item.phone}}" class="chip-phone" catchtap="onPhone" data-phone="{{item.phone}}">📞 {{item.phone}}</view>
+      <view wx:if="{{item.updatedText}}" class="xs muted">更新于 {{item.updatedText}}</view>
+    </view>
+    <view wx:if="{{item.reason}}" class="xs muted" style="margin-top:6rpx">原因：{{item.reason}}</view>
+    <button class="btn ghost danger sm" style="margin-top:14rpx" bindtap="remove" data-openid="{{item.openid}}" data-name="{{item.name}}">移出黑名单</button>
+  </view>
+
+  <!-- 加入黑名单 -->
+  <view class="sec" style="margin-top:24rpx">加入黑名单（按昵称 / 手机号查找）</view>
+  <view class="card">
+    <input class="search-input" placeholder="输入昵称或手机号" value="{{query}}" bindinput="onSearch" confirm-type="search"/>
+    <view wx:if="{{results.length === 0}}" class="xs muted" style="margin-top:14rpx">输入后自动查找匹配用户。</view>
+    <view wx:for="{{results}}" wx:key="openid" class="res-row">
+      <view class="col" style="flex:1">
+        <view class="sm">{{item.name || '未命名'}}<text wx:if="{{item.isBlacklisted}}" class="tag danger" style="margin-left:10rpx">已拉黑</text></view>
+        <view wx:if="{{item.phone}}" class="xs muted">📞 {{item.phone}}</view>
+      </view>
+      <button wx:if="{{!item.isBlacklisted}}" class="btn sm" bindtap="addToBlacklist" data-openid="{{item.openid}}" data-name="{{item.name}}">加入</button>
+    </view>
+  </view>
+</view>

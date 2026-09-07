@@ -1,0 +1,50 @@
+<view class="page">
+  <view class="searchbar">
+    <input class="search-input" placeholder="搜索昵称 / 手机号 / 标签" value="{{query}}" bindinput="onSearch" confirm-type="search"/>
+  </view>
+
+  <!-- 固定筛选条件 -->
+  <scroll-view class="chips" scroll-x="true">
+    <view wx:for="{{filterDefs}}" wx:key="key" class="chip {{filter===item.key?'on':''}}" data-k="{{item.key}}" bindtap="setFilter">{{item.label}}<text wx:if="{{item.key==='black' && blackCount}}" class="cnt"> {{blackCount}}</text></view>
+  </scroll-view>
+
+  <!-- 排序 -->
+  <view class="sortbar">
+    <text class="sort-l">排序</text>
+    <view wx:for="{{sortDefs}}" wx:key="key" class="chip sm {{sort===item.key?'on':''}}" data-k="{{item.key}}" bindtap="setSort">{{item.label}}</view>
+  </view>
+
+  <view wx:if="{{!loading && list.length === 0}}" class="empty muted">暂无匹配的顾客</view>
+
+  <view wx:for="{{list}}" wx:key="openid" class="card cust {{item.isBlacklisted ? 'bl-card' : ''}}" bindtap="goDetail" data-openid="{{item.openid}}">
+    <view class="row between">
+      <view class="name">{{item.name || '未命名'}}</view>
+      <view wx:if="{{item.isBlacklisted}}" class="tag danger">黑名单</view>
+    </view>
+
+    <view class="row between meta">
+      <view class="sm muted">累计预约 <text class="num-ink">{{item.total}}</text> 次 · 首约 {{item.firstAtText}}</view>
+      <view wx:if="{{item.lastAtText}}" class="xs muted">末约 {{item.lastAtText}}</view>
+    </view>
+
+    <view class="row between meta">
+      <view class="xs muted">
+        <text wx:if="{{item.hasTodayReserve}}" class="pill today">今日有约</text>
+        <text wx:if="{{item.cancelToday>0}}" class="pill cancel">今日取消{{item.cancelToday}}</text>
+        <text wx:if="{{item.cancelCount>0}}" class="pill cancel">累计取消{{item.cancelCount}}</text>
+        <text wx:if="{{item.projectCount>=2}}" class="pill cross">跨{{item.projectCount}}项目</text>
+        <text wx:if="{{item.isNew}}" class="pill new">新客</text>
+      </view>
+    </view>
+
+    <view wx:if="{{item.phone}}" class="sm muted phone">📞 {{item.phone}}</view>
+    <view wx:if="{{item.remark}}" class="xs muted">备注：{{item.remark}}</view>
+
+    <view class="tagrow" wx:if="{{item.autoTags2.length}}">
+      <view wx:for="{{item.autoTags2}}" wx:for-item="t" wx:key="*this" class="tag muted">{{t}}</view>
+      <view wx:if="{{item.autoTags.length > 2}}" class="tag muted">+{{item.autoTags.length - 2}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty muted">加载中…</view>
+</view>

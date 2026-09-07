@@ -1,0 +1,101 @@
+<view class="page" wx:if="{{profile}}">
+
+  <!-- 头部：基本信息 -->
+  <view class="card">
+    <view class="row between">
+      <view class="name">{{profile.name || '未命名'}}</view>
+      <view wx:if="{{role === 'owner'}}" class="btn ghost sm" bindtap="toggleEdit">{{showEdit ? '取消' : '编辑资料'}}</view>
+    </view>
+    <view class="row" style="margin-top:12rpx;gap:12rpx">
+      <view wx:if="{{profile.phone}}" class="chip-phone" catchtap="callDetailPhone" data-phone="{{profile.phone}}">📞 {{profile.phone}}</view>
+      <view wx:if="{{isBlacklisted}}" class="tag danger">黑名单</view>
+    </view>
+    <view wx:if="{{firstSourceText}}" class="xs muted" style="margin-top:10rpx">首次来源：{{firstSourceText}}</view>
+    <view wx:if="{{firstLaunchText}}" class="xs muted">首次访问：{{firstLaunchText}}</view>
+    <view wx:if="{{profile.remark}}" class="xs muted">备注：{{profile.remark}}</view>
+
+    <!-- 编辑表单（owner） -->
+    <view wx:if="{{showEdit && role === 'owner'}}" class="editbox">
+      <view class="field"><view class="label">昵称</view><input value="{{editName}}" bindinput="onEditName" placeholder="昵称"/></view>
+      <view class="field"><view class="label">手机号</view><input value="{{editPhone}}" bindinput="onEditPhone" placeholder="手机号（选填）" type="number"/></view>
+      <view class="field"><view class="label">备注</view><textarea value="{{editRemark}}" bindinput="onEditRemark" placeholder="客户备注（选填）" auto-height/></view>
+      <button class="btn block" bindtap="saveProfile">保存</button>
+    </view>
+  </view>
+
+  <!-- 分析 KPI（有预约记录才显示） -->
+  <block wx:if="{{agg}}">
+    <view class="kpi-grid">
+      <view class="kpi"><view class="label">累计预约</view><view class="num">{{agg.total}}</view><view class="sub">次</view></view>
+      <view class="kpi"><view class="label">平均人数</view><view class="num">{{avgPartyText}}</view><view class="sub">人 / 次</view></view>
+      <view class="kpi"><view class="label">平均提前</view><view class="num">{{avgLeadText}}</view><view class="sub">天预约</view></view>
+      <view class="kpi"><view class="label">末次预约</view><view class="num sm-num">{{lastAtText}}</view><view class="sub">首约 {{firstAtText}}</view></view>
+    </view>
+
+    <!-- 各项目分布 -->
+    <view class="card" wx:if="{{perProjectBars.length}}">
+      <view class="sec">各项目预约分布</view>
+      <view wx:for="{{perProjectBars}}" wx:key="name" class="bar-row">
+        <view class="bar-name">{{item.name}}</view>
+        <view class="bar-track"><view class="bar-fill" style="width:{{item.pct}}%"></view></view>
+        <view class="bar-cnt">{{item.cnt}}</view>
+      </view>
+      <view wx:if="{{weekendText}}" class="xs muted" style="margin-top:12rpx">周末预约占比：{{weekendText}}</view>
+    </view>
+
+    <!-- 到场时段分布 -->
+    <view class="card" wx:if="{{hourBars.length}}">
+      <view class="sec">到场时段分布</view>
+      <view wx:for="{{hourBars}}" wx:key="h" class="bar-row">
+        <view class="bar-name">{{item.h}}:00</view>
+        <view class="bar-track"><view class="bar-fill" style="width:{{item.pct}}%"></view></view>
+        <view class="bar-cnt">{{item.c}}</view>
+      </view>
+    </view>
+  </block>
+  <view wx:else class="card muted sm">该用户暂无预约记录。</view>
+
+  <!-- 标签区 -->
+  <view class="card">
+    <view class="sec">标签</view>
+    <view class="tagrow">
+      <view wx:for="{{autoTags}}" wx:key="*this" class="tag muted">自动 · {{item}}</view>
+      <view wx:for="{{tagsView}}" wx:key="t" class="tag fill {{item.removable ? 'rm' : ''}}" catchtap="removeTag" data-t="{{item.t}}">{{item.t}}{{item.removable ? ' ✕' : ''}}</view>
+    </view>
+    <view wx:if="{{role === 'owner'}}" class="row" style="margin-top:14rpx;gap:12rpx">
+      <input class="tag-input" placeholder="添加标签后回车" value="{{newTag}}" bindinput="onNewTag" confirm-type="done" bindconfirm="addTag"/>
+      <button class="btn sm" bindtap="addTag">添加</button>
+    </view>
+  </view>
+
+  <!-- 黑名单开关（owner） -->
+  <view class="card" wx:if="{{role === 'owner'}}">
+    <view class="row between">
+      <view>
+        <view class="bold">黑名单</view>
+        <view class="xs muted">开启后该用户无法预约</view>
+      </view>
+      <switch checked="{{isBlacklisted}}" bindchange="toggleBlacklist" color="#A32D2D"/>
+    </view>
+    <view wx:if="{{isBlacklisted && blacklistReason}}" class="xs danger" style="margin-top:10rpx">原因：{{blacklistReason}}</view>
+  </view>
+
+  <!-- 最近预约 -->
+  <view class="card" wx:if="{{recent.length}}">
+    <view class="sec">最近预约</view>
+    <view wx:for="{{recent}}" wx:key="_id" class="rev-row">
+      <view class="row between">
+        <view class="sm bold">{{item.date}} {{item.sessionStart}}{{item.sessionEnd ? '–' + item.sessionEnd : ''}}</view>
+        <view class="xs muted">{{item.partySize}} 人</view>
+      </view>
+      <view class="xs muted" style="margin-top:4rpx">{{item.projectName || '未命名项目'}}</view>
+      <view class="row" style="margin-top:6rpx;gap:10rpx">
+        <view class="badge {{item.status === 'confirmed' ? 'ok' : ''}}">{{item.statusText}}</view>
+        <view wx:if="{{item.reviewText}}" class="badge">{{item.reviewText}}</view>
+      </view>
+    </view>
+  </view>
+
+</view>
+
+<view wx:else class="page"><view class="empty muted">加载中…</view></view>

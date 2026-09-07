@@ -1,5 +1,5 @@
 // getHomepage — 顾客端首页数据：首页配置 + 已发布且未删除项目列表 + 在售店铺菜单
-const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDay } = require('./lib')
+const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDaySlash } = require('./lib')
 
 // 首页店铺菜单最多展示数量（按 sort 升序取前 N 个）
 const MENU_LIMIT = 10
@@ -80,7 +80,7 @@ async function projectAvailability(p) {
   })
   dates.sort()
   const MAX = 6
-  const shown = dates.slice(0, MAX).map(d => ({ ymd: d, label: monthDay(d) }))
+  const shown = dates.slice(0, MAX).map(d => ({ ymd: d, label: monthDaySlash(d) }))
   return { bookStatus: dates.length ? 'ok' : 'none', availableDates: shown, availableCount: dates.length }
 }
 
@@ -98,6 +98,7 @@ exports.main = async () => {
       _id: p._id,
       name: p.name,
       icon: p.icon,
+      iconUrl: await resolveImage(p.iconFileId),
       image: p.image,
       imageUrl: '',
       intro: p.intro,

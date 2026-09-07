@@ -4,7 +4,7 @@
 .cal-week, .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8rpx; }
 .cal-week { margin-bottom:8rpx; }
 .cw { text-align:center; font-size:22rpx; color:var(--ink-3); }
-.cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border:1rpx solid var(--line); border-radius:10rpx; font-size:24rpx; position:relative; }
+.cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border:1rpx solid var(--line); border-radius:10rpx; font-size:20rpx; position:relative; }
 .cell.empty { border:none; }
 /* 可预约：墨黑描边高亮（对齐原型：开放日=ink 黑边，今天=橘圈） */
 .cell.open { border:2rpx solid var(--ink); color:var(--ink); font-weight:600; background:#fff; }

@@ -1,0 +1,137 @@
+<view class="page">
+  <view class="top">
+    <view class="top-t"><text class="brand-dot"></text>数据分析</view>
+    <view class="badge ok">超级管理员</view>
+  </view>
+  <view class="seg">
+    <view class="seg-b {{period==='7'?'on':''}}" data-p="7" bindtap="setPeriod">近7天</view>
+    <view class="seg-b {{period==='30'?'on':''}}" data-p="30" bindtap="setPeriod">近30天</view>
+    <view class="seg-b {{period==='all'?'on':''}}" data-p="all" bindtap="setPeriod">全部</view>
+  </view>
+
+  <block wx:if="{{view}}">
+    <!-- 板块1 总览 -->
+    <view class="sec">
+      <view class="sh">总览</view>
+      <view class="kpis">
+        <view class="kpi" wx:for="{{view.kpis}}" wx:key="l">
+          <view class="label">{{item.l}}</view>
+          <view class="num">{{item.n}}</view>
+        </view>
+      </view>
+      <view class="note">整体转化率 = 提交预约UV ÷ 访问UV。</view>
+    </view>
+
+    <!-- 板块2 转化漏斗（埋点后 4 层均为真实数据） -->
+    <view class="sec">
+      <view class="sh">转化漏斗（核心视图）</view>
+      <view class="fn" wx:for="{{view.funnel}}" wx:key="key">
+        <view class="fn-row"><text>{{item.label}}</text><text>{{item.uv}} UV</text></view>
+        <view class="bar" style="width:{{item.pct}}%">{{item.uv}}</view>
+      </view>
+      <view class="mini">
+        <view class="m"><view class="l">访问→详情</view><view class="n">{{view.funnelRate.visitToView}}%</view></view>
+        <view class="m"><view class="l">详情→点击</view><view class="n">{{view.funnelRate.viewToClick}}%</view></view>
+        <view class="m"><view class="l">点击→提交</view><view class="n brand">{{view.funnelRate.clickToSubmit}}%</view></view>
+      </view>
+      <view class="note">数据来自前端埋点（events）：访问小程序 / 查看项目详情 / 点击预约，提交预约取自预约单。</view>
+    </view>
+
+    <!-- 板块3 用户分层 -->
+    <view class="sec">
+      <view class="sh">用户分层（按 openid 预约次数）</view>
+      <view class="ut" wx:for="{{view.tiers}}" wx:key="l">
+        <text class="lab">{{item.l}}</text>
+        <view class="ub" style="width:{{item.pct}}%"></view>
+        <text class="val">{{item.v}}</text>
+      </view>
+    </view>
+
+    <!-- 板块4 项目维度 -->
+    <view class="sec">
+      <view class="sh">项目维度</view>
+      <view class="prj" wx:for="{{view.byProject}}" wx:key="projectId">
+        <view class="prj-h"><text class="prj-name">{{item.name}}</text><text class="prj-cnt">{{item.cnt}}单 · {{item.ratio}}%</text></view>
+        <view class="track"><view class="fill" style="width:{{item.pct}}%"></view></view>
+        <view class="prj-meta"><text>预约UV {{item.uv}}</text><text>人均 {{item.perCap}}</text><text>均提前 {{item.avgLead}}天</text></view>
+        <view class="prj-meta"><text>提交高峰 {{item.submitPeak}}</text></view>
+      </view>
+    </view>
+
+    <!-- 板块5 时间趋势 -->
+    <view class="sec">
+      <view class="sh">时间趋势（每日）</view>
+      <view wx:if="{{view.hasTrend}}" class="tbars">
+        <view class="tcol" wx:for="{{view.trendBars}}" wx:key="id">
+          <view class="tuv" style="height:{{item.uvPct}}%"></view>
+          <view class="tcnt" style="height:{{item.cntPct}}%"></view>
+        </view>
+      </view>
+      <view wx:else class="empty">所选周期暂无数据</view>
+      <view class="legend"><text class="lg ink">■ 预约单数</text><text class="lg brand">■ 预约UV</text></view>
+      <view class="note">基于上海当地提交日期聚合（UV=当日有效预约去重用户）。</view>
+    </view>
+
+    <!-- 板块6 预约时段分析（仅提交时段） -->
+    <view class="sec">
+      <view class="sh">预约时段分析</view>
+      <view class="sub"><text>提交时段（上海时间）</text><text class="pk">高峰 {{view.submitPeak}}</text></view>
+      <view class="hours">
+        <view class="hc" wx:for="{{view.submitHourBars}}" wx:key="h"><view class="hb {{item.alt?'alt':''}}" style="height:{{item.pct}}%"></view><text class="hx">{{item.h}}</text></view>
+      </view>
+      <view class="note">深棕柱=晚高峰(18:00–次日01:00)。已按 Asia/Shanghai 归一，避免云函数 UTC 偏移。</view>
+    </view>
+
+    <!-- 板块7 提前预约分析 -->
+    <view class="sec">
+      <view class="sh">提前预约分析</view>
+      <view class="hbar" wx:for="{{view.leadBars}}" wx:key="l">
+        <view class="hbar-row"><text class="lab">{{item.l}}</text><text class="val">{{item.v}}</text></view>
+        <view class="track"><view class="fill" style="width:{{item.pct}}%"></view></view>
+      </view>
+      <view class="mini">
+        <view class="m"><view class="l">平均提前天数</view><view class="n">{{view.avgLeadDays}}</view></view>
+        <view class="m"><view class="l">临时型 ≤1天</view><view class="n brand">{{view.leadTmp}}%</view></view>
+        <view class="m"><view class="l">计划型 ≥3天</view><view class="n">{{view.leadPln}}%</view></view>
+      </view>
+      <view class="note">临时型=当天+1天；计划型=3天及以上。占比基于有 date 字段的有效预约。</view>
+    </view>
+
+    <!-- 板块9 用户维度 · 项目交叉分析 -->
+    <view class="sec">
+      <view class="sh">用户维度 · 项目交叉分析</view>
+      <view class="sub"><text>各项目触达用户（人数口径）</text></view>
+      <view class="hbar" wx:for="{{view.crossReach}}" wx:key="id">
+        <view class="hbar-row"><text class="lab">{{item.l}}</text><text class="val">{{item.v}}人 · {{item.pctText}}%</text></view>
+        <view class="track"><view class="fill" style="width:{{item.pct}}%"></view></view>
+      </view>
+
+      <view class="sub"><text>项目组合分布（用户实际约过的组合）</text></view>
+      <view wx:if="{{view.crossCombos.length}}">
+        <view class="hbar" wx:for="{{view.crossCombos}}" wx:key="id">
+          <view class="hbar-row"><text class="lab">{{item.l}}</text><text class="val">{{item.v}}人 · {{item.pctText}}%</text></view>
+          <view class="track"><view class="fill" style="width:{{item.pct}}%"></view></view>
+        </view>
+      </view>
+      <view wx:else class="empty">暂无组合数据</view>
+
+      <view class="sub"><text>两两重叠（同时约过两个项目）</text></view>
+      <view wx:if="{{view.crossPairs.length}}">
+        <view class="hbar" wx:for="{{view.crossPairs}}" wx:key="id">
+          <view class="hbar-row"><text class="lab">{{item.l}}</text><text class="val">{{item.v}}人 · {{item.pctText}}%</text></view>
+          <view class="track"><view class="fill" style="width:{{item.pct}}%"></view></view>
+        </view>
+      </view>
+      <view wx:else class="empty">暂无重叠数据</view>
+
+      <view class="mini">
+        <view class="m"><view class="l">跨项目用户（约过≥2个项目）</view><view class="n brand">{{view.crossMulti.pct}}%</view></view>
+        <view class="m"><view class="l">新用户占比</view><view class="n">{{view.newUserPct}}%</view></view>
+      </view>
+      <view class="note">占比分母=周期内有效预约总UV（{{view.totalUv}} 人）。组合为「精确组合」；两两重叠允许同时约过第三个项目。</view>
+    </view>
+  </block>
+
+  <view wx:if="{{err}}" class="empty">{{err}}</view>
+  <view wx:if="{{loading && !view}}" class="empty">加载中…</view>
+</view>

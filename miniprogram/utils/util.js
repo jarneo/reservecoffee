@@ -38,6 +38,13 @@ function dateLabel(y) {
   return `${y} ${WEEK[dt.getDay()]}`
 }
 
+// 日历/卡片日期标签：YYYY-MM-DD -> MM/DD（如 09/07）
+function monthDaySlash(ymdStr) {
+  const [y0, m, d] = String(ymdStr || '').split('-').map(Number)
+  if (!m || !d) return ymdStr || ''
+  return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
+}
+
 // 校验手机号（中国大陆 11 位）
 function isPhone(v) {
   return /^1[3-9]\d{9}$/.test(v)
@@ -57,4 +64,4 @@ function requestSubscribe(tmplIds) {
   }
 }
 
-module.exports = { ymd, dateLabel, isPhone, WEEK, requestSubscribe, parseHm, isSessionExpired }
+module.exports = { ymd, dateLabel, monthDaySlash, isPhone, WEEK, requestSubscribe, parseHm, isSessionExpired }

@@ -1,0 +1,9 @@
+{
+  "name": "trackEvent",
+  "version": "1.0.0",
+  "description": "前端埋点上报（visit / view_project / click_book）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3"
+  }
+}

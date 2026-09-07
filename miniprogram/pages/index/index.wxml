@@ -6,18 +6,22 @@
 
   <view class="sec-title">预约项目</view>
   <view wx:if="{{projects.length===0}}" class="note">暂无可预约项目</view>
-  <view wx:for="{{projects}}" wx:key="_id" class="card tap" bindtap="goBooking" data-id="{{item._id}}">
-    <view class="bold">{{item.name}}</view>
-    <view class="bookinfo">
-      <text wx:if="{{item.bookStatus==='paused'}}" class="tag paused">暂停预约</text>
-      <block wx:elif="{{item.bookStatus==='ok'}}">
-        <text class="tag ok">可预约</text>
-        <text wx:for="{{item.availableDates}}" wx:for-item="d" wx:key="ymd" class="date-chip">{{d.label}}</text>
-        <text wx:if="{{item.availableCount > item.availableDates.length}}" class="more">等{{item.availableCount}}天</text>
-      </block>
-      <text wx:else class="tag none">暂无可约日期</text>
+  <view wx:for="{{projects}}" wx:key="_id" class="card tap proj-card" bindtap="goBooking" data-id="{{item._id}}">
+    <image wx:if="{{item.iconUrl}}" class="proj-icon" src="{{item.iconUrl}}" mode="aspectFill"/>
+    <view wx:else class="proj-icon ph">图标</view>
+    <view class="proj-body">
+      <view class="bold">{{item.name}}</view>
+      <view class="bookinfo">
+        <text wx:if="{{item.bookStatus==='paused'}}" class="tag paused">暂停预约</text>
+        <block wx:elif="{{item.bookStatus==='ok'}}">
+          <text class="tag ok">可预约</text>
+          <text wx:for="{{item.availableDates}}" wx:for-item="d" wx:key="ymd" class="date-chip">{{d.label}}</text>
+          <text wx:if="{{item.availableCount > item.availableDates.length}}" class="more">等{{item.availableCount}}天</text>
+        </block>
+        <text wx:else class="tag none">暂无可约日期</text>
+      </view>
+      <view wx:if="{{item.intro}}" class="sm muted proj-intro">{{item.intro}}</view>
     </view>
-    <view class="sm muted" style="margin-top:8rpx">{{item.intro}}</view>
   </view>
 
   <view class="sec-title" style="margin-top:36rpx">店铺菜单</view>

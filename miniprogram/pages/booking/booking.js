@@ -7,15 +7,26 @@ Page({
   data: {
     projectId: '', project: {}, introImages: [], schedules: [], openDays: [], advanceDays: 7,
     dateAnchor: '', dateChips: [], dateRangeLabel: '', canPrev: false,
-    selectedDate: '', bizWindow: '', sessions: []
+    selectedDate: '', bizWindow: '', sessions: [],
+    showSeatInfo: true
   },
 
   onLoad(q) {
+    const pid = q.projectId || ''
     this.setData({
-      projectId: q.projectId || '',
+      projectId: pid,
       dateAnchor: '', selectedDate: '', sessions: [], bizWindow: ''
     })
+    // 埋点：查看项目详情（转化漏斗第2层）
+    this.track('view_project', pid)
     this.load()
+  },
+
+  // 埋点上报：写 events 集合供数据分析漏斗使用。失败静默，绝不影响预约主流程
+  track(type, projectId) {
+    try {
+      call('trackEvent', { type, projectId: projectId || '' }).catch(() => {})
+    } catch (e) { /* ignore */ }
   },
 
   load() {
@@ -27,7 +38,7 @@ Page({
         const adv = p.advanceDays || 7
         this.setData({
           project: p, introImages: p.introImages || [], schedules: sched,
-          openDays, advanceDays: adv
+          openDays, advanceDays: adv, showSeatInfo: p.showSeatInfo !== false
         }, () => {
           this.buildDateChips()
           // 默认展开「最近可约日」的场次（今天若可约则为今天，否则向后取第一个开放日）
@@ -74,8 +85,7 @@ Page({
       const isToday = iso === todayStr
       const isTmr = iso === tmrStr
       const wk = isToday ? '今天' : (isTmr ? '明天' : '周' + WD[cur.getDay()])
-      const mo = (cur.getMonth() !== prevMonth) ? (cur.getMonth() + 1) + '月' : ''
-      prevMonth = cur.getMonth()
+      const md = `${String(cur.getMonth() + 1).padStart(2, '0')}/${String(cur.getDate()).padStart(2, '0')}`
       const sel = iso === this.data.selectedDate
       // 当日整体状态（仅对可约日有意义）：项目暂停 → 全部暂停；否则看当日场次
       let status = ''
@@ -93,11 +103,11 @@ Page({
           }
         }
       }
-      chips.push({ ymd: iso, wk, dd: cur.getDate(), mo, open: isOpen, today: isToday, sel, status })
+      chips.push({ ymd: iso, wk, md, open: isOpen, today: isToday, sel, status })
     }
     const a0 = new Date(anchor)
     const a1 = new Date(anchor); a1.setDate(a1.getDate() + 13)
-    const rangeLabel = (a0.getMonth() + 1) + '/' + a0.getDate() + ' – ' + (a1.getMonth() + 1) + '/' + a1.getDate()
+    const rangeLabel = `${String(a0.getMonth() + 1).padStart(2, '0')}/${String(a0.getDate()).padStart(2, '0')} – ${String(a1.getMonth() + 1).padStart(2, '0')}/${String(a1.getDate()).padStart(2, '0')}`
     const canPrev = anchorStr > todayStr
     this.setData({ dateChips: chips, dateRangeLabel: rangeLabel, canPrev, dateAnchor: anchorStr })
   },
@@ -159,12 +169,9 @@ Page({
     const s = this.data.sessions.find(x => x.id === sid)
     // 项目整体暂停 / 当日整体暂停 / 场次暂停 / 已满 / 已过期 均不可选
     if (!s || this.data.project.paused || s.paused || s.blocked || s.expired || s.remaining <= 0) return
+    // 埋点：点击预约（转化漏斗第3层）——选中场次即进入确认页
+    this.track('click_book', this.data.projectId)
     wx.navigateTo({ url: `/pages/confirm/confirm?projectId=${this.data.projectId}&date=${this.data.selectedDate}&sessionId=${sid}` })
-  },
-
-  // 换项目：返回首页重新选择预约项目
-  goIndex() {
-    wx.reLaunch({ url: '/pages/index/index' })
   },
 
   // 转发给好友 / 分享朋友圈：分享当前预约项目

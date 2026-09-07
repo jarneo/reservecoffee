@@ -147,6 +147,12 @@ Page({
     })
   },
   closePeople() { this.setData({ peopleShow: false, detail: null }) },
+  // 预约人「查看顾客」→ 单用户分析（结合预约管理入口）
+  goCustomer(e) {
+    const openid = e.currentTarget.dataset.openid
+    if (!openid) return
+    wx.navigateTo({ url: '/pages/admin/customers/detail?openid=' + openid })
+  },
   showDetail(e) {
     const id = e.currentTarget.dataset.id
     const r = (this.data.list || []).find(x => x._id === id)

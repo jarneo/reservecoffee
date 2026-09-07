@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="R1SYiWttVLVCz8exybhVHd">
+<head data-page-node-id="gHQmpYeW31QwWY4YBBuE1L">
+<meta charset="utf-8" data-page-node-id="Trsx4qJCUzA9A125h4d5kA" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" data-page-node-id="16s8tGgFmEbCMwJDVSEfwE" />
+<title>二曜路8号 · 数据分析看板原型</title>
+<style>
+  :root{
+    --ink:#1A1A1A; --ink-2:#555; --ink-3:#999; --line:#E7E7E7;
+    --fill:#F5F5F5; --fill-2:#FAFAFA; --brand:#7A5230; --danger:#A32D2D;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:#EDEDED; color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Helvetica Neue",sans-serif;
+    display:flex; justify-content:center; padding:24px 12px;
+  }
+  .phone{
+    width:390px; max-width:100%; background:#fff; border:1px solid var(--line);
+    border-radius:22px; overflow:hidden;
+  }
+  .top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 16px 10px;
+  }
+  .top .t{font-size:17px; font-weight:600;}
+  .badge{
+    font-size:12px; border:1px solid var(--ink); border-radius:999px;
+    padding:2px 10px; font-weight:500;
+  }
+  .seg{ display:flex; gap:8px; padding:0 16px 12px; }
+  .seg button{
+    flex:1; font-size:13px; padding:7px 0; border:1px solid var(--line);
+    background:#fff; color:var(--ink-2); border-radius:999px; cursor:pointer; font-family:inherit;
+  }
+  .seg button.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .sec{ padding:6px 16px 16px; border-top:1px solid var(--fill); }
+  .sec:first-of-type{ border-top:none; }
+  .sh{ font-size:14px; font-weight:600; margin:10px 0 12px; display:flex; align-items:center; gap:8px; }
+  .tag{ font-size:11px; border:1px solid var(--ink); border-radius:999px; padding:1px 8px; font-weight:500; }
+  .tag.w{ border-style:dashed; color:var(--ink-3); }
+  .tag.danger{ border-color:var(--danger); background:var(--danger); color:#fff; }
+  .tag.fill{ border-color:var(--brand); background:var(--brand); color:#fff; }
+  .tag.muted{ border-color:var(--line); color:var(--ink-3); }
+  .kpis{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .kpi{ border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .kpi .l{ font-size:12px; color:var(--ink-3); }
+  .kpi .n{ font-size:22px; font-weight:600; margin-top:6px; }
+  .kpi .n.mut{ color:#C8C8C8; }
+  .fn{ margin-bottom:10px; }
+  .fn .row{ display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .bar{ height:30px; border-radius:8px; background:var(--ink); display:flex; align-items:center; padding:0 12px; color:#fff; font-size:13px; font-weight:500; }
+  .bar.d{ background:var(--fill-2); border:1px dashed #C8C8C8; color:var(--ink-3); font-weight:400; }
+  .ut,.pr{ display:flex; align-items:center; gap:10px; font-size:13px; margin-bottom:9px; }
+  .ut .lab,.pr .lab{ width:104px; color:var(--ink-2); }
+  .ub,.pb{ flex:1; height:9px; background:var(--ink); border-radius:5px; min-width:4px; }
+  .ub.d,.pb.d{ background:var(--fill-2); border:1px dashed #C8C8C8; }
+  .ut .val{ width:42px; text-align:right; font-weight:500; }
+  .pr .val{ width:64px; text-align:right; color:var(--ink-3); font-size:12px; }
+  .note{ font-size:11px; color:var(--ink-3); margin-top:8px; line-height:1.5; }
+  .brand-dot{ display:inline-block; width:12px; height:12px; border-radius:50%; background:var(--brand); margin-right:2px; }
+
+  /* 板块6 时段分布 24 柱 */
+  .hours{ display:flex; align-items:flex-end; gap:2px; height:104px; padding-top:6px; }
+  .hours .c{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .hours .b{ width:100%; background:var(--ink); border-radius:2px 2px 0 0; min-height:2px; transition:height .2s; }
+  .hours .b.alt{ background:var(--brand); }
+  .hours .x{ font-size:7px; color:var(--ink-3); margin-top:3px; transform:scale(.82); }
+  .sub{ font-size:12px; color:var(--ink-2); margin:10px 0 2px; display:flex; justify-content:space-between; }
+  .sub .pk{ color:var(--brand); font-weight:600; }
+
+  /* 板块7 / 板块9 横向柱（组合名较长，标签自适应宽度） */
+  .hbar{ margin-bottom:9px; }
+  .hbar .row{ display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .hbar .lab{ width:62px; color:var(--ink-2); }
+  .hbar .track{ flex:1; height:22px; background:var(--fill); border-radius:6px; overflow:hidden; }
+  .hbar .fill{ height:100%; background:var(--ink); border-radius:6px; }
+  .hbar .fill.alt{ background:var(--brand); }
+  .hbar .val{ width:54px; text-align:right; font-weight:500; font-size:13px; }
+  .chbar{ margin-bottom:9px; }
+  .chbar .row{ display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:5px; }
+  .chbar .lab{ flex:1; color:var(--ink-2); }
+  .chbar .val{ flex:none; text-align:right; font-weight:500; font-size:13px; }
+  .chbar .track{ width:100%; height:22px; background:var(--fill); border-radius:6px; overflow:hidden; }
+  .chbar .fill{ height:100%; background:var(--ink); border-radius:6px; }
+  .mini{ display:flex; gap:8px; margin:10px 0 4px; }
+  .mini .m{ flex:1; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .mini .m .l{ font-size:11px; color:var(--ink-3); }
+  .mini .m .n{ font-size:18px; font-weight:600; margin-top:4px; }
+  .mini .m .n.brand{ color:var(--brand); }
+  svg{ display:block; width:100%; }
+</style>
+</head>
+<body data-page-node-id="zHNocP4qe4DEvtjiMmgqVp">
+<div class="phone" data-page-node-id="AYWLlgjPYTmyUPoAYsP749">
+  <div class="top" data-page-node-id="OcdAgj9EdjMBmqzNWieTKe">
+    <div class="t" data-page-node-id="5fe1odCcltgQw2H3D0YC0Q"><span class="brand-dot" data-page-node-id="hBbpGe1su3D4ajgoHFUlaX"></span>数据分析</div>
+    <div class="badge" data-page-node-id="Qf4nHri6PzDKpp1u6XO9I9">超级管理员</div>
+  </div>
+  <div class="seg" id="seg" data-page-node-id="iNnk96KX5TRNNXdnsgD4mG">
+    <button data-p="7" class="on" data-page-node-id="cOXFDYIOe95NKu00rKDUoY">近7天</button>
+    <button data-p="30" data-page-node-id="VguX8L0c4MOCLZQJxO53yy">近30天</button>
+    <button data-p="all" data-page-node-id="60cDBE0E01E8YMXFBAJxIi">全部</button>
+  </div>
+
+  <!-- 板块1 总览（6 KPI，2×2 网格） -->
+  <div class="sec" data-page-node-id="kXNLVzhgjB9MF3oQEyfaHw">
+    <div class="sh">总览</div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">访问UV</div><div class="n" id="k-visit">—</div></div>
+      <div class="kpi"><div class="l">成功预约UV</div><div class="n" id="k-uv">—</div></div>
+      <div class="kpi"><div class="l">总预约单数</div><div class="n" id="k-ord">—</div></div>
+      <div class="kpi"><div class="l">总到店人数</div><div class="n" id="k-pp">—</div></div>
+      <div class="kpi"><div class="l">人均预约次数</div><div class="n" id="k-pc">—</div></div>
+      <div class="kpi"><div class="l">整体转化率</div><div class="n" id="k-conv">—</div></div>
+    </div>
+    <div class="note">整体转化率 = 提交预约UV ÷ 访问UV。访问UV 来自前端埋点 events。</div>
+  </div>
+
+  <!-- 板块2 转化漏斗（埋点后 4 层均为真实数据） -->
+  <div class="sec">
+    <div class="sh">转化漏斗（核心视图）</div>
+    <div id="funnel"></div>
+    <div class="mini" id="fr"></div>
+    <div class="note">数据来自前端埋点（events）：访问小程序 / 查看项目详情 / 点击预约，提交预约取自预约单。</div>
+  </div>
+
+  <!-- 板块3 用户分层 -->
+  <div class="sec">
+    <div class="sh">用户分层（按 openid 预约次数）</div>
+    <div class="ut"><span class="lab">预约1次</span><span class="ub" id="t1b"></span><span class="val" id="t1">—</span></div>
+    <div class="ut"><span class="lab">预约2次</span><span class="ub" id="t2b"></span><span class="val" id="t2">—</span></div>
+    <div class="ut"><span class="lab">预约≥3次</span><span class="ub" id="t3b"></span><span class="val" id="t3">—</span></div>
+    <div class="ut"><span class="lab">0次(只看不约)</span><span class="ub" id="t0b"></span><span class="val" id="t0">—</span></div>
+  </div>
+
+  <!-- 板块4 项目维度 -->
+  <div class="sec">
+    <div class="sh">项目维度</div>
+    <div id="proj"></div>
+  </div>
+
+  <!-- 板块5 时间趋势 -->
+  <div class="sec">
+    <div class="sh">时间趋势（每日）</div>
+    <svg id="trend" viewBox="0 0 340 120" height="120" role="img" aria-label="预约UV趋势">
+      <line x1="0" y1="104" x2="340" y2="104" stroke="var(--line)"/>
+      <polyline id="ln-ord" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <polyline id="ln-uv" fill="none" stroke="var(--brand)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    </svg>
+    <div class="note">实线=成功预约UV · 虚线=访问UV（均来自真实数据）。</div>
+  </div>
+
+  <!-- 板块6 预约时段分析 -->
+  <div class="sec">
+    <div class="sh">预约时段分析</div>
+    <div class="sub"><span>提交时段（按上海时间）</span><span class="pk" id="s-peak">—</span></div>
+    <div class="hours" id="hours-submit"></div>
+    <div class="note">深棕柱=晚高峰(18:00–次日01:00)。时段按 Asia/Shanghai 归一，避免云函数 UTC 偏移。</div>
+  </div>
+
+  <!-- 板块7 提前预约分析 -->
+  <div class="sec">
+    <div class="sh">提前预约分析</div>
+    <div id="lead"></div>
+    <div class="mini">
+      <div class="m"><div class="l">平均提前天数</div><div class="n" id="lead-avg">—</div></div>
+      <div class="m"><div class="l">临时型 ≤1天</div><div class="n brand" id="lead-tmp">—</div></div>
+      <div class="m"><div class="l">计划型 ≥3天</div><div class="n" id="lead-pln">—</div></div>
+    </div>
+    <div class="note">临时型=当天+1天；计划型=3天及以上。占比基于有 date 字段的有效预约。</div>
+  </div>
+
+  <!-- 板块9 用户维度 · 项目交叉分析 -->
+  <div class="sec">
+    <div class="sh">用户维度 · 项目交叉分析</div>
+    <div class="sub"><span>各项目触达用户（人数口径）</span></div>
+    <div id="cross-reach"></div>
+    <div class="sub"><span>项目组合分布（用户实际约过的组合）</span></div>
+    <div id="cross-combos"></div>
+    <div class="sub"><span>两两重叠（同时约过两个项目）</span></div>
+    <div id="cross-pairs"></div>
+    <div class="mini">
+      <div class="m"><div class="l">跨项目用户（约过≥2个项目）</div><div class="n brand" id="cross-multi">—</div></div>
+      <div class="m"><div class="l">新用户占比</div><div class="n" id="cross-new">—</div></div>
+    </div>
+    <div class="note">占比分母=周期内有效预约总UV（<span id="cross-uv">—</span> 人）。组合为「精确组合」；两两重叠允许同时约过第三个项目。</div>
+  </div>
+</div>
+
+<script>
+  // 演示数据（基于 reservations 聚合 + 前端埋点 events）
+  function gen(n, base, amp){
+    const a=[]; for(let i=0;i<n;i++){ a.push(Math.max(4, Math.round(base + amp*Math.sin(i/2.6) + ((i*5)%7) - 3))); } return a;
+  }
+  function mkHours(peaks){ const a=new Array(24).fill(2); for(const k in peaks) a[+k]=peaks[k]; return a; }
+
+  const DATA = {
+    '7': {
+      uv:128, ord:196, pc:'1.53', pp:312, visitUV:420, t0:292,
+      tiers:{1:72,2:31,3:25},
+      funnel:[
+        {label:'访问小程序',uv:420},
+        {label:'查看项目详情',uv:300},
+        {label:'点击预约',uv:210},
+        {label:'提交预约',uv:128}
+      ],
+      funnelRate:{ visitToView:71.4, viewToClick:70.0, clickToSubmit:61.0, overall:30.5 },
+      projects:[{n:'法兰绒深烘',o:96,uv:64},{n:'清酒品鉴',o:62,uv:48},{n:'研习社',o:38,uv:30}],
+      trend:[18,22,19,25,20,14,10],
+      submitHour: mkHours({11:26,12:30,17:22,18:24,19:28,20:34,21:20,22:14}),
+      sessionHour: mkHours({18:26,19:30,20:33,21:27,22:18,23:10}),
+      lead: { dist:[['当天',18],['1天',22],['2天',15],['3天',12],['4-7天',28],['8-14天',20],['15+天',15]], avg:4.6, tmp:31, pln:57 },
+      cross:{
+        reach:[{n:'法兰绒深烘咖啡',uv:64},{n:'清酒品鉴',uv:48},{n:'研习社',uv:30}],
+        combos:[
+          {label:'仅法兰绒深烘咖啡',uv:40,pct:31.3},
+          {label:'仅清酒品鉴',uv:24,pct:18.8},
+          {label:'仅研习社',uv:12,pct:9.4},
+          {label:'法兰绒深烘咖啡 + 清酒品鉴',uv:28,pct:21.9},
+          {label:'法兰绒深烘咖啡 + 研习社',uv:10,pct:7.8},
+          {label:'清酒品鉴 + 研习社',uv:6,pct:4.7},
+          {label:'三项全约',uv:8,pct:6.3}
+        ],
+        pairs:[
+          {label:'法兰绒深烘咖啡 × 清酒品鉴',uv:36,pct:28.1},
+          {label:'法兰绒深烘咖啡 × 研习社',uv:18,pct:14.1},
+          {label:'清酒品鉴 × 研习社',uv:14,pct:10.9}
+        ],
+        multi:{uv:52, pct:40.6}, newUserPct:38
+      }
+    },
+    '30': {
+      uv:542, ord:803, pc:'1.48', pp:1286, visitUV:1680, t0:1138,
+      tiers:{1:298,2:142,3:102},
+      funnel:[
+        {label:'访问小程序',uv:1680},
+        {label:'查看项目详情',uv:1210},
+        {label:'点击预约',uv:860},
+        {label:'提交预约',uv:542}
+      ],
+      funnelRate:{ visitToView:72.0, viewToClick:71.1, clickToSubmit:63.0, overall:32.3 },
+      projects:[{n:'法兰绒深烘',o:388,uv:260},{n:'清酒品鉴',o:256,uv:190},{n:'研习社',o:159,uv:120}],
+      trend:gen(30,26,9),
+      submitHour: mkHours({11:96,12:108,17:84,18:92,19:104,20:122,21:76,22:54}),
+      sessionHour: mkHours({18:92,19:108,20:118,21:96,22:64,23:38}),
+      lead: { dist:[['当天',62],['1天',78],['2天',54],['3天',42],['4-7天',98],['8-14天',72],['15+天',54]], avg:4.9, tmp:30, pln:58 },
+      cross:{
+        reach:[{n:'法兰绒深烘咖啡',uv:260},{n:'清酒品鉴',uv:190},{n:'研习社',uv:120}],
+        combos:[
+          {label:'仅法兰绒深烘咖啡',uv:160,pct:29.5},
+          {label:'仅清酒品鉴',uv:118,pct:21.8},
+          {label:'仅研习社',uv:60,pct:11.1},
+          {label:'法兰绒深烘咖啡 + 清酒品鉴',uv:112,pct:20.7},
+          {label:'法兰绒深烘咖啡 + 研习社',uv:40,pct:7.4},
+          {label:'清酒品鉴 + 研习社',uv:24,pct:4.4},
+          {label:'三项全约',uv:28,pct:5.2}
+        ],
+        pairs:[
+          {label:'法兰绒深烘咖啡 × 清酒品鉴',uv:140,pct:25.8},
+          {label:'法兰绒深烘咖啡 × 研习社',uv:68,pct:12.5},
+          {label:'清酒品鉴 × 研习社',uv:52,pct:9.6}
+        ],
+        multi:{uv:204, pct:37.6}, newUserPct:34
+      }
+    },
+    'all': {
+      uv:1286, ord:1924, pc:'1.50', pp:3011, visitUV:3920, t0:2634,
+      tiers:{1:690,2:330,3:266},
+      funnel:[
+        {label:'访问小程序',uv:3920},
+        {label:'查看项目详情',uv:2840},
+        {label:'点击预约',uv:2010},
+        {label:'提交预约',uv:1286}
+      ],
+      funnelRate:{ visitToView:72.4, viewToClick:70.8, clickToSubmit:64.0, overall:32.8 },
+      projects:[{n:'法兰绒深烘',o:920,uv:610},{n:'清酒品鉴',o:612,uv:450},{n:'研习社',o:392,uv:300}],
+      trend:gen(60,21,8),
+      submitHour: mkHours({11:210,12:236,17:188,18:204,19:232,20:268,21:168,22:120}),
+      sessionHour: mkHours({18:204,19:238,20:260,21:212,22:142,23:84}),
+      lead: { dist:[['当天',140],['1天',176],['2天',122],['3天',96],['4-7天',220],['8-14天',162],['15+天',120]], avg:5.1, tmp:29, pln:59 },
+      cross:{
+        reach:[{n:'法兰绒深烘咖啡',uv:610},{n:'清酒品鉴',uv:450},{n:'研习社',uv:300}],
+        combos:[
+          {label:'仅法兰绒深烘咖啡',uv:356,pct:27.7},
+          {label:'仅清酒品鉴',uv:286,pct:22.2},
+          {label:'仅研习社',uv:150,pct:11.7},
+          {label:'法兰绒深烘咖啡 + 清酒品鉴',uv:268,pct:20.8},
+          {label:'法兰绒深烘咖啡 + 研习社',uv:98,pct:7.6},
+          {label:'清酒品鉴 + 研习社',uv:62,pct:4.8},
+          {label:'三项全约',uv:66,pct:5.1}
+        ],
+        pairs:[
+          {label:'法兰绒深烘咖啡 × 清酒品鉴',uv:334,pct:26.0},
+          {label:'法兰绒深烘咖啡 × 研习社',uv:164,pct:12.8},
+          {label:'清酒品鉴 × 研习社',uv:128,pct:10.0}
+        ],
+        multi:{uv:494, pct:38.4}, newUserPct:33
+      }
+    }
+  };
+
+  function renderHours(elId, arr, peakEl, peakLabel){
+    const max = Math.max(...arr, 1);
+    const hi = arr.indexOf(max);
+    const el = document.getElementById(elId);
+    el.innerHTML = arr.map((v,i)=>{
+      const h = Math.round(v/max*100);
+      const alt = (i>=18 || i<=1) ? ' alt' : '';
+      return `<div class="c"><div class="b${alt}" style="height:${h}%"></div><div class="x">${i}</div></div>`;
+    }).join('');
+    if(peakEl) document.getElementById(peakEl).textContent = peakLabel + (hi<0?'—':hi+':00');
+  }
+
+  function renderBars(elId, pairs){
+    const max = Math.max(...pairs.map(p=>p[1]), 1);
+    document.getElementById(elId).innerHTML = pairs.map(p=>{
+      const w = Math.round(p[1]/max*100);
+      return `<div class="hbar"><div class="row"><span class="lab">${p[0]}</span></div>`
+        + `<div class="row"><span class="track" style="flex:1"><span class="fill" style="width:${w}%"></span></span><span class="val">${p[1]}</span></div></div>`;
+    }).join('');
+  }
+
+  function renderCross(elId, arr){
+    const max = Math.max(...arr.map(x=>x.uv), 1);
+    document.getElementById(elId).innerHTML = arr.map(x=>{
+      const w = Math.round(x.uv/max*100);
+      return `<div class="chbar"><div class="row"><span class="lab">${x.label}</span><span class="val">${x.uv}人 · ${x.pct}%</span></div>`
+        + `<div class="track"><div class="fill" style="width:${w}%"></div></div></div>`;
+    }).join('');
+  }
+
+  function render(p){
+    const d = DATA[p];
+    document.getElementById('k-visit').textContent = d.visitUV;
+    document.getElementById('k-uv').textContent  = d.uv;
+    document.getElementById('k-ord').textContent = d.ord;
+    document.getElementById('k-pp').textContent  = d.pp;
+    document.getElementById('k-pc').textContent  = d.pc;
+    document.getElementById('k-conv').textContent = d.funnelRate.overall + '%';
+
+    // 板块2 漏斗（4 层真实数据）
+    const fmax = Math.max(d.funnel[0].uv, d.funnel[1].uv, d.funnel[2].uv, d.funnel[3].uv, 1);
+    document.getElementById('funnel').innerHTML = d.funnel.map(f=>{
+      const w = Math.max(20, Math.round(f.uv/fmax*100));
+      return `<div class="fn"><div class="row"><span>${f.label}</span><span>${f.uv} UV</span></div><div class="bar" style="width:${w}%">${f.uv}</div></div>`;
+    }).join('');
+    document.getElementById('fr').innerHTML = [
+      ['访问→详情', d.funnelRate.visitToView],
+      ['详情→点击', d.funnelRate.viewToClick],
+      ['点击→提交', d.funnelRate.clickToSubmit]
+    ].map(([l,v])=>`<div class="m"><div class="l">${l}</div><div class="n${l==='点击→提交'?' brand':''}">${v}%</div></div>`).join('');
+
+    // 用户分层（含 0 次只看不约）
+    const tm = Math.max(d.tiers[1], d.tiers[2], d.tiers[3], d.t0, 1);
+    [['t1',d.tiers[1]],['t2',d.tiers[2]],['t3',d.tiers[3]],['t0',d.t0]].forEach(([k,v])=>{
+      document.getElementById(k).textContent = v;
+      document.getElementById(k+'b').style.width = Math.round(v/tm*100) + '%';
+    });
+
+    // 项目维度
+    const sum = d.projects.reduce((s,x)=>s+x.o,0);
+    const pmax = Math.max(...d.projects.map(x=>x.o));
+    document.getElementById('proj').innerHTML = d.projects.map(x=>{
+      const r = (x.o/sum*100).toFixed(0);
+      const w = Math.round(x.o/pmax*100);
+      return `<div class="pr"><span class="lab">${x.n}</span><span class="pb" style="width:${w}%"></span><span class="val">${x.o}单 · ${r}%</span></div>`;
+    }).join('');
+
+    // 时间趋势
+    const uv = d.trend, ord = d.trend.map(v=>Math.round(v*1.5));
+    const max = Math.max(...ord);
+    const N = uv.length, W=340, H=104, pad=10;
+    const pts = arr => arr.map((v,i)=>{
+      const x = pad + i*(W-2*pad)/(N-1);
+      const y = H - (v/max)*(H-14);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    document.getElementById('ln-uv').setAttribute('points', pts(uv));
+    document.getElementById('ln-ord').setAttribute('points', pts(ord));
+
+    // 板块6 时段
+    renderHours('hours-submit', d.submitHour, 's-peak', '提交高峰 ');
+
+    // 板块7 提前
+    renderBars('lead', d.lead.dist);
+    document.getElementById('lead-avg').textContent = d.lead.avg;
+    document.getElementById('lead-tmp').textContent = d.lead.tmp + '%';
+    document.getElementById('lead-pln').textContent = d.lead.pln + '%';
+
+    // 板块9 用户维度 · 项目交叉分析
+    renderCross('cross-reach', d.cross.reach);
+    renderCross('cross-combos', d.cross.combos);
+    renderCross('cross-pairs', d.cross.pairs);
+    document.getElementById('cross-multi').textContent = d.cross.multi.pct + '%';
+    document.getElementById('cross-new').textContent = d.cross.newUserPct + '%';
+    document.getElementById('cross-uv').textContent = d.uv;
+  }
+
+  document.getElementById('seg').addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); render(b.dataset.p);
+  });
+  render('7');
+</script>
+</body>
+</html>

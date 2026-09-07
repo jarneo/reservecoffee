@@ -1,0 +1,65 @@
+.top{ display:flex; align-items:center; justify-content:space-between; padding:20rpx 24rpx 8rpx; }
+.top-t{ font-size:34rpx; font-weight:600; display:flex; align-items:center; }
+.seg{ display:flex; gap:16rpx; padding:8rpx 24rpx 16rpx; }
+.seg-b{ flex:1; text-align:center; font-size:26rpx; padding:14rpx 0; border:1rpx solid var(--line); background:#fff; color:var(--ink-2); border-radius:999rpx; }
+.seg-b.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+.sec{ background:#fff; margin:20rpx 24rpx; border:1rpx solid var(--line); border-radius:16rpx; padding:24rpx; }
+.sh{ font-size:28rpx; font-weight:600; margin-bottom:20rpx; display:flex; align-items:center; gap:10rpx; }
+.note{ font-size:20rpx; color:var(--ink-3); margin-top:12rpx; line-height:1.5; }
+.empty{ text-align:center; color:var(--ink-3); font-size:24rpx; padding:40rpx 0; }
+
+/* 2×2 网格。⚠️ 勿改回 flex + width:calc(50% - 8rpx)：
+   小程序默认 box-sizing:content-box，显式 width:50% 再叠加全局 .kpi 的左右 padding(24rpx×2)
+   会撑破一行 → 降级成「竖着四个排列」。grid 的 1fr 轨道由容器分配，配合 border-box 才稳定两列。 */
+.kpis{ display:grid; grid-template-columns:1fr 1fr; gap:16rpx; }
+.kpis .kpi{ box-sizing:border-box; }
+
+.fn{ margin-bottom:16rpx; }
+.fn-row{ display:flex; align-items:center; justify-content:space-between; font-size:26rpx; margin-bottom:8rpx; }
+.bar{ height:60rpx; border-radius:12rpx; background:var(--ink); color:#fff; display:flex; align-items:center; padding:0 24rpx; font-size:24rpx; }
+.bar.d{ background:var(--fill); border:1rpx dashed #C8C8C8; color:var(--ink-3); }
+
+.ut{ display:flex; align-items:center; gap:16rpx; font-size:26rpx; margin-bottom:16rpx; }
+.ut .lab{ width:200rpx; color:var(--ink-2); }
+.ub{ flex:1; height:18rpx; background:var(--ink); border-radius:9rpx; min-width:8rpx; }
+.ub.d{ background:var(--fill); border:1rpx dashed #C8C8C8; }
+.ut .val{ width:80rpx; text-align:right; font-weight:600; }
+.ut .val.muted{ color:var(--ink-3); font-weight:400; }
+
+.prj{ margin-bottom:24rpx; }
+.prj-h{ display:flex; align-items:center; justify-content:space-between; font-size:26rpx; margin-bottom:8rpx; }
+.prj-cnt{ color:var(--ink-3); font-size:22rpx; }
+.track{ width:100%; height:44rpx; background:var(--fill); border-radius:10rpx; overflow:hidden; }
+.fill{ height:100%; background:var(--ink); border-radius:10rpx; }
+.prj-meta{ display:flex; flex-wrap:wrap; gap:16rpx; font-size:20rpx; color:var(--ink-3); margin-top:8rpx; }
+
+/* 板块5 趋势柱状 */
+.tbars{ display:flex; align-items:flex-end; gap:4rpx; height:200rpx; padding-top:8rpx; }
+.tcol{ flex:1; display:flex; align-items:flex-end; justify-content:center; gap:3rpx; height:100%; }
+.tcnt{ width:60%; background:var(--ink); border-radius:4rpx 4rpx 0 0; min-height:4rpx; }
+.tuv{ width:40%; background:var(--brand); border-radius:4rpx 4rpx 0 0; min-height:4rpx; opacity:.85; }
+.legend{ display:flex; gap:24rpx; font-size:20rpx; margin-top:10rpx; }
+.lg.ink{ color:var(--ink); } .lg.brand{ color:var(--brand); }
+
+/* 板块6 24 时段柱 */
+.hours{ display:flex; align-items:flex-end; gap:3rpx; height:200rpx; padding-top:8rpx; }
+.hc{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+.hb{ width:100%; background:var(--ink); border-radius:3rpx 3rpx 0 0; min-height:4rpx; }
+.hb.alt{ background:var(--brand); }
+.hx{ font-size:14rpx; color:var(--ink-3); margin-top:6rpx; transform:scale(.85); }
+.sub{ display:flex; align-items:center; justify-content:space-between; font-size:24rpx; color:var(--ink-2); margin:16rpx 0 4rpx; }
+.sub .pk{ color:var(--brand); font-weight:600; }
+
+/* 板块7 / 板块9 横向柱。标签自适应宽度（flex:1）——项目交叉分析的组合名可能很长，
+   如「法兰绒深烘咖啡 + 清酒品鉴」，固定 120rpx 会截断；改自适应后数值仍右对齐。 */
+.hbar{ margin-bottom:16rpx; }
+.hbar-row{ display:flex; align-items:center; gap:16rpx; font-size:26rpx; margin-bottom:8rpx; }
+.hbar-row .lab{ flex:1; width:auto; color:var(--ink-2); }
+.hbar-row .val{ flex:none; text-align:right; font-weight:600; }
+
+.mini{ display:flex; gap:16rpx; margin-top:16rpx; }
+.mini .m{ flex:1; border:1rpx solid var(--line); border-radius:12rpx; padding:20rpx; }
+.mini .m .l{ font-size:20rpx; color:var(--ink-3); }
+.mini .m .n{ font-size:36rpx; font-weight:600; margin-top:8rpx; }
+.mini .m .n.brand{ color:var(--brand); }

@@ -10,6 +10,7 @@ page {
   --ok: #1A1A1A;
   --warn: #8A6D3B;
   --orange: #E8833A;       /* 仅用于标记「今天」 */
+  --danger: #A32D2D;      /* 警示红（仅黑名单等阻断态使用，破例） */
 
   background: var(--fill-2);
   color: var(--ink);
@@ -19,7 +20,12 @@ page {
 }
 
 /* 布局 */
-.page { padding: 24rpx; }
+/* ⚠️ 全局 border-box：微信默认 content-box，.page 的 padding 会撑出 48rpx 横向溢出 → 首页左右拖动/底部横滚动条。
+   此项从根上消除 padding/border 导致的宽度超出，是治本，不止是 overflow:hidden 隐藏。 */
+page, view, text, image, button, scroll-view, navigator, input, textarea { box-sizing: border-box; }
+/* 双保险：根页面与 .page 容器都禁止横向溢出（overflow-x:hidden 在部分机型拦不住原生橡皮筋，故 border-box 为主、hidden 为辅） */
+page { overflow-x: hidden; width: 100%; }
+.page { padding: 24rpx; width: 100%; overflow-x: hidden; }
 .card {
   background: #fff;
   border: 1rpx solid var(--line);
@@ -78,3 +84,34 @@ button.btn { width: auto !important; } /* 提高特异性再保险一层，确�
 .field { padding: 18rpx 0; border-bottom: 1rpx solid var(--line); }
 .field .label { font-size: 24rpx; color: var(--ink-3); margin-bottom: 8rpx; }
 .field input, .field textarea { width: 100%; }
+
+/* 统计块 KPI（数据分析看板） */
+.kpi { background: var(--fill-2); border-radius: 12rpx; padding: 20rpx 24rpx; }
+.kpi .label { font-size: 22rpx; color: var(--ink-3); }
+.kpi .num { font-size: 40rpx; font-weight: 600; color: var(--ink); line-height: 1.2; margin-top: 6rpx; }
+.kpi .sub { font-size: 20rpx; color: var(--ink-3); margin-top: 4rpx; }
+
+/* 标签 chip：默认品牌描边；.danger 警示红实心（黑名单）；.fill 品牌实心（手动标签） */
+.tag { display: inline-block; font-size: 20rpx; color: var(--brand); border: 1rpx solid var(--brand); border-radius: 8rpx; padding: 4rpx 12rpx; margin: 0 8rpx 8rpx 0; }
+.tag.danger { color: #fff; background: var(--danger); border-color: var(--danger); }
+.tag.fill { color: #fff; background: var(--brand); border-color: var(--brand); }
+.tag.muted { color: var(--ink-3); border-color: var(--line); }
+
+/* ===== 黑名单阻断态（全局复用：预约人卡片 / 待审核卡片 / 顾客档案） ===== */
+/* 警示条：淡红底 + 左侧警示红竖条，保证在信息密集的列表里一眼可辨 */
+.bl-bar {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: var(--danger);
+  background: rgba(163, 45, 45, .07);
+  border-left: 4rpx solid var(--danger);
+  border-radius: 6rpx;
+  padding: 10rpx 16rpx;
+}
+/* 卡片级黑名单态：整卡淡红底 + 左侧红竖条（inset 阴影不占布局，不影响圆角裁切） */
+.person.bl,
+.card.bl-card {
+  background: rgba(163, 45, 45, .05);
+  box-shadow: inset 4rpx 0 0 var(--danger);
+}

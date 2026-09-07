@@ -1,0 +1,11 @@
+.sec { font-size: 26rpx; color: var(--ink-3); margin-bottom: 14rpx; }
+.chip-phone {
+  font-size: 24rpx; color: var(--ink-2); background: var(--fill);
+  border: 1rpx solid var(--line); border-radius: 999rpx; padding: 6rpx 18rpx;
+}
+.search-input {
+  background: #fff; border: 1rpx solid var(--line); border-radius: 12rpx;
+  padding: 18rpx 24rpx; font-size: 28rpx;
+}
+.res-row { display: flex; align-items: center; gap: 12rpx; padding: 16rpx 0; border-bottom: 1rpx solid var(--line); }
+.res-row:last-child { border-bottom: none; }

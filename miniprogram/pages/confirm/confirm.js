@@ -8,7 +8,9 @@ Page({
     projectName: '', session: null,
     name: '', phone: '', partySize: 1, note: '', maxParty: 2,
     fields: ['name', 'phone'],
-    showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false
+    showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false,
+    // 黑名单阻断态：进入页面即检出，禁用提交
+    blocked: false, blockReason: ''
   },
 
   onLoad(q) {
@@ -41,15 +43,20 @@ Page({
   },
 
   // 从 users 集合预填称呼/手机号（仅当本页尚未输入时），实现"下次预约自动带出"
+  // 同时检出黑名单：命中则进入阻断态，避免用户填完表单提交后才被服务端拒绝
   prefill() {
     call('getMyProfile')
       .then(d => {
-        if (d && d.profile) {
-          const patch = {}
-          if (d.profile.name && !this.data.name) patch.name = d.profile.name
-          if (d.profile.phone && !this.data.phone) patch.phone = d.profile.phone
-          if (Object.keys(patch).length) this.setData(patch)
+        const profile = d && d.profile
+        if (!profile) return
+        if (profile.isBlacklisted) {
+          this.setData({ blocked: true, blockReason: profile.blacklistReason || '' })
+          return
         }
+        const patch = {}
+        if (profile.name && !this.data.name) patch.name = profile.name
+        if (profile.phone && !this.data.phone) patch.phone = profile.phone
+        if (Object.keys(patch).length) this.setData(patch)
       })
       .catch(() => {})
   },
@@ -89,6 +96,14 @@ Page({
   },
 
   submit() {
+    // 黑名单兜底：profile 尚未返回时用户就点了提交（服务端 createReservation 亦会拦截，此处仅为体验兜底）
+    if (this.data.blocked) {
+      return wx.showModal({
+        title: '暂时无法预约',
+        content: '您的账号当前无法在线预约，如有疑问请直接联系店家沟通。',
+        showCancel: false
+      })
+    }
     const { name, phone, partySize, note, wechat, gender, age, fields } = this.data
     if (!name.trim()) return wx.showToast({ title: '请填写称呼', icon: 'none' })
     // 手机号非必填：填了才校验格式

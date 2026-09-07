@@ -17,7 +17,8 @@ Page({
     projects: [], projectId: '', project: null, projectName: '', intro: '', introImages: [], openDays: [], allSchedules: [], dayList: [],
     year: 2026, month: 8,
     showAdd: false, addDate: '', addForm: { start: '10:00', end: '11:30', capacity: 8 },
-    global: { needReview: false, paused: false, dailyLimit: 1, advanceDays: 7, maxParty: 2, subscribeNotify: true, smsEnabled: false, cutoff: { mode: 'before', minutes: 30 }, fields: ['name', 'phone'] },
+    iconFileId: '', iconUrl: '', _oldIconFileId: '',
+    global: { needReview: false, paused: false, dailyLimit: 1, advanceDays: 7, maxParty: 2, subscribeNotify: true, smsEnabled: false, showSeatInfo: true, cutoff: { mode: 'before', minutes: 30 }, fields: ['name', 'phone'] },
     cutoffText: '', fieldsText: '',
     showCutoff: false, cutoffDraft: { mode: 'before', minutes: 30 },
     showFields: false, fieldsDraft: ['name', 'phone'],
@@ -68,12 +69,14 @@ Page({
     const now = new Date()
     this.setData({
       project: p, intro: p.intro || '', introImages: p.introImages || [], openDays: p.openDays || [],
+      iconFileId: p.iconFileId || '', iconUrl: p.iconUrl || '', _oldIconFileId: p.iconFileId || '',
       year: now.getFullYear(), month: now.getMonth() + 1,
       global: {
         needReview: !!p.needReview, paused: !!p.paused, dailyLimit: p.dailyLimit || 1,
         advanceDays: p.advanceDays || 7,
         maxParty: p.maxParty || 2, subscribeNotify: !!p.subscribeNotify,
         smsEnabled: !!p.smsEnabled,
+        showSeatInfo: p.showSeatInfo !== false,
         cutoff: normCutoff(p.cutoff),
         fields: p.fields || ['name', 'phone']
       }
@@ -190,6 +193,32 @@ Page({
     this.saveIntroImages(list).then(ok => { if (ok) wx.showToast({ title: '已保存说明', icon: 'success' }) })
   },
 
+  // ===== 项目图标（首页列表左侧展示） =====
+  uploadOne(tempPath) {
+    const ext = (tempPath.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const cloudPath = `projects/${this.data.projectId}/icon_${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
+    return wx.cloud.uploadFile({ cloudPath, filePath: tempPath }).then(res => res.fileID)
+  },
+  pickIcon() {
+    const old = this.data.iconFileId
+    wx.chooseMedia({
+      count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      success: async (r) => {
+        wx.showLoading({ title: '上传中' })
+        try {
+          const fileId = await this.uploadOne(r.tempFiles[0].tempFilePath)
+          this.setData({ iconFileId: fileId, iconUrl: fileId, _oldIconFileId: old || '' })
+          wx.showToast({ title: '已选择，记得点保存', icon: 'none' })
+        } catch (e) {
+          wx.showToast({ title: '上传失败', icon: 'none' })
+        } finally { wx.hideLoading() }
+      }
+    })
+  },
+  clearIcon() {
+    this.setData({ _oldIconFileId: this.data.iconFileId || '', iconFileId: '', iconUrl: '' })
+  },
+
   // 一次性拉取该项目全部日期场次，用于按日展开
   async refreshSchedules() {
     const d = await call('getSchedule', { projectId: this.data.projectId })
@@ -207,11 +236,18 @@ Page({
     const uniqueDays = [...new Set(this.data.openDays || [])]
       .filter(d => typeof d === 'string' && d >= todayStr)
       .sort()
-    const dayList = uniqueDays.map(date => ({
-      date,
-      closed: !!closedMap[date],
-      sessions: (map[date] || []).map(x => ({ ...x, remaining: (x.capacity || 0) - (x.booked || 0) }))
-    }))
+    const dayList = uniqueDays.map(date => {
+      const [y, m, d] = date.split('-').map(Number)
+      const dt = new Date(y, m - 1, d)
+      const wd = ['日', '一', '二', '三', '四', '五', '六'][dt.getDay()]
+      const md = `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
+      return {
+        date,
+        label: `${md} 周${wd}`,
+        closed: !!closedMap[date],
+        sessions: (map[date] || []).map(x => ({ ...x, remaining: (x.capacity || 0) - (x.booked || 0) }))
+      }
+    })
     this.setData({ dayList })
   },
 
@@ -234,6 +270,7 @@ Page({
 
   gReview(e) { this.setData({ 'global.needReview': e.detail.value }) },
   gSms(e) { this.setData({ 'global.smsEnabled': e.detail.value }) },
+  gSeat(e) { this.setData({ 'global.showSeatInfo': e.detail.value }) },
   gDaily(e) { this.setData({ 'global.dailyLimit': Number(e.detail.value) || 1 }) },
   gAdv(e) { this.setData({ 'global.advanceDays': Number(e.detail.value) || 7 }) },
   stepDaily(e) {
@@ -261,15 +298,22 @@ Page({
     const g = this.data.global
     if (!(g.advanceDays >= 1 && g.advanceDays <= 30)) return wx.showToast({ title: '提前天数须在1–30', icon: 'none' })
     wx.showLoading({ title: '保存中' })
-    call('updateProject', {
+    const savePayload = {
       projectId: this.data.projectId,
       needReview: g.needReview, paused: g.paused,
       dailyLimit: g.dailyLimit, advanceDays: g.advanceDays,
       maxParty: g.maxParty, subscribeNotify: g.subscribeNotify,
-      smsEnabled: g.smsEnabled,
+      smsEnabled: g.smsEnabled, showSeatInfo: g.showSeatInfo,
       cutoff: g.cutoff, fields: g.fields,
       intro: this.data.intro
-    }).then(() => {
+    }
+    const oldIcon = this.data._oldIconFileId
+    if (this.data.iconFileId !== oldIcon) savePayload.iconFileId = this.data.iconFileId
+    call('updateProject', savePayload).then(() => {
+      if (oldIcon && oldIcon !== this.data.iconFileId) {
+        call('deleteProjectFile', { fileIds: [oldIcon] }).catch(() => {})
+      }
+      this.setData({ _oldIconFileId: this.data.iconFileId })
         wx.hideLoading()
         wx.showToast({ title: '已保存', icon: 'success' })
       })

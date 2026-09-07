@@ -96,11 +96,10 @@ async function getStoreName(db) {
   return DEFAULT_STORE_NAME
 }
 
-// 发送订阅消息（占位实现：捕获失败不抛出）
+// 发送订阅消息；返回结构化结果（不再静默吞，便于排查 43101/47003/47004）
 async function sendSubscribe({ openid, templateId, data, page }) {
   if (!openid || !templateId || templateId.indexOf('TPL_ID_') === 0) {
-    console.log('[subscribe] skip (template not configured):', templateId)
-    return
+    return { ok: false, skipped: true, reason: 'template not configured', openid, templateId }
   }
   try {
     await cloud.openapi.subscribeMessage.send({
@@ -109,8 +108,13 @@ async function sendSubscribe({ openid, templateId, data, page }) {
       data,
       page: page || 'pages/index/index'
     })
+    return { ok: true, openid, templateId }
   } catch (e) {
-    console.warn('[subscribe] send failed (ignored):', e.message)
+    // 关键错误码：43101=用户未授权订阅模板；47003=字段值/关键字非法；47004=模板不存在
+    const errCode = e && (e.errCode !== undefined ? e.errCode : e.code)
+    const errMsg = (e && e.message) ? e.message : String(e)
+    console.warn('[subscribe] send failed:', errCode, errMsg, 'tmpl=', templateId)
+    return { ok: false, openid, templateId, errCode, errMsg }
   }
 }
 
@@ -121,27 +125,23 @@ async function listAdminOpenids(db) {
 }
 
 // 给所有管理员（owner + manager）推送订阅消息（新预约 / 取消等管理侧通知）
-// 占位跳过 + 逐个发送 + 失败不阻断主流程
+// 占位跳过 + 逐个发送 + 失败不阻断主流程；返回每个管理员的发送结果数组供排查
 async function notifyAdmins(db, { templateId, data, page }) {
   if (!templateId || templateId.indexOf('TPL_ID_') === 0) {
-    console.log('[notifyAdmins] skip (template not configured):', templateId)
-    return
+    return [{ ok: false, skipped: true, reason: 'template not configured', templateId }]
   }
   const ids = await listAdminOpenids(db)
   if (!ids.length) {
-    console.log('[notifyAdmins] no admin(owner/manager) found')
-    return
+    return [{ ok: false, skipped: true, reason: 'no admin(owner/manager) found' }]
   }
   console.log('[notifyAdmins] sending', templateId, 'to', ids.length, 'admin(s):', ids)
+  const results = []
   for (const oid of ids) {
-    try {
-      await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
-      console.log('[notifyAdmins] sent ok to', oid)
-    } catch (e) {
-      // 关键错误码：43101=用户未授权订阅模板；47003=字段值非法；47004=模板不存在
-      console.warn('[notifyAdmins] send failed to', oid, ':', e && e.message)
-    }
+    const r = await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+    r.role = 'admin'
+    results.push(r)
   }
+  return results
 }
 
 // ===== 服务号模板消息（templateMessage）相关 =====
@@ -186,9 +186,71 @@ async function notifyAdminsMp() {
   return
 }
 
+// ===== 顾客自动标签规则引擎 =====
+
+// scene → 来源标签（仅三类有业务语义；其他返回 '' 不展示）
+function srcLabel(scene) {
+  const s = Number(scene)
+  if (s === 1035) return '公众号菜单'
+  if (s === 1005 || s === 1150) return '搜索'
+  if (s === 1007 || s === 1008 || s === 1036) return '链接分享'
+  return ''
+}
+
+function daysAgo(ts) {
+  if (!ts) return null
+  return Math.floor((Date.now() - ts) / 86400000)
+}
+
+// 24 小时分布取峰值小时（仅计数最大且 >0 才有意义）
+function peakHour(arr24) {
+  if (!arr24 || !arr24.length) return -1
+  let hi = 0
+  for (let i = 1; i < 24; i++) if (arr24[i] > arr24[hi]) hi = i
+  return arr24[hi] > 0 ? hi : -1
+}
+
+// 自动标签：根据顾客资料(profile) + 聚合结果(agg) 生成标签数组（云端算、不存储，保证单一真相）
+// agg 字段：total / firstAt / lastAt / avgParty / avgLeadDays / perProject[{projectId,name,cnt}] / submitHour[24] / sessionHour[24] / weekendRatio
+// 缺字段的标签自动跳过（roster 聚合不携带时段/周末时仍可用）。
+function customerTags(profile, agg) {
+  const tags = []
+  if (!agg) return tags
+  const total = agg.total || 0
+  if (total >= 5) tags.push('高频常客')
+  else if (total >= 2) tags.push('回头客')
+
+  const df = daysAgo(agg.firstAt)
+  if (df != null && df <= 30) tags.push('新客')
+
+  const dl = daysAgo(agg.lastAt)
+  if (total > 0 && dl != null && dl > 90) tags.push('沉睡客')
+
+  const lead = agg.avgLeadDays
+  if (typeof lead === 'number' && !isNaN(lead)) {
+    if (lead >= 3) tags.push('计划型')
+    else if (lead <= 1) tags.push('临时型')
+  }
+
+  const peak = peakHour(agg.submitHour) >= 0 ? peakHour(agg.submitHour) : peakHour(agg.sessionHour)
+  if (peak >= 20 && peak <= 22) tags.push('夜场客')
+  if (typeof agg.weekendRatio === 'number' && agg.weekendRatio >= 0.6) tags.push('周末客')
+  if (typeof agg.avgParty === 'number' && agg.avgParty >= 3) tags.push('大桌客')
+
+  if (agg.perProject && agg.perProject.length) {
+    const top = agg.perProject.reduce((a, b) => (b.cnt > a.cnt ? b : a), agg.perProject[0])
+    if (top.cnt / total >= 0.6 && top.name) tags.push(top.name + '爱好者')
+  }
+
+  const src = srcLabel(profile && profile.firstSource)
+  if (src) tags.push(src)
+  return tags
+}
+
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
   ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
-  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp
+  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
+  srcLabel, customerTags
 }

@@ -1,4 +1,10 @@
 <view class="page">
+  <!-- 黑名单阻断：进入本页即检出，避免用户填完表单提交后才被拒 -->
+  <view wx:if="{{blocked}}" class="bl-block">
+    <view class="bl-title">⚠ 暂时无法预约</view>
+    <view class="bl-text">您的账号当前无法在线预约<text wx:if="{{blockReason}}">（{{blockReason}}）</text>。如有疑问，请直接联系店家沟通。</view>
+  </view>
+
   <view class="card">
     <view class="bold">{{projectName}}</view>
     <view class="sm muted" style="margin-top:8rpx">{{date}} · {{session.start}} – {{session.end}}</view>
@@ -34,5 +40,6 @@
     <view class="field" wx:if="{{showNote}}"><view class="label">备注（选填）</view><textarea placeholder="如有特殊需求请告知店家" value="{{note}}" bindinput="onNote"/></view>
   </view>
 
-  <button class="btn block" bindtap="submit">提交预约</button>
+  <button wx:if="{{blocked}}" class="btn block blk-disabled" disabled>无法预约</button>
+  <button wx:else class="btn block" bindtap="submit">提交预约</button>
 </view>

@@ -18,6 +18,9 @@ Page({
         { t: '菜品评价管理', u: '/pages/admin/reviewAdmin/reviewAdmin' },
         { t: '预约管理', u: '/pages/admin/sessions/sessions' },
         { t: '审核', u: '/pages/admin/review/review' },
+        { t: '数据分析', u: '/pages/admin/stats/stats' },
+        { t: '顾客名录', u: '/pages/admin/customers/customers' },
+        { t: '黑名单', u: '/pages/admin/blacklist/blacklist' },
         { t: '管理员管理', u: '/pages/admin/admins/admins' },
         { t: '全局通知配置', u: '/pages/admin/notifyConfig/notifyConfig' }
       ]

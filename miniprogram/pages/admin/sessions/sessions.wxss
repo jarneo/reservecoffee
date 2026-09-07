@@ -46,6 +46,7 @@
 .rev-btn.reject { background:#fff; color:var(--red,#e34d59); border:1rpx solid var(--red,#e34d59); }
 .rev-btn:active { opacity:.85; }
 .person .row.between { align-items:center; }
+.cust-link { font-size:22rpx; color:var(--brand); margin-top:10rpx; }
 .head-actions { display:flex; align-items:center; gap:12rpx; flex:none; }
 .cancel-mini { display:inline-flex; align-items:center; font-size:22rpx; line-height:1.4; color:var(--red,#e34d59); border:1rpx solid var(--red,#e34d59); border-radius:999rpx; padding:4rpx 18rpx; }
 .cancel-mini:active { background:#fdecee; }

@@ -1,15 +1,40 @@
 // reviewAllReservations — 批量审核通过所有待审核预约（owner/manager）
 // 与 reviewReservation 单条逻辑等价：逐条事务改状态 + 成功短信 + 预约成功/审核结果订阅，并汇总结果。
 // ⚠️ 单条审核逻辑与 reviewReservation/index.js 保持同步；后者改动时本函数须同步。
+// ⚠️ 黑名单保护：批量「全部通过」不得放行黑名单用户（其待审预约可能提交于加黑之前），
+//    一律跳过并保持 pending，由管理员在审核页看到红标后逐条人工决定。
 const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
+// 拉全部黑名单 openid 集合（分页，规避单批上限）
+async function loadBlacklist() {
+  const set = new Set()
+  let skip = 0
+  for (let i = 0; i < 20; i++) {
+    const res = await db.collection(COL.users)
+      .where({ isBlacklisted: true })
+      .skip(skip).limit(100)
+      .get()
+      .catch(() => ({ data: [] }))
+    const rows = res.data || []
+    rows.forEach(u => set.add(u._id))
+    if (rows.length < 100) break
+    skip += 100
+  }
+  return set
+}
+
 // 处理单条待审核预约（与 reviewReservation 内部逻辑一致）
-async function processOne(reservationId, decision) {
+// blSet: 黑名单 openid 集合；命中且为通过操作时跳过
+async function processOne(reservationId, decision, blSet) {
   const rRes = await db.collection(COL.reservations).doc(reservationId).get().catch(() => ({ data: null }))
   const r = rRes.data
   if (!r) return { ok: false, reservationId, reason: 'not found' }
   if (r.review !== 'pending') return { ok: false, reservationId, reason: 'not pending' }
+  // 黑名单保护：仅在「通过」方向拦截；拒绝方向仍需放行（管理员本就要取消其预约）
+  if (decision === 'approve' && blSet && blSet.size && r.openid && blSet.has(r.openid)) {
+    return { ok: false, reservationId, reason: 'blacklisted' }
+  }
 
   const transaction = await db.startTransaction()
   try {
@@ -109,13 +134,17 @@ exports.main = async (event) => {
     .orderBy('createdAt', 'asc').limit(200).get()
   const pending = res.data || []
 
-  let approved = 0, skipped = 0, failed = 0
+  // 黑名单集合：批量通过时跳过（仅 approve 方向）
+  const blSet = decision === 'approve' ? await loadBlacklist() : new Set()
+
+  let approved = 0, skipped = 0, failed = 0, blacklisted = 0
   const errors = []
   for (const r of pending) {
-    const out = await processOne(r._id, decision)
+    const out = await processOne(r._id, decision, blSet)
     if (out.ok) approved++
+    else if (out.reason === 'blacklisted') blacklisted++
     else if (out.reason === 'not pending') skipped++
     else { failed++; errors.push({ id: r._id, reason: out.reason }) }
   }
-  return ok({ total: pending.length, approved, skipped, failed, errors })
+  return ok({ total: pending.length, approved, skipped, failed, blacklisted, errors })
 }
