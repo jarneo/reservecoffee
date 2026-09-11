@@ -1,5 +1,5 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
-const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 场次是否已过预约截止（与顾客端 isSessionExpired 同源规则）
@@ -132,7 +132,9 @@ exports.main = async (event) => {
     const seats = `${pSize}人位`
 
     // A 线 · 给预订人（仅免审立即推送「预约成功」；待审不发，改由管理员审核通过后再推送）
-    if (!needReview && p.subscribeNotify !== false && subOn(subCfg, 'reserveSuccess')) await sendSubscribe({
+    // 返回值决定「微信优先降级」：ok:true（微信已送达）→ 若开关开启则跳过对应短信
+    let wxSuccessRes = null
+    if (!needReview && p.subscribeNotify !== false && subOn(subCfg, 'reserveSuccess')) wxSuccessRes = await sendSubscribe({
       openid: OPENID,
       templateId: TPL.reserveSuccess,
       data: {
@@ -179,27 +181,35 @@ exports.main = async (event) => {
     // 短信推送（成功短信，仅免审路径在此发送；待审路径由 reviewReservation 在审批通过时发送）
     // 全局开关 + 项目开关 双重控制，仅发预订人；延迟(successDelay>0)由 remindReservation 定时发送
     // successDelay===0 时 reservation.smsSuccessSent 在创建时已置 true，此处执行发送并校正真实结果
+    // 【微信优先降级】skipSmsIfWxOk 开启且「预约成功」订阅卡片已送达 → 跳过本次成功短信
     let smsResult = null
     if (!needReview && successDelay === 0) {
-      try {
-        const smsApp = await loadConfig(db)
-        const tid = smsApp && smsApp.templates && smsApp.templates.success
-        if (tid) smsResult = await sendTemplateSms({ db, phone, templateId: tid })
-      } catch (e) { console.warn('[createReservation] sms failed (ignored):', e.message) }
-      // 平台级拒收（单号日上限/模板未审批等）不抛异常但 Code!=Ok，sendTemplateSms 已返回 ok:false；
-      // 校正标记，避免假成功误导排查
-      if (smsResult && !smsResult.ok) {
+      if (shouldSkipSms(smsSw, wxSuccessRes)) {
+        smsResult = { skipped: true, reason: 'wx subscribe delivered (skipSmsIfWxOk)' }
+      } else {
         try {
-          await db.collection(COL.reservations).doc(add._id).update({
-            data: { smsSuccessSent: false, smsResult }
-          })
-        } catch (e) { console.warn('[createReservation] sms result update failed:', e.message) }
+          const smsApp = await loadConfig(db)
+          const tid = smsApp && smsApp.templates && smsApp.templates.success
+          if (tid) smsResult = await sendTemplateSms({ db, phone, templateId: tid })
+        } catch (e) { console.warn('[createReservation] sms failed (ignored):', e.message) }
+        // 平台级拒收（单号日上限/模板未审批等）不抛异常但 Code!=Ok，sendTemplateSms 已返回 ok:false；
+        // 校正标记，避免假成功误导排查
+        if (smsResult && !smsResult.ok) {
+          try {
+            await db.collection(COL.reservations).doc(add._id).update({
+              data: { smsSuccessSent: false, smsResult }
+            })
+          } catch (e) { console.warn('[createReservation] sms result update failed:', e.message) }
+        }
       }
     }
 
-    // 诊断：把管理侧订阅发送结果落库，便于排查「收不到待审核推送」（不阻断主流程）
-    if (add && add._id && adminNotify) {
-      try { await db.collection(COL.reservations).doc(add._id).update({ data: { adminNotify } }) } catch (e) {}
+    // 诊断落库：微信订阅是否送达（供延迟短信降级判断）+ 管理侧订阅发送结果（排查「收不到待审核推送」）
+    if (add && add._id) {
+      const patch = { wxSuccessOk: !!(wxSuccessRes && wxSuccessRes.ok && !wxSuccessRes.skipped) }
+      if (smsResult) patch.smsResult = smsResult
+      if (adminNotify) patch.adminNotify = adminNotify
+      try { await db.collection(COL.reservations).doc(add._id).update({ data: patch }) } catch (e) {}
     }
 
     return ok({ id: add._id, status: reservation.status, review: reservation.review })

@@ -53,18 +53,46 @@ function isPhone(v) {
 // 请求微信订阅消息授权（过滤未配置的占位模板 ID，避免传入 TPL_ID_* 报错）
 // 需在用户手势（点击）回调内调用，否则弹窗可能被拦截
 // ⚠️ 微信限制：一次调用最多 3 个 tmplIds，超过整体失败(errCode 20003)且不弹窗；
-// 故按 3 个一组拆分逐组请求，确保 4 个模板（成功/取消/开场提醒/结束提醒）都能授权
+// 故按 3 个一组拆分逐组请求，确保 5 个顾客侧模板（成功/取消/开场提醒/结束提醒/前一天提醒）都能授权
+// 返回 Promise<{ total, accepted[], rejected[], failed[], errCode }>：
+// ⚠️ 订阅为「一次性」授权，用一条消耗一条，用尽后发送端静默失败（43101）。
+//    调用方必须把真实结果告诉用户，否则会误以为「已授权」而永远收不到推送。
 function requestSubscribe(tmplIds) {
   const valid = (tmplIds || []).filter(id => id && !String(id).startsWith('TPL_ID_'))
-  if (!valid.length) return
-  if (typeof wx === 'undefined' || !wx.requestSubscribeMessage) return
-  for (let i = 0; i < valid.length; i += 3) {
-    wx.requestSubscribeMessage({
-      tmplIds: valid.slice(i, i + 3),
-      success(res) { console.log('[subscribe] 授权结果:', JSON.stringify(res)) },
-      fail(err) { console.warn('[subscribe] 授权失败:', JSON.stringify(err)) }
-    })
+  const empty = { total: 0, accepted: [], rejected: [], failed: [] }
+  if (!valid.length) return Promise.resolve(empty)
+  if (typeof wx === 'undefined' || !wx.requestSubscribeMessage) {
+    return Promise.resolve({ ...empty, unsupported: true })
   }
+  const chunks = []
+  for (let i = 0; i < valid.length; i += 3) chunks.push(valid.slice(i, i + 3))
+  // ⚠️ 所有分片必须在**同一个同步 tick** 内下发：微信要求 requestSubscribeMessage 在用户 TAP 手势
+  //    上下文里调用，若放进 Promise 回调串行下发，第 2 组起会因脱离手势上下文而弹窗失败。
+  //    因此这里同步 forEach 全部下发，结果异步汇总后 resolve。
+  const acc = { accepted: [], rejected: [], failed: [], errCode: undefined }
+  return new Promise(resolve => {
+    let done = 0
+    const settle = () => { if (++done === chunks.length) resolve({ ...acc, total: valid.length }) }
+    chunks.forEach(ids => {
+      wx.requestSubscribeMessage({
+        tmplIds: ids,
+        success(res) {
+          console.log('[subscribe] 授权结果:', JSON.stringify({ ids, res }))
+          ids.forEach(id => {
+            if (res[id] === 'accept') acc.accepted.push(id)
+            else if (res[id] === 'reject' || res[id] === 'ban') acc.rejected.push(id)
+          })
+          settle()
+        },
+        fail(err) {
+          console.warn('[subscribe] 授权失败:', JSON.stringify(err))
+          acc.failed = acc.failed.concat(ids)
+          if (err && err.errCode) acc.errCode = err.errCode
+          settle()
+        }
+      })
+    })
+  })
 }
 
 module.exports = { ymd, dateLabel, monthDaySlash, isPhone, WEEK, requestSubscribe, parseHm, isSessionExpired }

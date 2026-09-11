@@ -15,5 +15,7 @@
 .picker-row { display:flex; flex-wrap:wrap; margin-top:10rpx; }
 .mini-picker { margin-right:18rpx; }
 .picker { font-size:25rpx; color:var(--ink); background:#fff; border:1rpx solid #ddd6c8; border-radius:10rpx; padding:10rpx 18rpx; }
+.time-box .tip { text-align:left; margin-top:10rpx; line-height:1.6; }
+.colon { font-size:25rpx; color:var(--ink-2); margin-right:18rpx; }
 .custom-row { display:flex; align-items:center; margin-top:12rpx; font-size:24rpx; color:var(--ink-2); }
 .custom-row .ta-c { margin:0 10rpx; border:1rpx solid #ddd6c8; border-radius:10rpx; background:#fff; padding:6rpx 10rpx; }

@@ -3,12 +3,22 @@
     <view class="bold">管理台</view>
     <view class="badge {{role==='owner'?'ok':'paused'}}">{{role==='owner'?'超级管理员':'普通管理员'}}</view>
   </view>
+  <!-- 管理推送授权常驻卡片（置顶）：
+       微信订阅为「一次性」授权 —— 发一条消耗一条，用尽后后端只会静默失败（43101），
+       管理员侧完全无感（表现为「以前收得到，现在收不到」）。故常驻提醒 + 一键续订。 -->
+  <view class="card notify-card">
+    <view class="row between" style="align-items:center">
+      <view class="bold">管理推送授权</view>
+      <view class="tag muted">一次性</view>
+    </view>
+    <view class="xs muted" style="margin-top:8rpx;line-height:1.6">用于接收「新预约 / 取消 / 待审核」的微信通知。微信订阅每次授权只能发 1 条，发完即失效且不会提示，所以「以前收得到、现在收不到」时点下方续订即可。弹窗里请全部勾选，并勾选「总是保持以上选择，不再询问」以长期生效。</view>
+    <view class="btn block" style="margin-top:16rpx" bindtap="enableAdminNotify">续订管理推送</view>
+  </view>
+
   <view class="menu">
     <view wx:for="{{menus}}" wx:key="t" class="mi" bindtap="go" data-u="{{item.u}}">
       <view class="mt">{{item.t}}</view><view class="ma">›</view>
     </view>
   </view>
-  <view class="tip">如需接收「新预约 / 取消 / 待审核」管理推送，请点下方开启（微信一次性授权，用完即失效，可随时再点续订）。</view>
-  <view class="btn ghost block" bindtap="enableAdminNotify" style="margin-top:12rpx">开启管理推送</view>
   <view class="btn ghost block" bindtap="exit" style="margin-top:12rpx">退出管理端</view>
 </view>

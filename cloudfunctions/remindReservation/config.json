@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "openapi": [
+      "subscribeMessage.send",
+      "templateMessage.send"
+    ]
+  },
   "triggers": [
     {
       "name": "remindTimer",

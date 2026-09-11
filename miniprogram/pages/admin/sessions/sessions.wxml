@@ -57,6 +57,10 @@
               <view class="phone">{{item.phone || '无号码'}}</view>
               <view class="ph-btn {{item.phone?'':'disabled'}}" catchtap="onPhone" data-phone="{{item.phone}}">📞 拨打</view>
             </view>
+            <!-- 顾客补充信息（按项目 fields 配置采集）：管理员在列表就能看到，不必逐条点开 -->
+            <view wx:if="{{item.wechat}}" class="sm muted" style="margin-top:8rpx">微信：{{item.wechat}}</view>
+            <view wx:if="{{item.gender || item.age}}" class="sm muted" style="margin-top:4rpx">性别/年龄：{{item.gender || '—'}} · {{item.age || '—'}}</view>
+            <view wx:if="{{item.note}}" class="sm" style="margin-top:4rpx;color:var(--brand)">备注：{{item.note}}</view>
             <view class="cust-link" catchtap="goCustomer" data-openid="{{item.openid}}" wx:if="{{item.openid}}">查看顾客分析 ›</view>
             <view wx:if="{{item.review==='pending'}}" class="review-row" catchtap="noop">
               <view class="rev-btn approve" catchtap="onReview" data-id="{{item._id}}" data-decision="approve">✓ 通过</view>
@@ -80,7 +84,18 @@
         <view class="dcell"><view class="xs muted">人数</view><view class="dval">{{detail.partySize}} 人</view></view>
         <view class="dcell"><view class="xs muted">审核</view><view class="dval">{{detail.review==='pending'?'待审核':(detail.review==='approved'?'已通过':(detail.review==='rejected'?'已拒绝':'已确认'))}}</view></view>
       </view>
-      <view wx:if="{{detail.note}}" class="xs muted" style="margin-top:12rpx">备注：{{detail.note}}</view>
+      <view wx:if="{{detail.note}}" style="margin-top:14rpx">
+        <view class="xs muted">备注</view>
+        <view class="dval" style="margin-top:4rpx;line-height:1.5;white-space:pre-wrap;color:var(--brand)">{{detail.note}}</view>
+      </view>
+      <view wx:if="{{detail.wechat || detail.gender || detail.age}}" class="row" style="margin-top:14rpx;gap:28rpx;flex-wrap:wrap">
+        <view wx:if="{{detail.wechat}}">
+          <view class="xs muted">微信号</view>
+          <view class="dval" catchtap="copyWechat">{{detail.wechat}}<text class="copy-hint">复制</text></view>
+        </view>
+        <view wx:if="{{detail.gender}}"><view class="xs muted">性别</view><view class="dval">{{detail.gender}}</view></view>
+        <view wx:if="{{detail.age}}"><view class="xs muted">年龄</view><view class="dval">{{detail.age}} 岁</view></view>
+      </view>
       <view wx:if="{{detail.review==='pending'}}" class="row" style="margin-top:16rpx;gap:12rpx">
         <button class="btn block" bindtap="onReview" data-id="{{detail._id}}" data-decision="approve">✓ 通过</button>
         <button class="btn block ghost" bindtap="onReview" data-id="{{detail._id}}" data-decision="reject">✕ 不通过</button>

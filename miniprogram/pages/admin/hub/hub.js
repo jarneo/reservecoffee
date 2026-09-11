@@ -37,9 +37,23 @@ Page({
   exit() { wx.reLaunch({ url: '/pages/index/index' }) },
   // 管理员订阅授权入口：必须在点击手势内同步调用 requestSubscribe（微信要求），
   // 否则授权弹窗被拦截 → 管理员收不到新预约/取消/待审核推送（43101）。
-  // 微信订阅为一次性授权，用掉即失效，故此处可反复点击续订。
+  // 微信订阅为**一次性**授权：发一条消耗一次，用尽后后端静默失败（43101），管理员完全无感。
+  // 因此这里必须把**真实授权结果**告诉管理员（旧实现无条件提示「已授权」，会误导），
+  // 并引导勾选「总是保持以上选择，不再询问」以免反复续订。
   enableAdminNotify() {
-    requestSubscribe(ADMIN_TPLS)
-    wx.showToast({ title: '已授权管理推送（一次性，过期可再点）', icon: 'none' })
+    requestSubscribe(ADMIN_TPLS).then(r => {
+      const okN = r.accepted.length
+      const badN = r.rejected.length + r.failed.length
+      if (!badN) {
+        wx.showToast({ title: `已续订 ${okN}/${r.total} 个管理推送`, icon: 'none' })
+        return
+      }
+      wx.showModal({
+        title: '部分推送未授权',
+        content: `本次成功 ${okN}/${r.total} 个，未授权的仍收不到推送。\n\n请在弹出的授权框里把模板**全部勾选**；并建议勾选「总是保持以上选择，不再询问」——微信订阅是一次性授权，发一条就消耗一次，勾选后才会长期生效。`,
+        showCancel: false,
+        confirmText: '我知道了'
+      })
+    })
   }
 })

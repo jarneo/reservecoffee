@@ -56,6 +56,8 @@
 .dcell { flex:1; }
 .dcell .xs { margin-bottom:4rpx; }
 .dval { font-size:28rpx; color:var(--ink); font-weight:500; }
+/* 微信号旁的「复制」小标签（管理员常需复制微信号去加好友/联系） */
+.copy-hint { font-size:20rpx; color:var(--brand); border:1rpx solid var(--brand); border-radius:6rpx; padding:0 8rpx; margin-left:10rpx; vertical-align:middle; }
 .btn.ghost { background:#fff; color:var(--ink); border:1rpx solid var(--line); }
 .btn.ghost[disabled] { opacity:.4; }
 .noop {}

@@ -208,6 +208,12 @@ Page({
     if (!phone) return
     wx.setClipboardData({ data: phone, success: () => wx.showToast({ title: '号码已复制', icon: 'none' }) })
   },
+  // 复制微信号（管理员加好友/联系用）
+  copyWechat() {
+    const w = this.data.detail && this.data.detail.wechat
+    if (!w) return
+    wx.setClipboardData({ data: w, success: () => wx.showToast({ title: '微信号已复制', icon: 'none' }) })
+  },
   noop() {},
   handleOp(action, id) {
     const date = this.data.selDate

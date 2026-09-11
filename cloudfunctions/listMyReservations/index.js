@@ -1,13 +1,9 @@
 // listMyReservations — 顾客端「我的预约」（返回五态有效状态）
-const { db, COL, ok, wxCtx } = require('./lib')
-
-function effStatus(r) {
-  if (r.status === 'cancelled') return 'cancelled'
-  if (r.status === 'completed') return 'completed'
-  const end = new Date(`${r.date} ${r.sessionEnd || '23:59'}`)
-  if (end < new Date()) return 'expired'
-  return r.status // pending | confirmed
-}
+// 过期判定统一走共享库 effStatus —— 内部用 Date.UTC(...) − 8h 还原北京时间真实时刻。
+// ⚠️ 云函数容器时区是 **UTC**，而 date / sessionEnd 存的是**北京时间**字符串；
+//    若用 `new Date('2026-09-11 20:00')`（按容器本地时区解析），UTC 下等于「北京 09-12 04:00」，
+//    会让「已过期」整体延后 8 小时（表现为：前一天晚上结束的预约，到次日凌晨仍显示「预约成功」）。
+const { db, COL, ok, wxCtx, effStatus } = require('./lib')
 
 exports.main = async () => {
   const { OPENID } = wxCtx()

@@ -3,7 +3,7 @@
 // ⚠️ 单条审核逻辑与 reviewReservation/index.js 保持同步；后者改动时本函数须同步。
 // ⚠️ 黑名单保护：批量「全部通过」不得放行黑名单用户（其待审预约可能提交于加黑之前），
 //    一律跳过并保持 pending，由管理员在审核页看到红标后逐条人工决定。
-const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 拉全部黑名单 openid 集合（分页，规避单批上限）
@@ -64,32 +64,11 @@ async function processOne(reservationId, decision, blSet) {
     const p = pRes.data
     const subCfg = await loadSubscribeSwitch(db)
 
-    // 审核通过 → 短信「已为您留座」（全局开关 + 项目开关 双重控制，仅预订人）
-    if (decision === 'approve' && p && p.smsEnabled) {
-      try {
-        const smsSwRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
-        const sw = smsSwRes && smsSwRes.data ? smsSwRes.data : {}
-        if (sw.success !== false) {
-          const smsApp = await loadConfig(db)
-          const tid = smsApp && smsApp.templates && smsApp.templates.success
-          if (tid) {
-            const delay = typeof sw.successDelay === 'number' ? sw.successDelay : 0
-            if (delay <= 0) {
-              await sendTemplateSms({ db, phone: r.phone, templateId: tid })
-              await db.collection(COL.reservations).doc(reservationId).update({ data: { smsSuccessSent: true } }).catch(() => {})
-            } else {
-              await db.collection(COL.reservations).doc(reservationId).update({
-                data: { smsSuccessSent: false, smsSuccessAt: Date.now() + delay * 60000 }
-              }).catch(() => {})
-            }
-          }
-        }
-      } catch (e) { console.warn('[reviewAll] sms failed (ignored):', e.message) }
-    }
-
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
+    // ⚠️ 先发订阅再发短信：其返回值决定「微信优先降级」是否跳过成功短信
+    let wxSuccessRes = null
     if (decision === 'approve' && subOn(subCfg, 'reserveSuccess')) {
-      await sendSubscribe({
+      wxSuccessRes = await sendSubscribe({
         openid: r.openid,
         templateId: TPL.reserveSuccess,
         data: {
@@ -102,20 +81,48 @@ async function processOne(reservationId, decision, blSet) {
       })
     }
 
-    // 审核结果 → 推送「待审核提醒」给管理员（owner+manager），闭环审核流
-    let adminNotifyReview = null
-    if (subOn(subCfg, 'adminReview')) {
-      const adminReviewData = {
-        thing1: { value: p.name },
-        time2: { value: `${r.date} ${r.sessionStart}` },
-        number3: { value: r.partySize }
-      }
-      adminNotifyReview = await notifyAdmins(db, {
-        templateId: TPL.adminReview,
-        data: adminReviewData,
-        page: 'pages/admin/review/review'
-      }).catch(e => { console.warn('[reviewAll] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
+    // 审核通过 → 短信「已为您留座」（全局开关 + 项目开关 双重控制，仅预订人）
+    // 【微信优先降级】skipSmsIfWxOk 开启且订阅卡片已送达 → 不再发成功短信
+    if (decision === 'approve' && p && p.smsEnabled) {
+      try {
+        const smsSwRes = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+        const sw = smsSwRes && smsSwRes.data ? smsSwRes.data : {}
+        if (sw.success !== false) {
+          const smsApp = await loadConfig(db)
+          const tid = smsApp && smsApp.templates && smsApp.templates.success
+          if (tid) {
+            const delay = typeof sw.successDelay === 'number' ? sw.successDelay : 0
+            if (shouldSkipSms(sw, wxSuccessRes)) {
+              await db.collection(COL.reservations).doc(reservationId).update({
+                data: { smsSuccessSent: true, smsResult: { skipped: true, reason: 'wx subscribe delivered (skipSmsIfWxOk)' } }
+              }).catch(() => {})
+            } else if (delay <= 0) {
+              const sres = await sendTemplateSms({ db, phone: r.phone, templateId: tid })
+              await db.collection(COL.reservations).doc(reservationId).update({
+                data: { smsSuccessSent: !!(sres && sres.ok), smsResult: sres }
+              }).catch(() => {})
+            } else {
+              await db.collection(COL.reservations).doc(reservationId).update({
+                data: { smsSuccessSent: false, smsSuccessAt: Date.now() + delay * 60000 }
+              }).catch(() => {})
+            }
+          }
+        }
+      } catch (e) { console.warn('[reviewAll] sms failed (ignored):', e.message) }
     }
+
+    // 记录微信订阅送达标记（供 remindReservation 的延迟成功短信降级判断）
+    if (decision === 'approve') {
+      try {
+        await db.collection(COL.reservations).doc(reservationId).update({
+          data: { wxSuccessOk: !!(wxSuccessRes && wxSuccessRes.ok && !wxSuccessRes.skipped) }
+        })
+      } catch (e) {}
+    }
+
+    // 审核结果 → 管理员推送：**「通过」与「拒绝」都不再通知管理员**（2026-09-12 按需求移除）。
+    // ⚠️ 与 reviewReservation/index.js 的分支保持同步（本文件顶部已有同源要求）。
+    const adminNotifyReview = { skipped: true, decision, reason: 'admin push disabled on review' }
     try { await db.collection(COL.reservations).doc(reservationId).update({ data: { adminNotifyReview } }) } catch (e) {}
 
     return { ok: true, reservationId, decision }

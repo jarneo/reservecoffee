@@ -7,11 +7,13 @@ const TPLS = {
   adminNew: 'AJ8iCZgYFaNoSmwmrwwivnRTnJ3BvFu5sOeg4Wa-3aM',      // 新预约提醒（管理员）
   adminCancel: 'TpTXSsqC4i8F_GtN_boeKh4TXjVI-1rXUwA01AIdO5Q',   // 预约取消提醒（管理员）
   adminReview: 'UQJ5AfBWVUTQO-upC-3_W-UeDu_BgPPGoyj11Ei5Py8',   // 待审核提醒（管理员）
-  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo'   // 结束提醒（顾客，仅预订人）
+  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo',  // 结束提醒（顾客，仅预订人）
+  dayBefore: 'rQEgm5zUep1S9oGeYKYUEawhPK3rs48EQwNncx0HP04'     // 前一天提醒（顾客，每天 17:30 推送次日预约）
 }
 
-// 顾客侧需要授权的订阅模板（成功 / 取消 / 开场提醒 /  ️结束提醒）
-const BOOKER_TPLS = [TPLS.reserveSuccess, TPLS.reserveCancel, TPLS.reminder, TPLS.reminderEnd]
+// 顾客侧需要授权的订阅模板（成功 / 取消 / 开场提醒 / 结束提醒 / 前一天提醒）
+// ⚠️ 微信一次最多 3 个 tmplIds，util.requestSubscribe 会自动按 3 个一组分片
+const BOOKER_TPLS = [TPLS.reserveSuccess, TPLS.reserveCancel, TPLS.reminder, TPLS.reminderEnd, TPLS.dayBefore]
 // 管理员侧需要授权的订阅模板（新预约 / 取消 / 待审核）
 const ADMIN_TPLS = [TPLS.adminNew, TPLS.adminCancel, TPLS.adminReview]
 

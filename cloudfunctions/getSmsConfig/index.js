@@ -20,7 +20,9 @@ exports.main = async () => {
       templates: {
         success: tpl.success || '',
         approaching: tpl.approaching || '',
-        expired: tpl.expired || ''
+        expired: tpl.expired || '',
+        cancel: tpl.cancel || '',
+        dayBefore: tpl.dayBefore || ''
       }
     }
   })

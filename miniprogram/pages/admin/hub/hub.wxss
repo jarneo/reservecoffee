@@ -1,4 +1,6 @@
 .hd { display:flex; align-items:center; justify-content:space-between; padding:8rpx 4rpx 20rpx; }
+/* 管理推送授权卡片：品牌色描边，让它从菜单之上「轻轻跳出来」（订阅用尽后收不到推送，最容易踩） */
+.notify-card { border-color:var(--brand); margin-bottom:20rpx; }
 .menu { background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; }
 .mi { display:flex; align-items:center; justify-content:space-between; padding:28rpx 24rpx; border-bottom:1rpx solid var(--line); }
 .mi:last-child { border-bottom:none; }

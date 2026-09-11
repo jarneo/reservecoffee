@@ -11,11 +11,21 @@
     <view class="tip">订阅消息用完即失效，需用户再次授权；管理端「开启管理推送」可续订管理员授权。</view>
   </view>
 
+  <!-- 微信优先降级开关 -->
+  <view class="card">
+    <view class="sec">微信优先降级（省短信）</view>
+    <view class="field row between">
+      <view class="label">微信已送达则不补发短信</view>
+      <switch checked="{{sms.skipSmsIfWxOk}}" bindchange="toggleSkipSms"/>
+    </view>
+    <view class="tip">开启：同一事件的微信订阅消息若已投递成功（用户已在微信「服务通知」收到卡片），就不再发对应短信，只保留微信通道；微信未送达（未授权 / 发送失败）时仍以短信兜底。关闭：不做判断，两条通道都发。</view>
+  </view>
+
   <!-- 短信 -->
   <view class="card row between tap" bindtap="goSms">
     <view>
       <view class="sec" style="margin:0">短信通知配置</view>
-      <view class="muted xs">签名 / 三个模板 ID / 密钥</view>
+      <view class="muted xs">签名 / 五个模板 ID / 密钥</view>
     </view>
     <view class="ma">›</view>
   </view>
@@ -57,7 +67,7 @@
       </view>
 
       <!-- 过期短信：结束前/后 + 偏移 -->
-      <view class="time-box" wx:else>
+      <view class="time-box" wx:elif="{{item.key==='expired'}}">
         <text class="tl">发送时间：预约时间</text>
         <view class="picker-row">
           <picker class="mini-picker" mode="selector" range="{{expiredWhenOpts}}" value="{{sms.expiredWhen==='after'?1:0}}" bindchange="onExpiredWhen">
@@ -72,6 +82,32 @@
           <input class="ta-c" type="number" value="{{sms.expiredOffset}}" bindinput="onExpiredCustom" style="width:120rpx;text-align:right"/>
           <text>分钟</text>
         </view>
+      </view>
+
+      <!-- 前一天提醒短信：每天固定时刻发送（次日有预约的顾客，同一人多笔只发最早一场） -->
+      <view class="time-box" wx:elif="{{item.key==='dayBefore'}}">
+        <text class="tl">发送时间：每天</text>
+        <view class="picker-row">
+          <picker class="mini-picker" mode="selector" range="{{dayBeforeHourOpts}}" value="{{dayBeforeHourIdx}}" bindchange="onDayBeforeHour">
+            <view class="picker">{{dayBeforeHourOpts[dayBeforeHourIdx]}} ▾</view>
+          </picker>
+          <text class="colon">:</text>
+          <picker class="mini-picker" mode="selector" range="{{dayBeforeMinuteOpts}}" value="{{dayBeforeMinuteIdx}}" bindchange="onDayBeforeMinute">
+            <view class="picker">{{dayBeforeMinuteOpts[dayBeforeMinuteIdx]}} ▾</view>
+          </picker>
+        </view>
+        <view class="tip">每天该时刻给「次日有预约」的顾客发送。同一顾客次日若有多笔预约，只发时间最早的那一场。</view>
+      </view>
+
+      <!-- 取消通知短信：延迟 + 发送前复校 -->
+      <view class="time-box" wx:else>
+        <text class="tl">发送时间：取消后</text>
+        <view class="picker-row">
+          <picker class="mini-picker" mode="selector" range="{{cancelDelayOpts}}" value="{{cancelDelayIdx}}" bindchange="onCancelDelay">
+            <view class="picker">{{cancelDelayOpts[cancelDelayIdx]}} ▾</view>
+          </picker>
+        </view>
+        <view class="tip">延迟后由定时任务补发，发送前会复校该预约此刻仍为「已取消」；定时任务 15 分钟一轮，故实际延迟精度为 15 分钟。</view>
       </view>
     </view>
     <view class="tip">全局开关与「项目配置 → 开启短信通知」需同时为开，才会真正下发短信。模板 ID 在上方「短信通知配置」中填写。</view>

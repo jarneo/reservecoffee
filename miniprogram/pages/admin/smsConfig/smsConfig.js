@@ -5,7 +5,7 @@ Page({
   behaviors: [guard],
   data: {
     signName: '', smsSdkAppId: '', secretIdMask: '', hasSecret: false, noticeTemplate: '',
-    tplSuccess: '', tplApproaching: '', tplExpired: '',
+    tplSuccess: '', tplApproaching: '', tplExpired: '', tplCancel: '', tplDayBefore: '',
     secretId: '', secretKey: ''
   },
   onLoad() {
@@ -18,7 +18,8 @@ Page({
           signName: c.signName || '', smsSdkAppId: c.smsSdkAppId || '',
           secretIdMask: c.secretIdMask || '', hasSecret: !!c.hasSecret,
           noticeTemplate: c.noticeTemplate || '',
-          tplSuccess: t.success || '', tplApproaching: t.approaching || '', tplExpired: t.expired || ''
+          tplSuccess: t.success || '', tplApproaching: t.approaching || '', tplExpired: t.expired || '',
+          tplCancel: t.cancel || '', tplDayBefore: t.dayBefore || ''
         })
       }).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
     })
@@ -30,13 +31,16 @@ Page({
   onTplSuccess(e) { this.setData({ tplSuccess: e.detail.value }) },
   onTplApproaching(e) { this.setData({ tplApproaching: e.detail.value }) },
   onTplExpired(e) { this.setData({ tplExpired: e.detail.value }) },
+  onTplCancel(e) { this.setData({ tplCancel: e.detail.value }) },
+  onTplDayBefore(e) { this.setData({ tplDayBefore: e.detail.value }) },
   onNote(e) { this.setData({ noticeTemplate: e.detail.value }) },
   save() {
     const d = this.data
     call('saveSmsConfig', {
       signName: d.signName, smsSdkAppId: d.smsSdkAppId,
       secretId: d.secretId, secretKey: d.secretKey, noticeTemplate: d.noticeTemplate,
-      tplSuccess: d.tplSuccess, tplApproaching: d.tplApproaching, tplExpired: d.tplExpired
+      tplSuccess: d.tplSuccess, tplApproaching: d.tplApproaching, tplExpired: d.tplExpired,
+      tplCancel: d.tplCancel, tplDayBefore: d.tplDayBefore
     }).then(() => wx.showToast({ title: '短信配置已保存', icon: 'success' }))
       .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   }

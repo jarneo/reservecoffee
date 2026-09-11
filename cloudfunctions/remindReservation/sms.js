@@ -1,14 +1,16 @@
 // cloudfunctions/_lib/sms.js — 腾讯云短信发送辅助（多模板，无参数模板）
 // 依赖：tencentcloud-sdk-nodejs-sms（在调用方云函数的 package.json 中声明）
 // 合规说明：国内短信必须使用控制台「已审批」的签名 + 模板。
-// 注意：本项目的三个业务模板（预定成功 2715328 / 预约临近 2716156 / 预约过期 2716682）
-// 均为「无参数模板」（除验证码模板外均不支持参数配置），故发送时不传 TemplateParamSet。
+// 注意：本项目的业务模板均为「无参数模板」（除验证码模板外均不支持参数配置），故发送时不传 TemplateParamSet。
+// 模板键 → 场景：success 预定成功(2715328) / approaching 预约临近(2716156) / expired 预约过期(2716682)
+//                cancel 取消通知(2729679) / dayBefore 提前一天通知(2729722)
 // 店铺名由控制台签名 SignName 提供（=「二曜路8号咖啡和清酒」），模板正文不含签名前缀。
 
 const REGION = process.env.SMS_REGION || 'ap-guangzhou'
 
 // 读取短信全局配置：优先环境变量，回退 config_sms 文档（_id:'sms'）
-// 返回：{ secretId, secretKey, smsSdkAppId, signName, region, templates:{success,approaching,expired} }
+// 返回：{ secretId, secretKey, smsSdkAppId, signName, region,
+//        templates:{success, approaching, expired, cancel, dayBefore} }
 async function loadConfig(db) {
   const env = {
     secretId: process.env.SMS_SECRET_ID,
@@ -19,11 +21,12 @@ async function loadConfig(db) {
   }
   const hasEnv = env.secretId && env.secretKey && env.smsSdkAppId && env.signName
   if (hasEnv) {
-    // 环境变量仅支持单模板(SMS_TEMPLATE_ID) 的兼容回退：三个场景复用同一模板
+    // 环境变量仅支持单模板(SMS_TEMPLATE_ID) 的兼容回退：各场景复用同一模板
+    const t = process.env.SMS_TEMPLATE_ID
     return {
       ...env,
       region: env.region || REGION,
-      templates: { success: process.env.SMS_TEMPLATE_ID, approaching: process.env.SMS_TEMPLATE_ID, expired: process.env.SMS_TEMPLATE_ID }
+      templates: { success: t, approaching: t, expired: t, cancel: t, dayBefore: t }
     }
   }
   const doc = await db.collection('config_sms').doc('sms').get().catch(() => ({ data: null }))

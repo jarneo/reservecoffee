@@ -27,7 +27,8 @@ const TPL = {
   adminNew: 'AJ8iCZgYFaNoSmwmrwwivnRTnJ3BvFu5sOeg4Wa-3aM',          // 新预约提醒（管理员 owner+manager）
   adminCancel: 'TpTXSsqC4i8F_GtN_boeKh4TXjVI-1rXUwA01AIdO5Q',       // 预约取消提醒（管理员 owner+manager）
   adminReview: 'UQJ5AfBWVUTQO-upC-3_W-UeDu_BgPPGoyj11Ei5Py8',       // 待审核提醒（管理员 owner+manager）
-  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo'       // 结束提醒（顾客，仅预订人）
+  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo',      // 结束提醒（顾客，仅预订人）
+  dayBefore: 'rQEgm5zUep1S9oGeYKYUEawhPK3rs48EQwNncx0HP04'        // 前一天提醒（顾客，每天 17:30 推送次日预约）
 }
 
 // 服务号「订阅通知」模板 ID（公众号后台 → 订阅通知 申请，非已废弃的「模板消息」）。
@@ -78,6 +79,29 @@ function addDays(n) {
   const t = new Date()
   t.setDate(t.getDate() + n)
   return ymd(t)
+}
+
+// 北京时间 'YYYY-MM-DD' + 'HH:mm' → 真实时间戳（毫秒）。
+// ⚠️ 云函数容器时区是 **UTC**，而库里 date / sessionStart / sessionEnd 存的是**北京时间**字符串。
+//    因此绝不能用 `new Date('2026-09-11 20:00')`（按容器本地时区解析 → UTC 下等于北京 09-12 04:00），
+//    那会让所有「结束/过期」判定整体延后 8 小时。统一用 Date.UTC(...) − 8h 还原真实时刻。
+// 解析失败返回 NaN，调用方需保守处理（不要当成已过期）。
+function bjTs(dateStr, hm) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number)
+  if (!y || !m || !d) return NaN
+  const [hh, mm] = String(hm || '23:59').split(':').map(Number)
+  return Date.UTC(y, m - 1, d, isNaN(hh) ? 23 : hh, isNaN(mm) ? 59 : mm) - 8 * 3600 * 1000
+}
+
+// 预约的有效状态（五态）：cancelled / completed / expired / pending / confirmed
+// 场次结束时刻（北京时间）已过 → expired。共享库同源实现，避免各函数各写一份走样。
+function effStatus(r, nowTs) {
+  if (!r) return 'pending'
+  if (r.status === 'cancelled') return 'cancelled'
+  if (r.status === 'completed') return 'completed'
+  const end = bjTs(r.date, r.sessionEnd)
+  if (!isNaN(end) && end < (nowTs || Date.now())) return 'expired'
+  return r.status // pending | confirmed
 }
 
 // 友好短日期：YYYY-MM-DD -> M月D日（如 8月20日），用于订阅/短信文案
@@ -134,6 +158,25 @@ async function loadSubscribeSwitch(db) {
 }
 // 单个订阅模板是否允许发送：config.subscribe[key] !== false 视为开（缺省开）
 function subOn(subCfg, key) { return subCfg ? (subCfg[key] !== false) : true }
+
+// 读取「短信全局开关」配置（config.smsnotify 文档）。缺省视为全部开启。
+async function loadSmsSwitch(db) {
+  try {
+    const r = await db.collection('config').doc('smsnotify').get()
+    return (r && r.data) || {}
+  } catch (e) { return {} }
+}
+
+// 【微信优先降级】是否跳过短信：
+//   开关 skipSmsIfWxOk 为 true 且同一事件的微信订阅消息确已投递（ok:true = errcode 0，微信服务端已受理）
+//   → 该用户已在微信「服务通知」收到卡片，不再补发短信，避免重复打扰。
+// 注意：ok:false（43101 未授权 / 47003 字段非法 / -501001 凭证异常）一律视为「微信没送到」，短信照发兜底。
+function shouldSkipSms(smsSw, wxRes) {
+  return !!(smsSw && smsSw.skipSmsIfWxOk === true && wxRes && wxRes.ok === true && !wxRes.skipped)
+}
+
+// 判定一条订阅发送结果是否「确实送达微信侧」（供落库排查用）
+function wxDelivered(wxRes) { return !!(wxRes && wxRes.ok === true && !wxRes.skipped) }
 
 // 取所有管理员（role 为 owner 或 manager）的 openid，使 owner + manager 都收管理侧通知
 async function listAdminOpenids(db) {
@@ -266,8 +309,9 @@ function customerTags(profile, agg) {
 
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, monthDaySlash, getStoreName,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
-  srcLabel, customerTags, loadSubscribeSwitch, subOn
+  srcLabel, customerTags, loadSubscribeSwitch, subOn,
+  loadSmsSwitch, shouldSkipSms, wxDelivered
 }

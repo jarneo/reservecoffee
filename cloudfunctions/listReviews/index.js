@@ -42,7 +42,9 @@ exports.main = async () => {
     return {
       _id: r._id, openid: r.openid || '', name: r.name, phone: r.phone, partySize: r.partySize,
       projectName: nm[r.projectId] || '', date: r.date,
-      time: `${r.sessionStart || ''}-${r.sessionEnd || ''}`, note: r.note || '',
+      time: `${r.sessionStart || ''}-${r.sessionEnd || ''}`,
+      // 顾客按项目 fields 配置填写的补充信息，审核时需要一并展示（与 listSessionReservations 保持一致）
+      note: r.note || '', wechat: r.wechat || '', gender: r.gender || '', age: r.age || '',
       isBlacklisted: !!b.isBlacklisted, blacklistReason: b.blacklistReason || ''
     }
   })
