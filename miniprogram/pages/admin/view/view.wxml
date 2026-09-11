@@ -49,6 +49,15 @@
         <view><view class="xs muted">人数</view><view>{{detail.partySize}} 人</view></view>
       </view>
       <view class="xs muted" style="margin-top:12rpx">审核：{{detail.review==='pending'?'待审核':(detail.review==='approved'?'已通过':'已拒绝')}}</view>
+      <view wx:if="{{detail.note}}" style="margin-top:14rpx">
+        <view class="xs muted">备注</view>
+        <view style="font-size:28rpx;margin-top:4rpx;line-height:1.5;white-space:pre-wrap">{{detail.note}}</view>
+      </view>
+      <view wx:if="{{detail.wechat || detail.gender || detail.age}}" class="row" style="margin-top:12rpx;gap:28rpx;flex-wrap:wrap">
+        <view wx:if="{{detail.wechat}}"><view class="xs muted">微信号</view><view>{{detail.wechat}}</view></view>
+        <view wx:if="{{detail.gender}}"><view class="xs muted">性别</view><view>{{detail.gender}}</view></view>
+        <view wx:if="{{detail.age}}"><view class="xs muted">年龄</view><view>{{detail.age}} 岁</view></view>
+      </view>
       <button class="btn block call-lg" style="margin-top:20rpx" bindtap="dial">📞 拨打电话</button>
     </view>
   </view>
