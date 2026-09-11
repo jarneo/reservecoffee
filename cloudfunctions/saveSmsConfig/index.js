@@ -8,6 +8,10 @@ exports.main = async (event) => {
   const role = await getRole(OPENID)
   if (role.role !== 'owner') return fail('仅超级管理员可配置')
 
+  // 确保 config_sms 集合存在（CloudBase 写操作不会自动建集合；
+  // 若此前仅靠环境变量发短信、集合从未创建，首次保存会抛 "Db or Table not exist"）
+  try { await db.createCollection('config_sms') } catch (e) { /* 已存在/无权限则忽略 */ }
+
   const doc = await db.collection('config_sms').doc('sms').get().catch(() => ({ data: null }))
   const cur = doc.data || {}
   const next = Object.assign({}, cur)

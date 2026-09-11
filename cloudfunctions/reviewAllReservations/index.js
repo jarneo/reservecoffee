@@ -3,7 +3,7 @@
 // ⚠️ 单条审核逻辑与 reviewReservation/index.js 保持同步；后者改动时本函数须同步。
 // ⚠️ 黑名单保护：批量「全部通过」不得放行黑名单用户（其待审预约可能提交于加黑之前），
 //    一律跳过并保持 pending，由管理员在审核页看到红标后逐条人工决定。
-const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 拉全部黑名单 openid 集合（分页，规避单批上限）
@@ -62,6 +62,7 @@ async function processOne(reservationId, decision, blSet) {
     // 项目信息（用于通知文案）
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
     const p = pRes.data
+    const subCfg = await loadSubscribeSwitch(db)
 
     // 审核通过 → 短信「已为您留座」（全局开关 + 项目开关 双重控制，仅预订人）
     if (decision === 'approve' && p && p.smsEnabled) {
@@ -87,7 +88,7 @@ async function processOne(reservationId, decision, blSet) {
     }
 
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
-    if (decision === 'approve') {
+    if (decision === 'approve' && subOn(subCfg, 'reserveSuccess')) {
       await sendSubscribe({
         openid: r.openid,
         templateId: TPL.reserveSuccess,
@@ -102,16 +103,19 @@ async function processOne(reservationId, decision, blSet) {
     }
 
     // 审核结果 → 推送「待审核提醒」给管理员（owner+manager），闭环审核流
-    const adminReviewData = {
-      thing1: { value: p.name },
-      time2: { value: `${r.date} ${r.sessionStart}` },
-      number3: { value: r.partySize }
+    let adminNotifyReview = null
+    if (subOn(subCfg, 'adminReview')) {
+      const adminReviewData = {
+        thing1: { value: p.name },
+        time2: { value: `${r.date} ${r.sessionStart}` },
+        number3: { value: r.partySize }
+      }
+      adminNotifyReview = await notifyAdmins(db, {
+        templateId: TPL.adminReview,
+        data: adminReviewData,
+        page: 'pages/admin/review/review'
+      }).catch(e => { console.warn('[reviewAll] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
     }
-    const adminNotifyReview = await notifyAdmins(db, {
-      templateId: TPL.adminReview,
-      data: adminReviewData,
-      page: 'pages/admin/review/review'
-    }).catch(e => { console.warn('[reviewAll] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
     try { await db.collection(COL.reservations).doc(reservationId).update({ data: { adminNotifyReview } }) } catch (e) {}
 
     return { ok: true, reservationId, decision }

@@ -1,5 +1,5 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
-const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 场次是否已过预约截止（与顾客端 isSessionExpired 同源规则）
@@ -13,7 +13,8 @@ function sessionExpired(dateStr, startStr, cutoff) {
   const [y, mo, d] = String(dateStr || '').split('-').map(Number)
   if (!y || !mo || !d) return false
   const mins = parseHm(startStr)
-  const start = new Date(y, mo - 1, d, Math.floor(mins / 60), mins % 60)
+  // ⚠️ SCF 运行时为 UTC，必须用 Date.UTC 显式构造北京时间，否则截止判定偏移 +8h
+  const start = new Date(Date.UTC(y, mo - 1, d, Math.floor(mins / 60), mins % 60) - 8 * 3600 * 1000)
   const offset = Number(cutoff.minutes) * 60000
   const deadline = cutoff.mode === 'before'
     ? new Date(start.getTime() - offset)
@@ -45,6 +46,7 @@ exports.main = async (event) => {
   const pRes = await db.collection(COL.projects).doc(projectId).get().catch(() => ({ data: null }))
   const p = pRes.data
   if (!p || !p.published) return fail('项目不存在或未发布')
+  const subCfg = await loadSubscribeSwitch(db)
   if (p.paused) return fail('该项目已暂停预约')
 
   const maxParty = Number(p.maxParty) || 2
@@ -130,7 +132,7 @@ exports.main = async (event) => {
     const seats = `${pSize}人位`
 
     // A 线 · 给预订人（仅免审立即推送「预约成功」；待审不发，改由管理员审核通过后再推送）
-    if (!needReview && p.subscribeNotify !== false) await sendSubscribe({
+    if (!needReview && p.subscribeNotify !== false && subOn(subCfg, 'reserveSuccess')) await sendSubscribe({
       openid: OPENID,
       templateId: TPL.reserveSuccess,
       data: {
@@ -147,38 +149,52 @@ exports.main = async (event) => {
     if (p.subscribeNotify !== false) {
       if (needReview) {
         // 待审：字段须对齐微信后台「待审核提醒」模板（thing1 门店名称 / time2 计划就餐时间 / number3 用餐人数）
-        adminNotify = await notifyAdmins(db, {
-          templateId: TPL.adminReview,
-          data: {
-            thing1: { value: p.name },
-            time2: { value: `${date} ${session.start}` },
-            number3: { value: pSize }
-          },
-          page: 'pages/admin/review/review'
-        })
+        if (subOn(subCfg, 'adminReview')) {
+          adminNotify = await notifyAdmins(db, {
+            templateId: TPL.adminReview,
+            data: {
+              thing1: { value: p.name },
+              time2: { value: `${date} ${session.start}` },
+              number3: { value: pSize }
+            },
+            page: 'pages/admin/review/review'
+          })
+        }
       } else {
         // 免审：项目 · 预订人 · 日期场次（thing3 上限 20 字，仅放日期场次 dt，不拼人数）
-        adminNotify = await notifyAdmins(db, {
-          templateId: TPL.adminNew,
-          data: {
-            thing1: { value: p.name },
-            thing12: { value: name.trim() },
-            thing3: { value: dt }
-          },
-          page: 'pages/admin/hub/hub'
-        }).catch(e => { console.warn('[createReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
+        if (subOn(subCfg, 'adminNew')) {
+          adminNotify = await notifyAdmins(db, {
+            templateId: TPL.adminNew,
+            data: {
+              thing1: { value: p.name },
+              thing12: { value: name.trim() },
+              thing3: { value: dt }
+            },
+            page: 'pages/admin/hub/hub'
+          }).catch(e => { console.warn('[createReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
+        }
       }
     }
 
     // 短信推送（成功短信，仅免审路径在此发送；待审路径由 reviewReservation 在审批通过时发送）
     // 全局开关 + 项目开关 双重控制，仅发预订人；延迟(successDelay>0)由 remindReservation 定时发送
-    // successDelay===0 时 reservation.smsSuccessSent 在创建时已置 true，此处仅执行发送，无需再更新标记
+    // successDelay===0 时 reservation.smsSuccessSent 在创建时已置 true，此处执行发送并校正真实结果
+    let smsResult = null
     if (!needReview && successDelay === 0) {
       try {
         const smsApp = await loadConfig(db)
         const tid = smsApp && smsApp.templates && smsApp.templates.success
-        if (tid) await sendTemplateSms({ db, phone, templateId: tid })
+        if (tid) smsResult = await sendTemplateSms({ db, phone, templateId: tid })
       } catch (e) { console.warn('[createReservation] sms failed (ignored):', e.message) }
+      // 平台级拒收（单号日上限/模板未审批等）不抛异常但 Code!=Ok，sendTemplateSms 已返回 ok:false；
+      // 校正标记，避免假成功误导排查
+      if (smsResult && !smsResult.ok) {
+        try {
+          await db.collection(COL.reservations).doc(add._id).update({
+            data: { smsSuccessSent: false, smsResult }
+          })
+        } catch (e) { console.warn('[createReservation] sms result update failed:', e.message) }
+      }
     }
 
     // 诊断：把管理侧订阅发送结果落库，便于排查「收不到待审核推送」（不阻断主流程）

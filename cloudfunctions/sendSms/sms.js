@@ -79,7 +79,16 @@ async function sendTemplateSms(o) {
       TemplateId: String(templateId),
       TemplateParamSet: []
     })
-    console.log('[sms] sent ok', templateId, res && res.SendStatusSet)
+    const set = (res && res.SendStatusSet) || []
+    // 腾讯云短信：每条发送结果 Code==='Ok' 才成功；平台级拒收（单号日上限 / 模板未审批 / 签名不符等）
+    // 不会抛异常，只会在 SendStatusSet 里返回非 Ok 的 Code + Message。必须显式检查，否则会被误判为成功。
+    const failed = set.filter(s => s.Code !== 'Ok')
+    if (failed.length) {
+      const msg = failed.map(s => `${s.SerialNo || ''}:${s.Code}:${s.Message}`).join('; ')
+      console.warn('[sms] send rejected:', templateId, msg)
+      return { ok: false, error: msg, detail: set }
+    }
+    console.log('[sms] sent ok', templateId, set)
     return { ok: true, res }
   } catch (e) {
     console.warn('[sms] send failed (ignored):', e.message)

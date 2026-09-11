@@ -3,7 +3,7 @@
 // · 开场前/后提醒（reminder）：status='confirmed'、未提醒过、到达 approachFireAt
 // · 结束前/后提醒（reminderEnd）：到达 expiredFireAt 且未发过，仅预订人
 // 短信：全局开关(smsnotify) + 项目开关(smsEnabled) 双重控制；三个业务模板均为无参数模板
-const { db, _, COL, TPL, ok, sendSubscribe } = require('./lib')
+const { db, _, COL, TPL, ok, sendSubscribe, subOn } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 exports.main = async () => {
@@ -18,6 +18,13 @@ exports.main = async () => {
     const app = await loadConfig(db)
     tpls = app && app.templates ? app.templates : {}
   } catch (e) { /* 短信配置缺失时不影响订阅提醒 */ }
+
+  // 订阅模板开关（循环前读取一次）
+  let subCfg = {}
+  try {
+    const subRes = await db.collection('config').doc('subscribe').get().catch(() => ({ data: null }))
+    subCfg = subRes && subRes.data ? subRes.data : {}
+  } catch (e) { /* 订阅开关缺失不影响短信 */ }
 
   // 时间配置（带默认值）
   const approachingWhen = smsSw.approachingWhen === 'after' ? 'after' : 'before'   // 默认 开始前
@@ -58,10 +65,11 @@ exports.main = async () => {
   for (const r of items) {
     const [y, m, d] = String(r.date).split('-').map(Number)
     if (!y || !m || !d) { skipped++; continue }
+    // ⚠️ SCF 运行时为 UTC，必须用 Date.UTC 显式构造北京时间，否则整体偏移 +8h（17:00 才触发）
     const [sh, sm] = String(r.sessionStart || '00:00').split(':').map(Number)
-    const start = new Date(y, m - 1, d, sh, sm).getTime()
+    const start = new Date(Date.UTC(y, m - 1, d, sh, sm) - 8 * 3600 * 1000).getTime()
     const [eh, em] = String(r.sessionEnd || '23:59').split(':').map(Number)
-    const endTime = new Date(y, m - 1, d, eh, em).getTime()
+    const endTime = new Date(Date.UTC(y, m - 1, d, eh, em) - 8 * 3600 * 1000).getTime()
 
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
     const p = pRes.data || {}
@@ -74,8 +82,9 @@ exports.main = async () => {
 
     // 过期提醒优先：到达 expiredFireAt 且未发过 → reminderEnd（仅顾客）+ 过期短信
     if (now >= expiredFireAt) {
-      if (TPL.reminderEnd && TPL.reminderEnd.indexOf('TPL_ID_') !== 0) {
-        await sendSubscribe({
+      let reminderEndNotify = null
+      if (TPL.reminderEnd && TPL.reminderEnd.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'reminderEnd')) {
+        reminderEndNotify = await sendSubscribe({
           openid: r.openid,
           templateId: TPL.reminderEnd,
           data: {
@@ -91,15 +100,17 @@ exports.main = async () => {
         try { await sendTemplateSms({ db, phone: r.phone, templateId: tpls.expired }) }
         catch (e) { console.warn('[remindReservation] expired sms failed (ignored):', e.message) }
       }
-      await db.collection(COL.reservations).doc(r._id).update({ data: { ended: true } }).catch(() => {})
+      // 照常打 ended（避免无限重试）；结果落库便于排查 43101
+      await db.collection(COL.reservations).doc(r._id).update({ data: { ended: true, reminderEndNotify } }).catch(() => {})
       sentEnd++
       continue
     }
 
     // 临近提醒：到达 approachFireAt 且未发过 → reminder（仅顾客）+ 临近短信
     if (now >= approachFireAt) {
-      if (TPL.reminder && TPL.reminder.indexOf('TPL_ID_') !== 0) {
-        await sendSubscribe({
+      let reminderNotify = null
+      if (TPL.reminder && TPL.reminder.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'reminder')) {
+        reminderNotify = await sendSubscribe({
           openid: r.openid,
           templateId: TPL.reminder,
           data: {
@@ -114,7 +125,8 @@ exports.main = async () => {
         try { await sendTemplateSms({ db, phone: r.phone, templateId: tpls.approaching }) }
         catch (e) { console.warn('[remindReservation] approaching sms failed (ignored):', e.message) }
       }
-      await db.collection(COL.reservations).doc(r._id).update({ data: { reminded: true } }).catch(() => {})
+      // 照常打 reminded（避免无限重试）；结果落库便于排查 43101
+      await db.collection(COL.reservations).doc(r._id).update({ data: { reminded: true, reminderNotify } }).catch(() => {})
       sentStart++
     }
   }

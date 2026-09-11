@@ -87,6 +87,13 @@ function monthDay(ymdStr) {
   return `${m}月${d}日`
 }
 
+// 日历/列表日期标签：YYYY-MM-DD -> MM/DD（如 09/07），顾客端日历与项目卡片用
+function monthDaySlash(ymdStr) {
+  const [y, m, d] = String(ymdStr || '').split('-').map(Number)
+  if (!m || !d) return ymdStr || ''
+  return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
+}
+
 // 读取店铺名（以店铺名义发消息）。优先 config 集合文档 store.name，回退默认常量。
 async function getStoreName(db) {
   try {
@@ -117,6 +124,16 @@ async function sendSubscribe({ openid, templateId, data, page }) {
     return { ok: false, openid, templateId, errCode, errMsg }
   }
 }
+
+// 读取「订阅消息开关」配置（config.subscribe 文档）。缺省视为全部开启。
+async function loadSubscribeSwitch(db) {
+  try {
+    const r = await db.collection('config').doc('subscribe').get()
+    return (r && r.data) || {}
+  } catch (e) { return {} }
+}
+// 单个订阅模板是否允许发送：config.subscribe[key] !== false 视为开（缺省开）
+function subOn(subCfg, key) { return subCfg ? (subCfg[key] !== false) : true }
 
 // 取所有管理员（role 为 owner 或 manager）的 openid，使 owner + manager 都收管理侧通知
 async function listAdminOpenids(db) {
@@ -249,8 +266,8 @@ function customerTags(profile, agg) {
 
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, monthDaySlash, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
-  srcLabel, customerTags
+  srcLabel, customerTags, loadSubscribeSwitch, subOn
 }

@@ -1,5 +1,5 @@
 // reviewReservation — 审核通过/拒绝（owner）
-const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
+const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 exports.main = async (event) => {
@@ -41,6 +41,7 @@ exports.main = async (event) => {
     // 项目信息 + 店铺名（提前读取，修复 p 作用域隐患）
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
     const p = pRes.data
+    const subCfg = await loadSubscribeSwitch(db)
     const storeName = await getStoreName(db)
     const dt = `${monthDay(r.date)} ${r.sessionStart}-${r.sessionEnd}`
 
@@ -69,7 +70,7 @@ exports.main = async (event) => {
     }
 
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
-    if (decision === 'approve') {
+    if (decision === 'approve' && subOn(subCfg, 'reserveSuccess')) {
       await sendSubscribe({
         openid: r.openid,
         templateId: TPL.reserveSuccess,
@@ -87,16 +88,19 @@ exports.main = async (event) => {
     // 审核结果 → 推送「待审核提醒」给管理员（owner+manager），闭环审核流
     // thing1 前缀标注结果（已通过/已拒绝），thing 类型上限 20 字，安全
     // 手机号选填：空值不下发 phone_number2，避免微信因空值字段返回 47003 静默吞掉整条通知
-    const adminReviewData = {
-      thing1: { value: p.name },
-      time2: { value: `${r.date} ${r.sessionStart}` },
-      number3: { value: r.partySize }
+    let adminNotifyReview = null
+    if (subOn(subCfg, 'adminReview')) {
+      const adminReviewData = {
+        thing1: { value: p.name },
+        time2: { value: `${r.date} ${r.sessionStart}` },
+        number3: { value: r.partySize }
+      }
+      adminNotifyReview = await notifyAdmins(db, {
+        templateId: TPL.adminReview,
+        data: adminReviewData,
+        page: 'pages/admin/review/review'
+      }).catch(e => { console.warn('[reviewReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
     }
-    const adminNotifyReview = await notifyAdmins(db, {
-      templateId: TPL.adminReview,
-      data: adminReviewData,
-      page: 'pages/admin/review/review'
-    }).catch(e => { console.warn('[reviewReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
     // 诊断：审核结果推送结果落库
     try { await db.collection(COL.reservations).doc(reservationId).update({ data: { adminNotifyReview } }) } catch (e) {}
 

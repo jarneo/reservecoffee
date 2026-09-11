@@ -52,12 +52,15 @@ function isPhone(v) {
 
 // 请求微信订阅消息授权（过滤未配置的占位模板 ID，避免传入 TPL_ID_* 报错）
 // 需在用户手势（点击）回调内调用，否则弹窗可能被拦截
+// ⚠️ 微信限制：一次调用最多 3 个 tmplIds，超过整体失败(errCode 20003)且不弹窗；
+// 故按 3 个一组拆分逐组请求，确保 4 个模板（成功/取消/开场提醒/结束提醒）都能授权
 function requestSubscribe(tmplIds) {
   const valid = (tmplIds || []).filter(id => id && !String(id).startsWith('TPL_ID_'))
   if (!valid.length) return
-  if (typeof wx !== 'undefined' && wx.requestSubscribeMessage) {
+  if (typeof wx === 'undefined' || !wx.requestSubscribeMessage) return
+  for (let i = 0; i < valid.length; i += 3) {
     wx.requestSubscribeMessage({
-      tmplIds: valid,
+      tmplIds: valid.slice(i, i + 3),
       success(res) { console.log('[subscribe] 授权结果:', JSON.stringify(res)) },
       fail(err) { console.warn('[subscribe] 授权失败:', JSON.stringify(err)) }
     })

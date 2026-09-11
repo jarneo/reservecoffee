@@ -87,6 +87,13 @@ function monthDay(ymdStr) {
   return `${m}月${d}日`
 }
 
+// 日历/列表日期标签：YYYY-MM-DD -> MM/DD（如 09/07），顾客端日历与项目卡片用
+function monthDaySlash(ymdStr) {
+  const [y, m, d] = String(ymdStr || '').split('-').map(Number)
+  if (!m || !d) return ymdStr || ''
+  return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
+}
+
 // 读取店铺名（以店铺名义发消息）。优先 config 集合文档 store.name，回退默认常量。
 async function getStoreName(db) {
   try {
@@ -249,7 +256,7 @@ function customerTags(profile, agg) {
 
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, monthDaySlash, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
   srcLabel, customerTags

@@ -1,5 +1,5 @@
 // cancelReservation — 顾客/管理员取消预约（释放名额 + 双轴置 cancelled）
-const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn } = require('./lib')
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -45,18 +45,19 @@ exports.main = async (event) => {
     // 项目名（门店）
     const pRes = await db.collection(COL.projects).doc(r.projectId).get().catch(() => ({ data: null }))
     const pName = (pRes.data && pRes.data.name) || '预约'
+    const subCfg = await loadSubscribeSwitch(db)
     const storeName = await getStoreName(db)
     const dt = `${monthDay(r.date)} ${r.sessionStart}-${r.sessionEnd}`
 
     // A 线 · 顾客取消（订阅）
-    await sendSubscribe({ openid: r.openid, templateId: TPL.reserveCancel, data: {
+    if (subOn(subCfg, 'reserveCancel')) await sendSubscribe({ openid: r.openid, templateId: TPL.reserveCancel, data: {
       thing1: { value: pName },
       time9: { value: `${r.date} ${r.sessionStart}` },
       thing5: { value: '期待下次为您留座～' }
     }, page: 'pages/mine/mine' })
 
     // B 线 · 管理员取消（订阅）：含联系方式
-    await notifyAdmins(db, {
+    if (subOn(subCfg, 'adminCancel')) await notifyAdmins(db, {
       templateId: TPL.adminCancel,
       data: {
         thing5: { value: pName },

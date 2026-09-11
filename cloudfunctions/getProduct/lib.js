@@ -87,6 +87,13 @@ function monthDay(ymdStr) {
   return `${m}月${d}日`
 }
 
+// 日历/列表日期标签：YYYY-MM-DD -> MM/DD（如 09/07），顾客端日历与项目卡片用
+function monthDaySlash(ymdStr) {
+  const [y, m, d] = String(ymdStr || '').split('-').map(Number)
+  if (!m || !d) return ymdStr || ''
+  return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
+}
+
 // 读取店铺名（以店铺名义发消息）。优先 config 集合文档 store.name，回退默认常量。
 async function getStoreName(db) {
   try {
@@ -186,9 +193,71 @@ async function notifyAdminsMp() {
   return
 }
 
+// ===== 顾客自动标签规则引擎 =====
+
+// scene → 来源标签（仅三类有业务语义；其他返回 '' 不展示）
+function srcLabel(scene) {
+  const s = Number(scene)
+  if (s === 1035) return '公众号菜单'
+  if (s === 1005 || s === 1150) return '搜索'
+  if (s === 1007 || s === 1008 || s === 1036) return '链接分享'
+  return ''
+}
+
+function daysAgo(ts) {
+  if (!ts) return null
+  return Math.floor((Date.now() - ts) / 86400000)
+}
+
+// 24 小时分布取峰值小时（仅计数最大且 >0 才有意义）
+function peakHour(arr24) {
+  if (!arr24 || !arr24.length) return -1
+  let hi = 0
+  for (let i = 1; i < 24; i++) if (arr24[i] > arr24[hi]) hi = i
+  return arr24[hi] > 0 ? hi : -1
+}
+
+// 自动标签：根据顾客资料(profile) + 聚合结果(agg) 生成标签数组（云端算、不存储，保证单一真相）
+// agg 字段：total / firstAt / lastAt / avgParty / avgLeadDays / perProject[{projectId,name,cnt}] / submitHour[24] / sessionHour[24] / weekendRatio
+// 缺字段的标签自动跳过（roster 聚合不携带时段/周末时仍可用）。
+function customerTags(profile, agg) {
+  const tags = []
+  if (!agg) return tags
+  const total = agg.total || 0
+  if (total >= 5) tags.push('高频常客')
+  else if (total >= 2) tags.push('回头客')
+
+  const df = daysAgo(agg.firstAt)
+  if (df != null && df <= 30) tags.push('新客')
+
+  const dl = daysAgo(agg.lastAt)
+  if (total > 0 && dl != null && dl > 90) tags.push('沉睡客')
+
+  const lead = agg.avgLeadDays
+  if (typeof lead === 'number' && !isNaN(lead)) {
+    if (lead >= 3) tags.push('计划型')
+    else if (lead <= 1) tags.push('临时型')
+  }
+
+  const peak = peakHour(agg.submitHour) >= 0 ? peakHour(agg.submitHour) : peakHour(agg.sessionHour)
+  if (peak >= 20 && peak <= 22) tags.push('夜场客')
+  if (typeof agg.weekendRatio === 'number' && agg.weekendRatio >= 0.6) tags.push('周末客')
+  if (typeof agg.avgParty === 'number' && agg.avgParty >= 3) tags.push('大桌客')
+
+  if (agg.perProject && agg.perProject.length) {
+    const top = agg.perProject.reduce((a, b) => (b.cnt > a.cnt ? b : a), agg.perProject[0])
+    if (top.cnt / total >= 0.6 && top.name) tags.push(top.name + '爱好者')
+  }
+
+  const src = srcLabel(profile && profile.firstSource)
+  if (src) tags.push(src)
+  return tags
+}
+
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, monthDaySlash, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
-  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp
+  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
+  srcLabel, customerTags
 }
