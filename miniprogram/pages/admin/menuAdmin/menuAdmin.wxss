@@ -12,3 +12,11 @@
 .up-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 26rpx; }
 .field { padding: 18rpx 0; border-bottom: 1rpx solid var(--line); }
 .field .label { font-size: 24rpx; color: var(--ink-3); margin-bottom: 8rpx; }
+
+/* 菜品新建/编辑弹出层：底部抽屉，始终浮于列表之上，不受菜品数量影响 */
+.modal-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,.45); z-index: 50; display: flex; align-items: flex-end; }
+.modal-panel { width: 100%; max-height: 88vh; background: #fff; border-radius: 24rpx 24rpx 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.modal-bar { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx; border-bottom: 1rpx solid var(--line); }
+.modal-x { font-size: 38rpx; color: var(--ink-3); padding: 0 12rpx; line-height: 1; }
+.modal-body { max-height: 78vh; padding: 12rpx 28rpx 32rpx; box-sizing: border-box; }
+.modal-body .btn.block { margin-top: 28rpx; }

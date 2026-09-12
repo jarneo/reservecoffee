@@ -17,6 +17,9 @@ Page({
     })
   },
   onProjectPick(e) { this.selectProject(this.data.projects[e.detail.value]._id) },
+  // 关闭菜品新建/编辑弹出层（点遮罩 / ✕ 触发）
+  closeForm() { this.setData({ showForm: false }) },
+  noop() {},
   selectProject(id) {
     const name = (this.data.projects.find(x => x._id === id) || {}).name || ''
     this.setData({ projectId: id, projectName: name, showForm: false })

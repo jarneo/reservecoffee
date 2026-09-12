@@ -29,19 +29,27 @@
     </view>
   </view>
 
-  <view wx:if="{{showForm}}" class="card">
-    <view class="sec">{{editingId ? '编辑菜品' : '新建菜品'}}</view>
-    <view class="field"><view class="label">名称</view><input value="{{form.name}}" bindinput="onName" placeholder="菜品名称"/></view>
-    <view class="field"><view class="label">价格（元）</view><input type="digit" value="{{form.price}}" bindinput="onPrice" placeholder="0"/></view>
-    <view class="field"><view class="label">排序（数字越小越靠前）</view><input type="number" value="{{form.sort}}" bindinput="onSort" placeholder="0"/></view>
-    <view class="field"><view class="label">描述</view><textarea value="{{form.desc}}" bindinput="onDesc" placeholder="一句话介绍"/></view>
-    <view class="field row between"><view class="label">在售</view><switch checked="{{form.status}}" bindchange="onStatus"/></view>
-    <view class="field"><view class="label">图片</view>
-      <view class="up tap" bindtap="pickImage">
-        <image wx:if="{{form.imageUrl}}" class="up-img" src="{{form.imageUrl}}" mode="aspectFill"/>
-        <view wx:else class="up-ph">＋ 上传图片</view>
+  <!-- 菜品新建/编辑：弹出层（底部抽屉，始终浮于列表之上，不受菜品数量影响） -->
+  <view wx:if="{{showForm}}" class="modal-mask" bindtap="closeForm" catchtouchmove="noop">
+    <view class="modal-panel" catchtap="noop">
+      <view class="modal-bar">
+        <view class="sec">{{editingId ? '编辑菜品' : '新建菜品'}}</view>
+        <view class="modal-x" bindtap="closeForm">✕</view>
       </view>
+      <scroll-view scroll-y class="modal-body">
+        <view class="field"><view class="label">名称</view><input value="{{form.name}}" bindinput="onName" placeholder="菜品名称"/></view>
+        <view class="field"><view class="label">价格（元）</view><input type="digit" value="{{form.price}}" bindinput="onPrice" placeholder="0"/></view>
+        <view class="field"><view class="label">排序（数字越小越靠前）</view><input type="number" value="{{form.sort}}" bindinput="onSort" placeholder="0"/></view>
+        <view class="field"><view class="label">描述</view><textarea value="{{form.desc}}" bindinput="onDesc" placeholder="一句话介绍"/></view>
+        <view class="field row between"><view class="label">在售</view><switch checked="{{form.status}}" bindchange="onStatus"/></view>
+        <view class="field"><view class="label">图片</view>
+          <view class="up tap" bindtap="pickImage">
+            <image wx:if="{{form.imageUrl}}" class="up-img" src="{{form.imageUrl}}" mode="aspectFill"/>
+            <view wx:else class="up-ph">＋ 上传图片</view>
+          </view>
+        </view>
+        <button class="btn block" bindtap="save">保存</button>
+      </scroll-view>
     </view>
-    <button class="btn block" bindtap="save">保存</button>
   </view>
 </view>
