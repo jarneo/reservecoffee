@@ -1,6 +1,6 @@
 <view class="page">
   <view class="hero">
-    <image wx:if="{{product.imageUrl}}" class="hero-img" src="{{product.imageUrl}}" mode="aspectFill"/>
+    <image wx:if="{{product.imageUrl}}" class="hero-img" src="{{product.imageUrl}}" mode="widthFix"/>
     <view wx:else class="hero-ph">暂无图片</view>
   </view>
 
