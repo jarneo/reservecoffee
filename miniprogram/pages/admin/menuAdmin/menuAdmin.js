@@ -69,20 +69,32 @@ Page({
       }
     })
   },
-  save() {
+  // keepOpen=true 时保存后不关闭弹层、重置为空白新表单，便于连续添加多个菜品
+  save(keepOpen) {
     const f = this.data.form
     if (!f.name.trim()) return wx.showToast({ title: '请填写名称', icon: 'none' })
     if (!(Number(f.price) >= 0)) return wx.showToast({ title: '价格无效', icon: 'none' })
     if (!f.image) return wx.showToast({ title: '请上传图片', icon: 'none' })
     wx.showLoading({ title: '保存中' })
+    const savedSort = (f.sort === '' || f.sort == null) ? 0 : Number(f.sort)
     call('saveProduct', {
       projectId: this.data.projectId, productId: this.data.editingId || undefined,
       name: f.name, price: Number(f.price), desc: f.desc, status: f.status ? 'on' : 'off', image: f.image,
-      sort: (f.sort === '' || f.sort == null) ? 0 : Number(f.sort)
+      sort: savedSort
     })
-      .then(() => { wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }); this.setData({ showForm: false }); this.loadProducts() })
+      .then(() => {
+        wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }); this.loadProducts()
+        if (keepOpen) {
+          // 连续添加：保留弹层，重置为空白新表单（排序顺延、图片清空）
+          this.setData({ editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: savedSort + 1 } })
+        } else {
+          this.setData({ showForm: false })
+        }
+      })
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message, icon: 'none' }) })
   },
+  // 保存并继续添加（仅新建模式）：录完一个直接清空表单继续下一个，不必反复开关弹层
+  saveAndAdd() { this.save(true) },
   toggleStatus(e) {
     const p = this.data.products[e.currentTarget.dataset.i]
     wx.showLoading({ title: '更新中' })

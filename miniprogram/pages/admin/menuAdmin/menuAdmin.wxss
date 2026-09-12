@@ -20,3 +20,8 @@
 .modal-x { font-size: 38rpx; color: var(--ink-3); padding: 0 12rpx; line-height: 1; }
 .modal-body { max-height: 78vh; padding: 12rpx 28rpx 32rpx; box-sizing: border-box; }
 .modal-body .btn.block { margin-top: 28rpx; }
+/* 保存操作区：新建模式两个按钮并排，编辑模式仅「保存」 */
+.modal-actions { display: flex; gap: 16rpx; margin-top: 28rpx; }
+.modal-actions .btn.block { flex: 1; margin-top: 0; }
+.btn.ghost { background: #fff; color: var(--brand); border: 1rpx solid var(--brand); }
+.btn.ghost:active { background: rgba(122, 82, 48, .08); }

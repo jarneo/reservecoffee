@@ -48,7 +48,10 @@
             <view wx:else class="up-ph">＋ 上传图片</view>
           </view>
         </view>
-        <button class="btn block" bindtap="save">保存</button>
+        <view class="modal-actions">
+          <button wx:if="{{editingId === ''}}" class="btn ghost block" bindtap="saveAndAdd">保存并继续添加</button>
+          <button class="btn block" bindtap="save">保存</button>
+        </view>
       </scroll-view>
     </view>
   </view>
