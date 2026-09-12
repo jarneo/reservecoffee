@@ -69,12 +69,13 @@ Page({
   },
 
   // 自动选中并展开「离当天最近的可约日」（仅首次进入时）
+  // 日历起始位置默认切到最近可约日：今天有可选场次则为今天，否则向后取第一个可约日
   autoSelectFirst() {
     if (this.data.selectedDate) return
     const d = this.nearestOpenDate()
     if (!d) return
-    // 若该日不在当前 14 天可视条内（较远的可约日），先把锚点移到它，确保顾客看得到
-    if (!(this.data.dateChips || []).some(c => c.ymd === d)) {
+    // 无论该日是否已在当前 14 天可视条内，都把锚点对齐到最近可约日，使日历「从那天开始」展示
+    if (this.data.dateAnchor !== d) {
       this.setData({ dateAnchor: d })
       this.buildDateChips()
     }
