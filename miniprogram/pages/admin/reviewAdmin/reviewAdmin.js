@@ -16,25 +16,27 @@ function timeStr(ts) {
 Page({
   behaviors: [guard],
   data: {
-    projects: [], projectId: '', projectName: '', products: [], productOptions: [{ _id: '', name: '全部菜品' }], productId: '', productName: '全部菜品',
+    projects: [], projectOptions: [{ _id: '', name: '全部项目' }], projectId: '', projectName: '全部项目',
+    products: [], productOptions: [{ _id: '', name: '全部菜品' }], productId: '', productName: '全部菜品',
     reviews: [], tab: 'pending', pendingCount: 0
   },
   onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
   loadProjects() {
     call('listProjects').then(d => {
       const list = d.list || []
-      this.setData({ projects: list })
-      if (list.length) this.selectProject(list[0]._id)
+      this.setData({ projects: list, projectOptions: [{ _id: '', name: '全部项目' }].concat(list) })
+      // 默认「全部项目」：跨项目查看所有菜品评价
+      this.selectProject('')
     })
   },
-  onProjectPick(e) { this.selectProject(this.data.projects[e.detail.value]._id) },
+  onProjectPick(e) { this.selectProject(this.data.projectOptions[e.detail.value]._id) },
   selectProject(id) {
-    const name = (this.data.projects.find(x => x._id === id) || {}).name || ''
+    const name = (this.data.projects.find(x => x._id === id) || {}).name || '全部项目'
     this.setData({ projectId: id, projectName: name, productId: '', productName: '全部菜品' })
     call('adminProducts', { projectId: id })
       .then(d => {
         const products = d.products || []
-        // 顶部追加「全部菜品」：进入默认展示该项目全部菜品的待审批评价，再按需切换具体菜品筛选
+        // 顶部追加「全部菜品」：全部项目模式下展示所有菜品，再按需切换具体菜品筛选
         this.setData({ products, productOptions: [{ _id: '', name: '全部菜品' }].concat(products), productId: '', productName: '全部菜品' })
         this.loadReviews()
       })

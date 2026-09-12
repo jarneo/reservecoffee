@@ -19,9 +19,8 @@ exports.main = async (event) => {
   if (role.role !== 'owner' && role.role !== 'manager') return fail('无权限')
 
   const { projectId } = event
-  if (!projectId) return fail('缺少 projectId')
-
-  const res = await db.collection(COL.products).where({ projectId }).orderBy('sort', 'asc').get()
+  // projectId 可选：空 = 全部项目（跨项目列出所有菜品）
+  const res = await db.collection(COL.products).where(projectId ? { projectId } : {}).orderBy('sort', 'asc').get()
   const products = await resolveImages(res.data || [])
   return ok({ products })
 }
