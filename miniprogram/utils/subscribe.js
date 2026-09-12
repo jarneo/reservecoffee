@@ -11,9 +11,10 @@ const TPLS = {
   dayBefore: 'rQEgm5zUep1S9oGeYKYUEawhPK3rs48EQwNncx0HP04'     // 前一天提醒（顾客，每天 17:30 推送次日预约）
 }
 
-// 顾客侧需要授权的订阅模板（成功 / 取消 / 开场提醒 / 结束提醒 / 前一天提醒）
+// 顾客侧需要授权的订阅模板（前一天提醒 / 成功 / 取消 / 开场提醒 / 结束提醒）
 // ⚠️ 微信一次最多 3 个 tmplIds，util.requestSubscribe 会自动按 3 个一组分片
-const BOOKER_TPLS = [TPLS.reserveSuccess, TPLS.reserveCancel, TPLS.reminder, TPLS.reminderEnd, TPLS.dayBefore]
+// ⚠️ 把「前一天提醒」放在最前：提交时第一组弹窗即出现，避免被整组授权弹窗淹没而被用户漏点。
+const BOOKER_TPLS = [TPLS.dayBefore, TPLS.reserveSuccess, TPLS.reserveCancel, TPLS.reminder, TPLS.reminderEnd]
 // 管理员侧需要授权的订阅模板（新预约 / 取消 / 待审核）
 const ADMIN_TPLS = [TPLS.adminNew, TPLS.adminCancel, TPLS.adminReview]
 

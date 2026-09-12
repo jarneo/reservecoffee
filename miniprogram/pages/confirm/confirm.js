@@ -1,6 +1,6 @@
 const { call } = require('../../utils/cloud')
 const { isPhone, requestSubscribe } = require('../../utils/util')
-const { BOOKER_TPLS } = require('../../utils/subscribe')
+const { TPLS, BOOKER_TPLS } = require('../../utils/subscribe')
 
 Page({
   data: {
@@ -10,7 +10,9 @@ Page({
     fields: ['name', 'phone'],
     showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false,
     // 黑名单阻断态：进入页面即检出，禁用提交
-    blocked: false, blockReason: ''
+    blocked: false, blockReason: '',
+    // 前一天提醒微信授权态：'' 未操作 / 'granted' 已授权 / 'declined' 未授权
+    dayBeforeAuth: ''
   },
 
   onLoad(q) {
@@ -95,6 +97,16 @@ Page({
     this.setData({ partySize: v })
   },
 
+  // 前一天提醒：单独的微信订阅授权入口，让用户能明确开启次日提醒
+  // 避免被提交时整组授权弹窗淹没而漏点；点一次即可，提交时仍会再次请求（已授权则微信不再重复弹）
+  authDayBefore() {
+    requestSubscribe([TPLS.dayBefore]).then(r => {
+      const granted = (r.accepted || []).indexOf(TPLS.dayBefore) >= 0
+      this.setData({ dayBeforeAuth: granted ? 'granted' : 'declined' })
+      wx.showToast({ title: granted ? '已开启前一天提醒' : '未授权，将改发短信', icon: 'none' })
+    })
+  },
+
   submit() {
     // 黑名单兜底：profile 尚未返回时用户就点了提交（服务端 createReservation 亦会拦截，此处仅为体验兜底）
     if (this.data.blocked) {
@@ -115,7 +127,7 @@ Page({
     if (fields.indexOf('note') >= 0) payload.note = note || ''
     if (fields.indexOf('gender') >= 0) payload.gender = gender || ''
     if (fields.indexOf('age') >= 0) payload.age = age || ''
-    // 必须在用户点击手势内同步请求订阅授权（成功/取消/开场提醒），否则微信会拦截导致授权失败、收不到推送
+    // 必须在用户点击手势内同步请求订阅授权（前一天提醒/成功/取消/开场提醒/结束提醒），否则微信会拦截导致授权失败、收不到推送
     requestSubscribe(BOOKER_TPLS)
     wx.showLoading({ title: '提交中' })
     call('createReservation', payload)

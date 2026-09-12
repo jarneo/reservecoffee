@@ -40,6 +40,15 @@
     <view class="field" wx:if="{{showNote}}"><view class="label">备注（选填）</view><textarea placeholder="如有特殊需求请告知店家" value="{{note}}" bindinput="onNote"/></view>
   </view>
 
+  <!-- 前一天提醒：独立的微信订阅授权入口，明确引导用户开启次日（到店前一天 17:30）提醒 -->
+  <view class="card notify-card">
+    <view class="nc-head">
+      <view class="nc-title">📅 前一天微信提醒</view>
+      <button class="btn ghost sm nc-btn" bindtap="authDayBefore">{{dayBeforeAuth === 'granted' ? '已开启 ✓' : '开启提醒'}}</button>
+    </view>
+    <view class="nc-text">我们将在您到店前一天 17:30 通过「微信服务通知」推送次日预约提醒，避免遗忘。点击「开启提醒」并在弹窗中允许「前一天提醒」即可。若未开启，到时将通过短信通知您。</view>
+  </view>
+
   <button wx:if="{{blocked}}" class="btn block blk-disabled" disabled>无法预约</button>
   <button wx:else class="btn block" bindtap="submit">提交预约</button>
 </view>
