@@ -16,11 +16,13 @@ Page({
   data: {
     list: [], showForm: false,
     form: { name: '', intro: '', icon: 'coffee', needReview: false, dailyLimit: 1, advanceDays: 7 },
-    icons: ['coffee', 'sake', 'study']
+    icons: ['coffee', 'sake', 'study'],
+    showRename: false, renamingId: '', renameValue: ''
   },
   onLoad() {
     this.guard(['owner']).then(role => { if (role) this.load() })
   },
+  noop() {},
   load() {
     call('listProjects').then(d => {
       const list = (d.list || []).map(p => Object.assign({}, p, { bookableUntil: bookableUntil(p.advanceDays) }))
@@ -89,6 +91,23 @@ Page({
     wx.showLoading({ title: '处理中' })
     call('updateProject', { projectId: id, deleted: false })
       .then(() => { wx.hideLoading(); this.load(); wx.showToast({ title: '已恢复', icon: 'success' }) })
+      .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
+  },
+  // 改名：底部抽屉弹层，复用 updateProject 的 name 字段
+  openRename(e) {
+    const id = e.currentTarget.dataset.id
+    const item = this.data.list.find(x => x._id === id)
+    if (!item) return
+    this.setData({ showRename: true, renamingId: id, renameValue: item.name })
+  },
+  onRename(e) { this.setData({ renameValue: e.detail.value }) },
+  closeRename() { this.setData({ showRename: false }) },
+  saveRename() {
+    const name = (this.data.renameValue || '').trim()
+    if (!name) return wx.showToast({ title: '请填写名称', icon: 'none' })
+    wx.showLoading({ title: '保存中' })
+    call('updateProject', { projectId: this.data.renamingId, name })
+      .then(() => { wx.hideLoading(); this.setData({ showRename: false }); this.load(); wx.showToast({ title: '已改名', icon: 'success' }) })
       .catch(err => { wx.hideLoading(); wx.showToast({ title: err.message, icon: 'none' }) })
   }
 })

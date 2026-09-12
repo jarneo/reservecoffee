@@ -28,12 +28,30 @@
       <block wx:else>{{item.published?'发布':'暂停'}} · {{item.paused?'暂定':'开放'}} · 可约日至 {{item.bookableUntil}}</block>
     </view>
     <view class="ops">
+      <button wx:if="{{!item.deleted}}" class="btn sm ghost" catchtap="openRename" data-id="{{item._id}}">改名</button>
       <button wx:if="{{item.published && !item.deleted}}" class="btn sm ghost" catchtap="togglePublish" data-id="{{item._id}}">下架</button>
       <button wx:elif="{{!item.deleted}}" class="btn sm" catchtap="togglePublish" data-id="{{item._id}}">发布</button>
       <button wx:if="{{!item.deleted}}" class="btn sm ghost" catchtap="togglePause" data-id="{{item._id}}">{{item.paused?'开放预约':'暂停预约'}}</button>
       <button wx:if="{{!item.deleted}}" class="btn sm ghost" catchtap="deleteProject" data-id="{{item._id}}">删除</button>
       <view wx:if="{{item.deleted}}" class="badge full">已删除</view>
       <button wx:if="{{item.deleted}}" class="btn sm ghost" catchtap="restoreProject" data-id="{{item._id}}">恢复</button>
+    </view>
+  </view>
+
+  <!-- 改名：底部抽屉弹出层 -->
+  <view wx:if="{{showRename}}" class="modal-mask" bindtap="closeRename" catchtouchmove="noop">
+    <view class="modal-panel" catchtap="noop">
+      <view class="modal-bar">
+        <view class="sec">修改项目名称</view>
+        <view class="modal-x" bindtap="closeRename">✕</view>
+      </view>
+      <view class="modal-body">
+        <view class="field"><view class="label">名称（最多30字）</view><input value="{{renameValue}}" bindinput="onRename" placeholder="项目名称" maxlength="30"/></view>
+        <view class="modal-actions">
+          <button class="btn ghost block" bindtap="closeRename">取消</button>
+          <button class="btn block" bindtap="saveRename">保存</button>
+        </view>
+      </view>
     </view>
   </view>
   <view wx:if="{{list.length===0}}" class="note">暂无项目，点击右上角新建</view>
