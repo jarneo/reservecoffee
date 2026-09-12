@@ -41,18 +41,44 @@ Page({
           openDays, advanceDays: adv, showSeatInfo: p.showSeatInfo !== false
         }, () => {
           this.buildDateChips()
-          // 默认展开「最近可约日」的场次（今天若可约则为今天，否则向后取第一个开放日）
+          // 默认展开「离当天最近、且确有可选场次」的可约日（今天若有可选场次则为今天，否则向后取第一个）
           this.autoSelectFirst()
         })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
   },
 
-  // 自动选中并展开最近的「可预约」日期（仅首次进入时）
+  // 计算「离当天最近、且确有可选场次」的可约日（在提前预约窗口内）
+  // 候选 = openDays ∩ 有场次 ∩ 未整体暂停 ∩ 存在「未暂停 / 未过期 / 未满」的场次
+  nearestOpenDate() {
+    const todayStr = ymd(new Date())
+    const maxWin = ymd(addDaysDate(this.data.advanceDays))
+    const openDays = this.data.openDays
+    const projPaused = !!this.data.project.paused
+    const cutoff = this.data.project.cutoff
+    return (this.data.schedules || [])
+      .filter(s => {
+        if (s.date < todayStr || s.date > maxWin) return false
+        if (openDays.indexOf(s.date) < 0 || s.closed || projPaused) return false
+        const sess = s.sessions || []
+        if (!sess.length) return false
+        return sess.some(x => !x.paused && !isSessionExpired(s.date, x.start, cutoff) && (x.capacity - x.booked) > 0)
+      })
+      .map(s => s.date)
+      .sort()[0] || null
+  },
+
+  // 自动选中并展开「离当天最近的可约日」（仅首次进入时）
   autoSelectFirst() {
     if (this.data.selectedDate) return
-    const first = (this.data.dateChips || []).find(c => c.open)
-    if (first) this.selectDay(first.ymd)
+    const d = this.nearestOpenDate()
+    if (!d) return
+    // 若该日不在当前 14 天可视条内（较远的可约日），先把锚点移到它，确保顾客看得到
+    if (!(this.data.dateChips || []).some(c => c.ymd === d)) {
+      this.setData({ dateAnchor: d })
+      this.buildDateChips()
+    }
+    this.selectDay(d)
   },
 
   // 横向日期条：固定 14 天（两周），以 dateAnchor 为起点

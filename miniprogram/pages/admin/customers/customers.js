@@ -115,6 +115,27 @@ Page({
     if (!openid) return
     wx.navigateTo({ url: '/pages/admin/customers/detail?openid=' + openid })
   },
+  // 设为管理员（owner 专属）：复用 addAdmin 云函数，授权为 manager，成功后刷新名录
+  async setAdmin(e) {
+    const { openid, name } = e.currentTarget.dataset
+    if (!openid) return
+    const confirmed = await new Promise(res => wx.showModal({
+      title: '设为管理员',
+      content: '将「' + (name || '该顾客') + '」设为普通管理员（manager）？\n授权后对方将获得管理端入口。',
+      success: x => res(x.confirm)
+    }))
+    if (!confirmed) return
+    wx.showLoading({ title: '处理中', mask: true })
+    try {
+      await call('addAdmin', { openid, role: 'manager' })
+      wx.showToast({ title: '已设为管理员', icon: 'none' })
+      this.loadAll()
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
+  },
   onPullDownRefresh() {
     this.loadAll().then(() => wx.stopPullDownRefresh())
   }

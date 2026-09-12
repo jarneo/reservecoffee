@@ -83,3 +83,18 @@
 .tagrow {
   margin-top: 14rpx;
 }
+/* 设为管理员按钮：品牌色描边胶囊，catchtap 避免冒泡触发卡片跳转 */
+.btn-set {
+  display: inline-block;
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  color: var(--brand, #7A5230);
+  background: rgba(122, 82, 48, .08);
+  border: 1rpx solid var(--brand, #7A5230);
+  border-radius: 999rpx;
+  padding: 10rpx 24rpx;
+  text-align: center;
+}
+.btn-set:active {
+  background: rgba(122, 82, 48, .18);
+}

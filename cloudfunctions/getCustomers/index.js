@@ -85,6 +85,11 @@ exports.main = async (event) => {
 
   const openids = rows.map(r => r._id)
 
+  // 3.5) 批量判断是否已是管理员（用于在名录页隐藏「设为管理员」按钮）
+  const adminRes = await db.collection(COL.admins).where({ openid: _.in(openids) }).get().catch(() => ({ data: [] }))
+  const adminMap = {}
+  ;(adminRes.data || []).forEach(a => { adminMap[a.openid] = true })
+
   // 3) 批量取 users 资料
   const usersRes = await db.collection(COL.users).where({ _id: _.in(openids) }).get().catch(() => ({ data: [] }))
   const userMap = {}
@@ -118,6 +123,7 @@ exports.main = async (event) => {
       tags: u.tags || [],
       isBlacklisted: !!u.isBlacklisted,
       blacklistReason: u.blacklistReason || '',
+      isAdmin: !!adminMap[r._id],
       total: r.total,
       firstAt: r.firstAt,
       lastAt: r.lastAt,

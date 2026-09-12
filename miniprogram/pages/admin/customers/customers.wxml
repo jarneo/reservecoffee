@@ -44,6 +44,9 @@
       <view wx:for="{{item.autoTags2}}" wx:for-item="t" wx:key="*this" class="tag muted">{{t}}</view>
       <view wx:if="{{item.autoTags.length > 2}}" class="tag muted">+{{item.autoTags.length - 2}}</view>
     </view>
+
+    <!-- 设为管理员：仅 owner 可见，已为管理员 / 黑名单顾客隐藏 -->
+    <view wx:if="{{role==='owner' && !item.isAdmin && !item.isBlacklisted}}" class="btn-set" catchtap="setAdmin" data-openid="{{item.openid}}" data-name="{{item.name}}">+ 设为管理员</view>
   </view>
 
   <view wx:if="{{loading}}" class="empty muted">加载中…</view>
