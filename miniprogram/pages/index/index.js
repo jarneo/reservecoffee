@@ -1,6 +1,13 @@
 const { call } = require('../../utils/cloud')
 const app = getApp()
 
+// 双栏瀑布流：按索引奇偶拆成左右两列，两列各自独立纵向堆叠，互不强制行对齐，消除同行高度差造成的留白
+function splitCols(list) {
+  const colA = [], colB = []
+  ;(list || []).forEach((it, i) => { (i % 2 === 0 ? colA : colB).push(it) })
+  return { colA, colB }
+}
+
 Page({
   data: {
     homepage: {}, projects: [], products: [], featured: null, role: 'none'
@@ -16,12 +23,18 @@ Page({
 
   load() {
     call('getHomepage')
-      .then(d => this.setData({
-        homepage: d.homepage || {},
-        projects: d.projects || [],
-        products: d.products || [],
-        featured: (d.projects && d.projects[0]) || null
-      }))
+      .then(d => {
+        const products = d.products || []
+        const cols = splitCols(products)
+        this.setData({
+          homepage: d.homepage || {},
+          projects: d.projects || [],
+          products,
+          colA: cols.colA,
+          colB: cols.colB,
+          featured: (d.projects && d.projects[0]) || null
+        })
+      })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
   },
 

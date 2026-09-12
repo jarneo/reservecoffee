@@ -6,6 +6,13 @@ function stars(n) {
   return '★'.repeat(c) + '☆'.repeat(5 - c)
 }
 
+// 双栏瀑布流：按索引奇偶拆成左右两列，两列各自独立纵向堆叠，互不强制行对齐，消除同行高度差造成的留白
+function splitCols(list) {
+  const colA = [], colB = []
+  ;(list || []).forEach((it, i) => { (i % 2 === 0 ? colA : colB).push(it) })
+  return { colA, colB }
+}
+
 Page({
   data: { projectId: '', shopName: '', shopTag: '图片菜品 · 真实评价', products: [] },
   onLoad(q) {
@@ -24,7 +31,8 @@ Page({
         const products = (d.products || []).map(p => ({
           ...p, stars: stars(p.rating), priceText: '¥' + (p.price || 0)
         }))
-        this.setData({ products })
+        const cols = splitCols(products)
+        this.setData({ products, colA: cols.colA, colB: cols.colB })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
   },

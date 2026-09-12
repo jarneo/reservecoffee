@@ -25,8 +25,10 @@ page { overflow-x: hidden; width: 100%; }
 .bookinfo .more { font-size:22rpx; color:var(--ink-3); }
 
 /* 店铺菜单（首页双列网格） */
-.menu-grid { display:flex; flex-wrap:wrap; gap:16rpx; align-items:flex-start; }
-.menu-card { width:calc(50% - 8rpx); background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; box-sizing:border-box; }
+/* 双栏瀑布流：两列各自独立纵向堆叠，互不强制行对齐，消除同行高度差造成的留白 */
+.menu-cols { display:flex; gap:16rpx; align-items:flex-start; }
+.menu-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:16rpx; }
+.menu-card { width:100%; background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; box-sizing:border-box; }
 /* 图片：固定宽度 + 按照片原始比例自适应高度（mode=widthFix），放弃固定宽高比，允许左右卡片高度不齐 */
 .menu-img-wrap { width:100%; background:var(--fill); overflow:hidden; }
 .menu-img { width:100%; height:auto; display:block; }

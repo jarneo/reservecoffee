@@ -26,15 +26,29 @@
 
   <view class="sec-title" style="margin-top:36rpx">店铺菜单</view>
   <view wx:if="{{products.length===0}}" class="note">暂无在售菜品</view>
-  <view class="menu-grid">
-    <view wx:for="{{products}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
-      <view class="menu-img-wrap">
-        <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
-        <view wx:else class="menu-img ph">暂无图</view>
+  <view class="menu-cols">
+    <view class="menu-col">
+      <view wx:for="{{colA}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
+        <view class="menu-img-wrap">
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <view wx:else class="menu-img ph">暂无图</view>
+        </view>
+        <view class="menu-info">
+          <view class="menu-name">{{item.name}}</view>
+          <view class="menu-price">¥{{item.price}}</view>
+        </view>
       </view>
-      <view class="menu-info">
-        <view class="menu-name">{{item.name}}</view>
-        <view class="menu-price">¥{{item.price}}</view>
+    </view>
+    <view class="menu-col">
+      <view wx:for="{{colB}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
+        <view class="menu-img-wrap">
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <view wx:else class="menu-img ph">暂无图</view>
+        </view>
+        <view class="menu-info">
+          <view class="menu-name">{{item.name}}</view>
+          <view class="menu-price">¥{{item.price}}</view>
+        </view>
       </view>
     </view>
   </view>
