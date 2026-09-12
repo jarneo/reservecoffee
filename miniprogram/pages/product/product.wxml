@@ -5,10 +5,8 @@
   </view>
 
   <view class="card">
-    <view class="row between">
-      <view class="name">{{product.name}}</view>
-      <view class="price">{{product.priceText}}</view>
-    </view>
+    <view class="name">{{product.name}}</view>
+    <view class="price">{{product.priceText}}</view>
     <view class="star">{{product.stars}}<text class="count"> {{product.ratingCount||0}} 条评价</text></view>
     <view wx:if="{{product.desc}}" class="desc">{{product.desc}}</view>
   </view>

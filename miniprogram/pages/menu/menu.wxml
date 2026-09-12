@@ -6,18 +6,15 @@
 
   <view class="sec-title">在售菜品</view>
   <view wx:if="{{products.length===0}}" class="note">该店暂未上架菜品</view>
-  <view class="list">
-    <view wx:for="{{products}}" wx:key="_id" class="card tap" bindtap="goProduct" data-id="{{item._id}}">
-      <view class="dish">
-        <view class="dish-img">
-          <image wx:if="{{item.imageUrl}}" class="img" src="{{item.imageUrl}}" mode="aspectFill"/>
-          <view wx:else class="ph">图片</view>
-        </view>
-        <view class="dish-info">
-          <view class="row between"><view class="bold">{{item.name}}</view><view class="price">¥{{item.price}}<text class="unit">/份</text></view></view>
-          <view wx:if="{{item.desc}}" class="muted" style="margin:6rpx 0">{{item.desc}}</view>
-          <view class="stars">{{item.stars}}</view>
-        </view>
+  <view class="menu-grid">
+    <view wx:for="{{products}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
+      <view class="menu-img-wrap">
+        <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="aspectFill"/>
+        <view wx:else class="menu-img ph">图片</view>
+      </view>
+      <view class="menu-info">
+        <view class="menu-name">{{item.name}}</view>
+        <view class="menu-price">{{item.priceText}}</view>
       </view>
     </view>
   </view>

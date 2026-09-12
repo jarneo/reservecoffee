@@ -24,10 +24,13 @@ page { overflow-x: hidden; width: 100%; }
 .bookinfo .date-chip { font-size:22rpx; line-height:1; padding:6rpx 12rpx; border-radius:8rpx; color:var(--ink-2); background:var(--fill); border:1rpx solid var(--line); }
 .bookinfo .more { font-size:22rpx; color:var(--ink-3); }
 
-/* 店铺菜单（首页内联） */
-.menu-card { display:flex; gap:20rpx; background:#fff; border:1rpx solid var(--line); border-radius:16rpx; padding:20rpx; margin-bottom:16rpx; }
-.menu-img { width:160rpx; height:160rpx; border-radius:12rpx; flex:none; background:var(--fill); }
-.menu-img.ph { display:flex; align-items:center; justify-content:center; color:var(--ink-3); font-size:22rpx; border:1rpx dashed var(--line); }
-.menu-info { flex:1; min-width:0; display:flex; flex-direction:column; }
-.menu-price { font-weight:600; font-size:28rpx; }
+/* 店铺菜单（首页双列网格） */
+.menu-grid { display:flex; flex-wrap:wrap; gap:16rpx; }
+.menu-card { width:calc(50% - 8rpx); background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; box-sizing:border-box; }
+.menu-img-wrap { position:relative; width:100%; padding-bottom:125%; background:var(--fill); overflow:hidden; }
+.menu-img { position:absolute; top:0; left:0; width:100%; height:100%; }
+.menu-img.ph { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--ink-3); font-size:24rpx; border:1rpx dashed var(--line); }
+.menu-info { padding:16rpx; }
+.menu-name { font-size:28rpx; font-weight:600; line-height:1.35; }
+.menu-price { font-size:26rpx; font-weight:600; color:var(--brand); margin-top:10rpx; }
 
