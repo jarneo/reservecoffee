@@ -14,7 +14,10 @@ Page({
     // 用户长期通知偏好（users.subscriptions，缺省全订阅）。
     // 页面不再自绘勾选弹窗：授权直接交给微信原生弹窗（它本身就是带勾选框的列表）。
     // 这里只用于「提交时随预约一起落库」以及「哪几类不必申请」的过滤。
-    subs: {}
+    subs: {},
+    // 提交成功页（应用内必达确认 UI）：成功后展示留座信息覆盖层
+    success: false,
+    successInfo: null
   },
 
   onLoad(q) {
@@ -122,13 +125,13 @@ Page({
   },
 
   // 直接拉起微信原生订阅弹窗（它本身就是带勾选框的列表，无需再自绘一层）。
-  // 只申请「本次预约会真正触发」的模板（按时间轴裁剪到 ≤3），且**忽略长期偏好**：
+  // 申请「预约成功 + 适用时间轴(≤2) + 有空位顺带取消」的授权集（由 subscribe.tmplIdsOfPlan 分配，恒 ≤3，1 次弹窗），且**忽略长期偏好**：
   //    长期偏好只闸「后端是否发送」，不闸「前端申请」——否则用户在偏好里关掉的项永远不在弹窗里、无法重新开启。
   //    弹窗里用户勾选/取消的结果会回写 this.data.subs（作为本次预约的订阅快照，并供 doSubmit 落库）。
   // ⚠️ 必须在本 tap 处理器里**同步**发起（不能放在任何 await 之后），否则脱离用户手势上下文 → 微信不弹窗。
   requestNotify() {
     const plan = this.ensurePlan()
-    const ids = tmplIdsOfPlan(plan, null) // 始终申请时间轴内的全部适用模板（忽略 subs）
+    const ids = tmplIdsOfPlan(plan, null) // 申请集由 tmplIdsOfPlan 按档位分配（预约成功必含 + 时间轴≤2 + 有空位填取消），恒≤3
     console.info('[confirm] notifyPlan=', JSON.stringify(plan), 'requestIds=', ids.length, 'ids=', JSON.stringify(ids))
     if (!ids.length) {
       // 走到这里只可能是日期/场次异常导致计划为空；显式记录，避免静默失败被误认为「功能没生效」
@@ -193,16 +196,30 @@ Page({
   doSubmit(payload) {
     wx.showLoading({ title: '提交中' })
     call('createReservation', { ...payload, subscribed: this.data.subs })
-      .then(() => {
+      .then(res => {
         wx.hideLoading()
-        wx.showToast({ title: '预约成功', icon: 'success' })
+        // 提交成功页（应用内必达确认）：展示留座信息；待审核项目显示「待审核」态
+        const needReview = res && res.review === 'pending'
+        this.setData({
+          success: true,
+          successInfo: {
+            projectName: this.data.projectName,
+            date: this.data.date,
+            session: this.data.session,
+            partySize: this.data.partySize,
+            needReview
+          }
+        })
         // 持久化顾客资料，下次预约自动带出（失败不阻断主流程）
         const prof = { name: this.data.name.trim() }
         if (this.data.phone) prof.phone = this.data.phone
         call('saveProfile', prof).catch(() => {})
-        // 我的预约是 tabBar 页面，必须用 switchTab（redirectTo/navigateTo 对 tabBar 页无效）
-        setTimeout(() => wx.switchTab({ url: '/pages/mine/mine' }), 800)
       })
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '提交失败', icon: 'none' }) })
-  }
+  },
+
+  // 提交成功页：查看我的预约（我的预约是 tabBar 页，必须用 switchTab）
+  goMine() { wx.switchTab({ url: '/pages/mine/mine' }) },
+  // 提交成功页：返回首页继续逛
+  closeSuccess() { wx.reLaunch({ url: '/pages/index/index' }) }
 })

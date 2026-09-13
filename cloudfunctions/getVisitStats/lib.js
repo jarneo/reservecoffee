@@ -194,14 +194,19 @@ async function loadUserSubs(openid, cache) {
   return subs
 }
 
-// ===== 通知计划（按预约时间轴动态裁剪）=====
-// 需求：无论哪种提交场景，整条时间轴上的通知不超过 3 条。
-// 做法不是删模板，而是「按预约时间轴动态选择本次预约真正会触发的通知类型」：
-//   当天预约   → 「前一天提醒」窗口已过，自然剔除；
-//   远期预约   → 名额让给更贴身的提醒，「结束提醒」被挤出（按优先级截断到 3）。
-// 「预约取消」不参与该计划：它在用户点「取消预约」时即时申请授权（不占这 3 个名额）。
-// ⚠️ 前端 miniprogram/utils/subscribe.js 的 notifyPlanOf 是本规则的前端镜像
-//    （用于决定提交时向微信申请哪几个模板），两边必须同步修改。
+// ===== 通知计划（按预约时间轴裁剪：返回完整未来适用集合，不硬截断）=====
+// 本函数只回答「这场预约在时间轴上哪些提醒类型仍处于未来、应当被启用」，返回 4 键布尔（恒含全部键）。
+//   reserveSuccess 恒 true（免审即时发 / 待审在审核通过时发）
+//   dayBefore      仅当 now < 前一天窗口终点（D-1 dayBeforeAt + dayBeforeWindow）
+//   reminder       仅当 now < 开场前触发时刻（否则下单后会被定时任务立即补发，与「预约确认」重复）
+//   reminderEnd    仅当 now < 结束触发时刻
+// 注意：本计划是「完整未来适用集合」，**不做 ≤3 硬截断**——
+//   ① 远期预约的「结束提醒」仍记为 true，remindReservation 会先尝试微信（未授权 → 43101）再走短信兜底，
+//      从而保证「短信确保触达」；② 所谓「≤3 条」只约束【提交瞬间的微信授权弹窗】（前端 allocation，见 subscribe.js tmplIdsOfPlan），
+//      不约束整条生命周期的发送条数（时间轴类提醒本来就分布在不同的未来节点，互不重叠）。
+// 「预约取消」是事件型、不在本计划内：它随取消事件触发，由 cancelReservation 发送并走短信兜底。
+// ⚠️ 前端 miniprogram/utils/subscribe.js 的 notifyPlanOf 是本规则的前端镜像（同样返回完整计划，不截断）；
+//    提交授权的 ≤3 分配在 tmplIdsOfPlan 实现，两边必须同步修改。
 
 // 'YYYY-MM-DD' ± n 天（非法输入返回 ''）
 function shiftDate(dateStr, n) {
@@ -224,7 +229,7 @@ function notifyWindowCfg(smsSw) {
   }
 }
 
-// 时间轴通知优先级（同时也是截断顺序）：确认 > 前一天 > 开场前 > 结束
+// 时间轴通知优先级（仅用于文档化顺序，以及作为前端提交弹窗分配时的参考；本函数不再据此截断）
 const NOTIFY_PRIORITY = ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd']
 
 // 计算本次预约应启用的时间轴通知：返回 4 键布尔对象（恒含全部键，便于落库与判定）。
@@ -232,7 +237,7 @@ const NOTIFY_PRIORITY = ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd
 //   dayBefore      仅当 now < 前一天窗口终点（D-1 dayBeforeAt + dayBeforeWindow）
 //   reminder       仅当 now < 开场前触发时刻（否则下单后会被定时任务立即补发，与「预约确认」重复）
 //   reminderEnd    仅当 now < 结束触发时刻
-// 最后按 NOTIFY_PRIORITY 截断到至多 3 项。
+// 不截断：完整未来适用集合（见上方说明）。提交弹窗的 ≤3 分配由前端 tmplIdsOfPlan 负责。
 function notifyPlan(reservation, cfg, nowTs) {
   const now = nowTs || Date.now()
   const f = cfg || notifyWindowCfg({})
@@ -252,12 +257,6 @@ function notifyPlan(reservation, cfg, nowTs) {
   if (!isNaN(remFire) && now < remFire) plan.reminder = true
   if (!isNaN(endFire) && now < endFire) plan.reminderEnd = true
 
-  let kept = 0
-  for (const k of NOTIFY_PRIORITY) {
-    if (!plan[k]) continue
-    if (kept < 3) kept++
-    else plan[k] = false
-  }
   return plan
 }
 

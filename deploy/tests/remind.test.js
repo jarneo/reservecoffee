@@ -310,17 +310,18 @@ const lib = loadLib()
     check('未发微信/短信', store.subscribeCalls.length === 0 && store.smsCalls.length === 0, { w: store.subscribeCalls.length, s: store.smsCalls.length })
   }
 
-  // ---------- S12：notifyPlan 裁剪规则（纯函数矩阵） ----------
+  // ---------- S12：notifyPlan 规则（纯函数矩阵，返回完整未来适用集合、不硬截断） ----------
   // 规则：确认恒开；前一天要求「现在仍早于 D-1 dayBeforeAt + 180min」；
-  //       开场前/结束要求触发时刻在未来；最后按优先级截断到 3。
-  console.log('\nS12 notifyPlan 裁剪：不同提交场景下「时间轴上真正会触发的」不超过 3 条')
+  //       开场前/结束要求触发时刻在未来；**不再按 ≤3 截断**（远期单可返回 4 条）。
+  //       （提交弹窗的 ≤3 分配由前端 tmplIdsOfPlan 另行负责，此处只验证计划本身完整。）
+  console.log('\nS12 notifyPlan：返回完整未来适用集合（远期单最多 4 条，不再硬截断到 3）')
   {
     const cfg = lib.notifyWindowCfg({})   // dayBeforeAt 17:30 / window 180 / before 60 / after 5
     const count = p => ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd'].filter(k => p[k]).length
 
-    // 场景 E：一周后预约（09-20），提交于 09-13 10:00
+    // 场景 E：一周后预约（09-20），提交于 09-13 10:00 → 三项时间轴都在未来 → 完整 4 条
     const pE = lib.notifyPlan({ date: '2026-09-20', sessionStart: '14:00', sessionEnd: '15:30' }, cfg, lib.bjTs('2026-09-13', '10:00'))
-    check('E 一周后：前一天✓ 开场前✓ 结束✗(被截断) → 3 条', pE.dayBefore === true && pE.reminder === true && pE.reminderEnd === false && count(pE) === 3, pE)
+    check('E 一周后：前一天✓ 开场前✓ 结束✓（完整，不截断）→ 4 条', pE.dayBefore === true && pE.reminder === true && pE.reminderEnd === true && count(pE) === 4, pE)
 
     // 场景 B：当天 3 小时后（09-13 13:00 场），提交于 09-13 10:00
     const pB = lib.notifyPlan({ date: '2026-09-13', sessionStart: '13:00', sessionEnd: '14:30' }, cfg, lib.bjTs('2026-09-13', '10:00'))
@@ -334,9 +335,9 @@ const lib = loadLib()
     const pC = lib.notifyPlan({ date: '2026-09-14', sessionStart: '14:00', sessionEnd: '15:30' }, cfg, lib.bjTs('2026-09-13', '21:00'))
     check('C 次日但过窗：前一天✗ 开场前✓ 结束✓ → 3 条', pC.dayBefore === false && pC.reminder === true && pC.reminderEnd === true && count(pC) === 3, pC)
 
-    // 任意场景都不超过 3
-    const over = [pA, pB, pC, pE].every(p => count(p) <= 3)
-    check('所有场景均 ≤3 条', over === true)
+    // notifyPlan 返回的完整计划最多 4 条（确认 + 3 个时间轴）；≤3 约束只作用于提交弹窗（前端 tmplIdsOfPlan）
+    const within = [pA, pB, pC, pE].every(p => count(p) <= 4)
+    check('所有场景计划均 ≤4 条（提交弹窗另行裁剪为 ≤3）', within === true)
 
     // dayBeforeAt 可配：同一时刻（前一天 21:00）提交次日预约，
     // 默认 17:30（窗口 17:30–20:30）已过 → 拿不到；改成 22:00（窗口 22:00–次日 01:00）则可拿到。
@@ -348,8 +349,8 @@ const lib = loadLib()
     check('dayBeforeAt=22:00 时窗口顺延（前一天✓）', p22.dayBefore === true, p22)
   }
 
-  // ---------- S13：notifyPlan 生效 —— 不在计划内的类型两通道都不发 ----------
-  console.log('\nS13 不在 notifyPlan 内的提醒：微信与短信都不发（保证时间轴 ≤3 条）')
+  // ---------- S13：notifyPlan 生效 —— 显式排除的类型两通道都不发 ----------
+  console.log('\nS13 不在 notifyPlan 内的提醒：微信与短信都不发（历史/边缘预约可显式排除某类）')
   {
     // 13a：结束提醒未被裁剪进计划 → 结束后不发（微信 0 / 短信 0），仍打 ended
     const end = bjAt(-30)

@@ -83,8 +83,8 @@ function tmplIdsOf(subs) {
 }
 
 // ===== 通知计划（按预约时间轴动态裁剪）=====
-// 与后端 _lib.notifyPlan 同一规则的前端镜像：决定提交时向微信申请哪几个模板（≤3）。
-// 不裁剪的话 5 个模板需要连弹两次窗，且第二个窗拒绝率很高；裁剪后一次弹窗搞定。
+// 与后端 _lib.notifyPlan 同一规则的前端镜像：notifyPlanOf 返回「完整未来适用集合」（不截断，与后端一致）。
+// 真正做「≤3 分配」的是 tmplIdsOfPlan（提交弹窗授权集），保证只弹 1 次窗。
 // ⚠️ 规则必须与 cloudfunctions/_lib/index.js 的 notifyPlan 保持同步。
 
 // 通知时间窗配置默认值（实际值由 getProject 返回的 notifyCfg 下发；与后端 notifyWindowCfg 一致）
@@ -128,8 +128,9 @@ function bjTs(dateStr, hm) {
   return Date.UTC(y, m - 1, d, isNaN(hh) ? 23 : hh, isNaN(mm) ? 59 : mm) - 8 * 3600 * 1000
 }
 
-// 本次预约应启用的时间轴通知：返回 4 键布尔对象（恒含全部键）。
-// 「预约取消」不在此列——它在用户点「取消预约」时即时申请授权。
+// 本次预约应启用的时间轴通知：返回 4 键布尔对象（恒含全部键，完整未来适用集合，不截断）。
+// 「预约取消」不在此列——它在用户点「取消预约」时即时申请授权（见 mine.js）。
+// ⚠️ 与后端 _lib.notifyPlan 同源：只算「哪些时间轴提醒仍在未来」，不做 ≤3 限制。
 function notifyPlanOf(reservation, cfg, nowTs) {
   const now = nowTs || Date.now()
   const f = normalizeNotifyCfg(cfg)
@@ -149,20 +150,30 @@ function notifyPlanOf(reservation, cfg, nowTs) {
   if (!isNaN(remFire) && now < remFire) plan.reminder = true
   if (!isNaN(endFire) && now < endFire) plan.reminderEnd = true
 
-  let kept = 0
-  for (const k of ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd']) {
-    if (!plan[k]) continue
-    if (kept < 3) kept++
-    else plan[k] = false
-  }
   return plan
 }
 
-// 由「计划 ∩ 用户勾选」取出需要向微信申请的模板 ID（≤3，天然满足微信单次上限）。
-// 注：未勾选项不申请（用户已明确不要），但后端仍会走短信兜底。
+// 由「计划」构造【提交瞬间微信授权弹窗】要申请的模板 ID 集合（≤3，恰好满足微信单次上限）。
+//
+// 分配规则（与需求设计文档 3.2 一致，恒为 1 次弹窗）：
+//   1) 预约成功 = 必含（占用 1 槽）；
+//   2) 时间轴类（前一天/开场前/结束）按「仍在未来」过滤，且最多占 2 槽（优先级 前一天 > 开场前 > 结束）；
+//      → 远期单（前一天+开场前+结束都未来）会舍弃「结束提醒」这一槽，改由短信兜底（见 _lib.shouldSkipSms）；
+//   3) 若合计 < 3（即时间轴类不足 2 个，典型为「迟到单」「已过场次」档），顺带补入「取消」，
+//      使取消在提交时即拿到微信授权，减少后续取消时只能走短信的概率。
+// 未勾选（subs[key]===false）的项不申请；但后端仍会按短信兜底铁律补发。
+// ⚠️ 规则必须与 cloudfunctions/_lib/index.js 的 notifyPlan 保持同步（前者算完整计划，本函数做 ≤3 分配）。
 function tmplIdsOfPlan(plan, subs) {
+  // 1) 预约成功恒在
+  const keys = ['reserveSuccess']
+  // 2) 时间轴类：仍在未来的，按优先级取前 2 个
+  const timeAxis = ['dayBefore', 'reminder', 'reminderEnd'].filter(k => plan && plan[k] === true)
+  keys.push(...timeAxis.slice(0, 2))
+  // 3) 还有空位 → 顺带补「取消」（最大化微信授权覆盖、减少短信兜底）
+  if (keys.length < 3 && !keys.includes('reserveCancel')) keys.push('reserveCancel')
+  // 映射到模板 ID，并尊重用户长期偏好（subs）
   return CUSTOMER_SUBS
-    .filter(s => plan && plan[s.key] === true && (!subs || subs[s.key] !== false))
+    .filter(s => keys.includes(s.key) && (!subs || subs[s.key] !== false))
     .map(s => s.tmplId)
 }
 

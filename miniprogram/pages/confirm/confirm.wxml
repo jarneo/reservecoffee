@@ -47,4 +47,21 @@
        授权与逐项勾选都在原生弹窗内完成，不再自绘一层。
        长期偏好（含「前一天提醒」）可在「我的 → 通知偏好」中随时修改。 -->
   <view class="tip">点「提交预约」后，微信会询问是否接收本单通知；未开启的项将改用短信通知您（需店家已开启短信）。</view>
+
+  <!-- 提交成功页（应用内必达确认覆盖层） -->
+  <view wx:if="{{success}}" class="success-mask">
+    <view class="success-card">
+      <view class="success-icon"></view>
+      <view class="success-title">{{successInfo.needReview ? '提交成功，待审核' : '已为您留座'}}</view>
+      <view class="success-sub">{{successInfo.needReview ? '店家审核通过后将发送预约成功通知' : '我们已收到您的预约，期待与您相见'}}</view>
+      <view class="success-detail">
+        <view class="sd-row"><text class="sd-k">项目</text><text class="sd-v">{{successInfo.projectName}}</text></view>
+        <view class="sd-row"><text class="sd-k">日期</text><text class="sd-v">{{successInfo.date}}</text></view>
+        <view class="sd-row"><text class="sd-k">场次</text><text class="sd-v" wx:if="{{successInfo.session}}">{{successInfo.session.start}} – {{successInfo.session.end}}</text></view>
+        <view class="sd-row"><text class="sd-k">人数</text><text class="sd-v">{{successInfo.partySize}} 人</text></view>
+      </view>
+      <button class="btn block" bindtap="goMine">查看我的预约</button>
+      <button class="btn ghost block" bindtap="closeSuccess">返回首页</button>
+    </view>
+  </view>
 </view>
