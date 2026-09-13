@@ -309,6 +309,7 @@
   .minis .m .l{font-size:11px;color:var(--ink-3)}
   .minis .m .n{font-size:20px;font-weight:600;margin-top:4px}
   .minis .m .n.brand{color:var(--brand)}
+  /* 通知授权已改为直接走微信原生弹窗（不再自绘收集页），原勾选列表样式一并移除 */
 </style>
 </head>
 <body data-page-node-id="JJojy1V3IDUBEtn5UleXEI">
@@ -713,13 +714,59 @@ function cConfirm(){
       <div class="field"><div class="label">备注 <span class="pill">选填</span></div><input id="fNote" placeholder="如：靠窗、忌口"></div>
     </div>
     <button class="btn block" onclick="cSubmit('${pid}','${day}','${start}')">提交预约</button>
-    <div class="tip">提交后若「预约成功」将自动向您发送短信通知（需店家在「项目配置」开启短信通知）。</div>`;
+    <div class="tip">点「提交预约」后，微信会弹出原生订阅弹窗询问是否接收本单通知（只含本次会触发的类型，≤3 项，可逐项勾选）；未开启的项将改用短信通知您。</div>`;
   nav(html,'确认预约');
 }
 function stepParty(n){ const v=document.getElementById('party'); const {pid}=state.bookingSession||{}; const p=pid?projects.find(x=>x.id===pid):null; const maxP=(p&&p.g.maxParty)||20; const next=Math.max(1,Math.min(maxP,(+v.textContent)+n)); v.textContent=next; state.party=next; }
 function verifyPhone(){ const v=document.getElementById('fPhone').value.trim();
   if(/^1\d{10}$/.test(v)){ document.getElementById('vok').style.display='inline'; toast('微信校验通过'); }
   else toast('手机号格式不正确'); }
+// ===== 通知授权：直接走微信原生弹窗 =====
+// 微信原生订阅弹窗本身就是「带勾选框的列表」，可逐项勾/取消，因此**不再自绘一层收集页**
+// （自绘弹窗只会引入样式/手势/同步调用等额外复杂度，收益很低）。
+// 这里唯一要算的是「本次预约会申请哪几个模板」：按预约时间轴裁剪到 ≤3，一次弹窗即可完成。
+// 规则与 cloudfunctions/_lib 的 notifyPlan 一致。
+const NOTIFY_CFG_DEFAULT={dayBeforeAt:'17:30',dayBeforeWindow:180,approachingWhen:'before',approachingOffset:60,expiredWhen:'after',expiredOffset:5};
+function bjTs(dateStr,hm){
+  const [y,m,d]=String(dateStr||'').split('-').map(Number);
+  if(!y||!m||!d) return NaN;
+  const [hh,mm]=String(hm||'23:59').split(':').map(Number);
+  return Date.UTC(y,m-1,d,isNaN(hh)?23:hh,isNaN(mm)?59:mm)-8*3600*1000;
+}
+function shiftDate(dateStr,n){
+  const [y,m,d]=String(dateStr||'').split('-').map(Number);
+  if(!y||!m||!d) return '';
+  const t=new Date(Date.UTC(y,m-1,d+(n||0)));
+  const p=x=>String(x).padStart(2,'0');
+  return `${t.getUTCFullYear()}-${p(t.getUTCMonth()+1)}-${p(t.getUTCDate())}`;
+}
+// 返回本次预约启用的时间轴通知（4 键布尔，≤3 项）
+function notifyPlanOf(day,start,end,cfg){
+  const f=Object.assign({},NOTIFY_CFG_DEFAULT,cfg||{});
+  const now=Date.now();
+  const plan={reserveSuccess:true,dayBefore:false,reminder:false,reminderEnd:false};
+  const dbFire=bjTs(shiftDate(day,-1),f.dayBeforeAt);
+  const dbEnd=isNaN(dbFire)?NaN:dbFire+f.dayBeforeWindow*60000;
+  const sTs=bjTs(day,start), eTs=bjTs(day,end);
+  const remFire=isNaN(sTs)?NaN:(f.approachingWhen==='after'?sTs+f.approachingOffset*60000:sTs-f.approachingOffset*60000);
+  const endFire=isNaN(eTs)?NaN:(f.expiredWhen==='before'?eTs-f.expiredOffset*60000:eTs+f.expiredOffset*60000);
+  if(!isNaN(dbEnd)&&now<dbEnd) plan.dayBefore=true;
+  if(!isNaN(remFire)&&now<remFire) plan.reminder=true;
+  if(!isNaN(endFire)&&now<endFire) plan.reminderEnd=true;
+  let kept=0;
+  ['reserveSuccess','dayBefore','reminder','reminderEnd'].forEach(k=>{
+    if(!plan[k]) return;
+    if(kept<3) kept++; else plan[k]=false;
+  });
+  return plan;
+}
+// 本次预约将申请的通知项名（用于提交前提示）
+function planLabels(day,start,end,cfg){
+  const plan=notifyPlanOf(day,start,end,cfg);
+  const NAME={reserveSuccess:'预约确认',dayBefore:'前一天提醒',reminder:'开场前提醒',reminderEnd:'结束提醒'};
+  return ['reserveSuccess','dayBefore','reminder','reminderEnd'].filter(k=>plan[k]).map(k=>NAME[k]);
+}
+
 function cSubmit(pid,day,start){
   const name=document.getElementById('fName').value.trim();
   const phone=document.getElementById('fPhone').value.trim();
@@ -728,7 +775,19 @@ function cSubmit(pid,day,start){
   const p=projects.find(x=>x.id===pid);
   const maxP=p.g.maxParty||2;
   if(state.party>maxP) return toast('单次最多 '+maxP+' 人');
+  const s=(p.sessions[day]||[]).find(x=>x.start===start);
+  const labels=planLabels(day,start,s?s.end:'',(p.g&&p.g.notifyCfg)||null);
+  state.pendingSubmit={pid,day,start};
+  // 真实小程序里此处由「微信原生订阅弹窗」询问授权（自带勾选框），原型不模拟该原生 UI
+  toast('微信将询问 '+labels.length+' 项通知：'+labels.join('、'));
+  setTimeout(()=>cDoSubmit(),450);
+}
+function cDoSubmit(){
+  const {pid,day,start}=state.pendingSubmit||{};
+  if(!pid) return;
+  const p=projects.find(x=>x.id===pid);
   state.myResv.unshift({project:p.name,date:day,time:`${start}–${(p.sessions[day]||[]).find(x=>x.start===start).end}`,party:state.party,status:p.g.needReview?'pending':'ok'});
+  state.pendingSubmit=null;
   toast(p.g.needReview?'已提交，等待审核（微信通知）':'预约成功（微信通知已发送）');
   setTimeout(cMine,700);
 }

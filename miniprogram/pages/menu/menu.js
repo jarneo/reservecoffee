@@ -16,6 +16,8 @@ function splitCols(list) {
 Page({
   data: { projectId: '', shopName: '', shopTag: '图片菜品 · 真实评价', products: [] },
   onLoad(q) {
+    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     this.setData({ projectId: q.projectId || '' })
     this.load()
   },

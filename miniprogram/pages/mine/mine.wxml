@@ -17,6 +17,17 @@
     <button class="btn block" style="margin-top:18rpx" bindtap="saveMine">保存资料</button>
   </view>
 
+  <!-- 通知偏好：顾客侧订阅消息设置（预约确认 / 前一天提醒 / 开场前提醒 / 结束提醒 / 预约取消） -->
+  <view class="card" style="margin-bottom:20rpx">
+    <view class="row between" style="align-items:center">
+      <view>
+        <view class="sec">通知偏好</view>
+        <view class="xs muted" style="margin-top:6rpx">选择希望接收的微信通知，含前一天提醒</view>
+      </view>
+      <button class="btn ghost sm" style="margin:0;flex:none" bindtap="goNotifyPref">去设置</button>
+    </view>
+  </view>
+
   <view wx:if="{{role==='owner' || role==='manager'}}" class="card" style="margin-bottom:20rpx">
     <view class="sec">我的身份</view>
     <view class="row between" style="margin-top:6rpx">

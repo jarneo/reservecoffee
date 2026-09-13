@@ -1,6 +1,6 @@
 const { call } = require('../../utils/cloud')
 const { isPhone, requestSubscribe } = require('../../utils/util')
-const { TPLS } = require('../../utils/subscribe')
+const { TPLS, normalizeSubs } = require('../../utils/subscribe')
 
 const MAP = {
   pending: ['待审核', 'paused'],
@@ -13,7 +13,9 @@ const MAP = {
 Page({
   data: {
     list: [], openid: '', role: 'none',
-    name: '', phone: '', avatarUrl: '', pAvatar: ''
+    name: '', phone: '', avatarUrl: '', pAvatar: '',
+    // 统一订阅记录（缺省全部订阅）；用于收敛「取消预约」等点击提醒入口的授权请求
+    subs: normalizeSubs({})
   },
 
   onShow() {
@@ -58,6 +60,8 @@ Page({
         if (d && d.profile) {
           const p = d.profile
           const patch = { name: p.name || '', phone: p.phone || '' }
+          // 统一订阅记录：缺省视为全部订阅（与后端 normalizeSubs 一致）
+          patch.subs = normalizeSubs(p.subscriptions)
           this.setData(patch)
           if (p.avatar) {
             wx.cloud.getTempFileURL({ fileList: [p.avatar] })
@@ -106,8 +110,9 @@ Page({
 
   cancel(e) {
     const id = e.currentTarget.dataset.id
-    // 必须在点击手势内同步请求取消模板授权（微信要求手势内调用，否则弹窗被拦截导致收不到取消推送）
-    requestSubscribe([TPLS.reserveCancel])
+    // 统一订阅记录收敛：用户未勾选「预约取消」时不再请求授权、后端也不会发送
+    // （微信要求手势内同步调用，故放在本处理器最前面，不能置于 await/Promise 之后）
+    if (this.data.subs.reserveCancel !== false) requestSubscribe([TPLS.reserveCancel])
     wx.showModal({
       title: '取消预约',
       content: '确定要取消该预约吗？取消后名额将释放。',
@@ -123,5 +128,10 @@ Page({
           .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '取消失败', icon: 'none' }) })
       }
     })
+  },
+
+  // 跳转「通知偏好」：顾客侧订阅消息设置（含前一天提醒等全部通知类型）
+  goNotifyPref() {
+    wx.navigateTo({ url: '/pages/notifyPref/notifyPref' })
   }
 })

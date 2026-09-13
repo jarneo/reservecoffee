@@ -1,0 +1,14 @@
+/* 顾客侧通知偏好（订阅消息设置） */
+.np-item {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 24rpx 0; border-top: 1rpx solid var(--line);
+}
+.np-item:first-child { border-top: none; padding-top: 8rpx; }
+.np-main { flex: 1; padding-right: 24rpx; }
+.np-label { font-size: 28rpx; font-weight: 600; color: var(--ink); }
+.np-desc { margin-top: 6rpx; font-size: 23rpx; line-height: 1.55; color: var(--ink-3); }
+.np-switch { flex: none; margin-top: 2rpx; transform: scale(.9); }
+
+/* 开发调试区：虚线框 + 虚线按钮，与正式功能视觉区分 */
+.dev-box { margin-top: 24rpx; padding: 20rpx; border: 1rpx dashed var(--line); border-radius: 12rpx; }
+.btn.debug { border: 1rpx dashed var(--ink-3); color: var(--ink-3); background: #fff; }

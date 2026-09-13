@@ -1,5 +1,6 @@
 // saveProfile — 写入/更新当前顾客的昵称/手机号/头像（按 openid，增量合并）
-const { db, COL, ok, fail, wxCtx } = require('./lib')
+// 同时支持写入统一订阅记录 subscriptions（顾客端「订阅消息设置」开关）
+const { db, COL, ok, fail, wxCtx, SUB_KEYS, normalizeSubs } = require('./lib')
 
 exports.main = async (event) => {
   const ctx = wxCtx()
@@ -19,6 +20,15 @@ exports.main = async (event) => {
   if (ctx.UNIONID) patch.unionid = ctx.UNIONID
 
   const ex = await db.collection(COL.users).doc(OPENID).get().catch(() => null)
+
+  // 统一订阅记录：仅接受已知键，强制布尔；与既有值合并后规整为 5 键
+  if (event.subscriptions && typeof event.subscriptions === 'object') {
+    const inc = event.subscriptions
+    for (const k of SUB_KEYS) if (inc[k] !== undefined) inc[k] = !!inc[k]
+    const base = (ex && ex.data && ex.data.subscriptions && typeof ex.data.subscriptions === 'object') ? ex.data.subscriptions : {}
+    patch.subscriptions = normalizeSubs({ ...base, ...inc })
+  }
+
   if (ex && ex.data) {
     await db.collection(COL.users).doc(OPENID).update({ data: patch })
   } else {

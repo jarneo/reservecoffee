@@ -1,9 +1,17 @@
-// deploy/tests/remind.test.js — remindReservation 离线集成测试
-// 用法：/Users/mac/.workbuddy/binaries/node/versions/22.22.2-2/bin/node deploy/tests/remind.test.js
-const { runFunction, makeChecker, bjNow, plusDays, hhmmFromMin } = require('./harness')
+// deploy/tests/remind.test.js — remindReservation 离线集成测试 + 通知计划（notifyPlan）单测
+// 用法：/Users/mac/.workbuddy/binaries/node/versions/22.22.2-3/bin/node deploy/tests/remind.test.js
+//
+// 覆盖：
+//   S1/S1b/S2/S2b/S3/S3b/S4/S4b/S4c  前一天提醒（去重、订阅记录闸、降级、错误落库、时刻可配）
+//   S5/S6                            取消短信 / 成功短信延迟补发
+//   S7–S11                           开场前提醒 + 结束提醒（含「ended 永不落库」回归）
+//   S12                               notifyPlan 裁剪规则（纯函数矩阵）
+//   S13                               notifyPlan 生效：不在计划内的类型两通道都不发
+const { runFunction, loadLib, makeChecker, bjNow, plusDays, hhmmFromMin } = require('./harness')
 
 const { check, state } = makeChecker()
 const run = (setup) => runFunction('remindReservation', setup)
+const lib = loadLib()
 
 ;(async () => {
   const bj = bjNow()
@@ -17,8 +25,8 @@ const run = (setup) => runFunction('remindReservation', setup)
   {
     const { store, res } = await run(s => {
       s.cols.config = {
-        smsnotify: { dayBefore: true, dayBeforeAt: AT, skipSmsIfWxOk: false, success: true, approaching: true, expired: true, cancel: true },
-        subscribe: { dayBefore: true, reminder: true, reminderEnd: true },
+        smsnotify: { dayBefore: true, dayBeforeAt: AT, skipSmsIfWxOk: false, success: true, cancel: true },
+        subscribe: { dayBefore: true, reserveSuccess: true, reserveCancel: true },
         store: { name: '二曜路8号咖啡和清酒' }
       }
       s.smsTemplates = { dayBefore: '2729722', cancel: '2729679' }
@@ -43,6 +51,22 @@ const run = (setup) => runFunction('remindReservation', setup)
     check('三笔全部打上 dayBeforeNotified', store.writes.filter(w => w.data.dayBeforeNotified).length === 3, store.writes.length)
     check('被跳过的 14:00 标记 dup-openid', store.writes.some(w => w.id === 'a1' && w.data.dayBeforeSkipped === 'dup-openid'))
     check('结果落库 dayBeforeNotify.ok', store.writes.some(w => w.data.dayBeforeNotify && w.data.dayBeforeNotify.ok === true))
+  }
+
+  // ---------- S1b：用户订阅记录闸（users.subscriptions.dayBefore=false → 不发微信，短信照旧） ----------
+  console.log('\nS1b 统一订阅记录：用户关掉「前一天提醒」则不发微信，短信照旧兜底')
+  {
+    const { store, res } = await run(s => {
+      s.cols.config = { smsnotify: { dayBefore: true, dayBeforeAt: AT, skipSmsIfWxOk: false }, subscribe: { dayBefore: true }, store: {} }
+      s.smsTemplates = { dayBefore: '2729722' }
+      s.wx.allowedKeys = ['thing2', 'time1', 'thing3', 'thing4']
+      s.cols.projects = { p1: { name: '清酒品鉴', smsEnabled: true } }
+      s.cols.users = { oA: { subscriptions: { dayBefore: false } } }
+      s.cols.reservations = { a1: { _id: 'a1', openid: 'oA', projectId: 'p1', date: tomorrow, sessionStart: '09:00', sessionEnd: '10:30', phone: '13800000001', status: 'confirmed', createdAt: 1 } }
+    })
+    check('微信 0 次（用户已关闭该通知）', store.subscribeCalls.length === 0, store.subscribeCalls.length)
+    check('短信仍发出 1 条（短信不受订阅记录影响）', store.smsCalls.length === 1 && res.data.sentDayBeforeSms === 1, { sms: store.smsCalls.length, res: res.data })
+    check('sentDayBefore=1（本轮已处理）', res.data.sentDayBefore === 1, res.data)
   }
 
   // ---------- S2：微信优先降级（微信已送达 → 不发短信） ----------
@@ -137,6 +161,21 @@ const run = (setup) => runFunction('remindReservation', setup)
       check('未打标 dayBeforeNotified', store.writes.filter(w => w.data.dayBeforeNotified).length === 0)
       check('sentDayBefore=0', res.data.sentDayBefore === 0, res.data)
     }
+  }
+
+  // ---------- S4c：可配置任意时刻（6 点 / 3 点等）均生效 ----------
+  console.log('\nS4c 前一天提醒时刻可配置为任意 HH:mm（非 16–20 点区间也生效）')
+  {
+    const earlyHH = hhmmFromMin(bj.min - 6)
+    const { store, res } = await run(s => {
+      s.cols.config = { smsnotify: { dayBefore: true, dayBeforeAt: earlyHH }, subscribe: { dayBefore: true }, store: {} }
+      s.smsTemplates = { dayBefore: '2729722' }
+      s.wx.allowedKeys = ['thing2', 'time1', 'thing3', 'thing4']
+      s.cols.projects = { p1: { name: 'x', smsEnabled: true } }
+      s.cols.reservations = { a1: { _id: 'a1', openid: 'oA', projectId: 'p1', date: tomorrow, sessionStart: '09:00', sessionEnd: '10:30', phone: '13800000001', status: 'confirmed' } }
+    })
+    check('任意时刻配置可触发（微信 1 次）', store.subscribeCalls.length === 1, { at: earlyHH, calls: store.subscribeCalls.length })
+    check('sentDayBefore=1', res.data.sentDayBefore === 1, res.data)
   }
 
   // ---------- S5：取消短信延迟补发 + 状态复校 ----------
@@ -269,6 +308,78 @@ const run = (setup) => runFunction('remindReservation', setup)
     const r1 = store.cols.reservations.a1
     check('未提前触发结束提醒（ended 未打）', r1.ended === undefined, r1)
     check('未发微信/短信', store.subscribeCalls.length === 0 && store.smsCalls.length === 0, { w: store.subscribeCalls.length, s: store.smsCalls.length })
+  }
+
+  // ---------- S12：notifyPlan 裁剪规则（纯函数矩阵） ----------
+  // 规则：确认恒开；前一天要求「现在仍早于 D-1 dayBeforeAt + 180min」；
+  //       开场前/结束要求触发时刻在未来；最后按优先级截断到 3。
+  console.log('\nS12 notifyPlan 裁剪：不同提交场景下「时间轴上真正会触发的」不超过 3 条')
+  {
+    const cfg = lib.notifyWindowCfg({})   // dayBeforeAt 17:30 / window 180 / before 60 / after 5
+    const count = p => ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd'].filter(k => p[k]).length
+
+    // 场景 E：一周后预约（09-20），提交于 09-13 10:00
+    const pE = lib.notifyPlan({ date: '2026-09-20', sessionStart: '14:00', sessionEnd: '15:30' }, cfg, lib.bjTs('2026-09-13', '10:00'))
+    check('E 一周后：前一天✓ 开场前✓ 结束✗(被截断) → 3 条', pE.dayBefore === true && pE.reminder === true && pE.reminderEnd === false && count(pE) === 3, pE)
+
+    // 场景 B：当天 3 小时后（09-13 13:00 场），提交于 09-13 10:00
+    const pB = lib.notifyPlan({ date: '2026-09-13', sessionStart: '13:00', sessionEnd: '14:30' }, cfg, lib.bjTs('2026-09-13', '10:00'))
+    check('B 当天稍晚：前一天✗(过窗) 开场前✓ 结束✓ → 3 条', pB.dayBefore === false && pB.reminder === true && pB.reminderEnd === true && count(pB) === 3, pB)
+
+    // 场景 A：30 分钟后开场（09-13 10:30），提交于 09-13 10:00
+    const pA = lib.notifyPlan({ date: '2026-09-13', sessionStart: '10:30', sessionEnd: '12:00' }, cfg, lib.bjTs('2026-09-13', '10:00'))
+    check('A 极紧急：开场前✗(触发点已过) → 2 条', pA.reminder === false && pA.reminderEnd === true && count(pA) === 2, pA)
+
+    // 场景 C：次日、但已过当天 20:30 窗口（提交于 09-13 21:00）
+    const pC = lib.notifyPlan({ date: '2026-09-14', sessionStart: '14:00', sessionEnd: '15:30' }, cfg, lib.bjTs('2026-09-13', '21:00'))
+    check('C 次日但过窗：前一天✗ 开场前✓ 结束✓ → 3 条', pC.dayBefore === false && pC.reminder === true && pC.reminderEnd === true && count(pC) === 3, pC)
+
+    // 任意场景都不超过 3
+    const over = [pA, pB, pC, pE].every(p => count(p) <= 3)
+    check('所有场景均 ≤3 条', over === true)
+
+    // dayBeforeAt 可配：同一时刻（前一天 21:00）提交次日预约，
+    // 默认 17:30（窗口 17:30–20:30）已过 → 拿不到；改成 22:00（窗口 22:00–次日 01:00）则可拿到。
+    const cfg22 = lib.notifyWindowCfg({ dayBeforeAt: '22:00' })
+    const nowC = lib.bjTs('2026-09-13', '21:00')
+    const pDefault = lib.notifyPlan({ date: '2026-09-14', sessionStart: '14:00', sessionEnd: '15:30' }, cfg, nowC)
+    const p22 = lib.notifyPlan({ date: '2026-09-14', sessionStart: '14:00', sessionEnd: '15:30' }, cfg22, nowC)
+    check('dayBeforeAt=17:30 时已过窗（前一天✗）', pDefault.dayBefore === false, pDefault)
+    check('dayBeforeAt=22:00 时窗口顺延（前一天✓）', p22.dayBefore === true, p22)
+  }
+
+  // ---------- S13：notifyPlan 生效 —— 不在计划内的类型两通道都不发 ----------
+  console.log('\nS13 不在 notifyPlan 内的提醒：微信与短信都不发（保证时间轴 ≤3 条）')
+  {
+    // 13a：结束提醒未被裁剪进计划 → 结束后不发（微信 0 / 短信 0），仍打 ended
+    const end = bjAt(-30)
+    const start = bjAt(-120)
+    const { store: st1, res: rs1 } = await run(s => baseEnd(s, {
+      date: end.date, sessionStart: start.hm, sessionEnd: end.hm, reminded: true,
+      notifyPlan: { reserveSuccess: true, dayBefore: false, reminder: true, reminderEnd: false }
+    }))
+    const a1 = st1.cols.reservations.a1
+    check('13a 结束提醒不在计划 → 微信 0 次', st1.subscribeCalls.length === 0, st1.subscribeCalls.length)
+    check('13a 结束提醒不在计划 → 短信 0 条', st1.smsCalls.length === 0, st1.smsCalls)
+    check('13a 仍打 ended 且记 not-in-plan', a1.ended === true && a1.reminderEndSkipped === 'not-in-plan', a1)
+    check('13a sentEnd=1', rs1.data.sentEnd === 1, rs1.data)
+
+    // 13b：开场前提醒未被裁剪进计划 → 到达触发点也不发，但仍打 reminded 防重试
+    const start2 = bjAt(30)
+    const end2 = bjAt(120)
+    const { store: st2, res: rs2 } = await run(s => baseEnd(s, {
+      date: start2.date, sessionStart: start2.hm, sessionEnd: end2.hm,
+      notifyPlan: { reserveSuccess: true, dayBefore: false, reminder: false, reminderEnd: true }
+    }))
+    const b1 = st2.cols.reservations.a1
+    check('13b 开场前不在计划 → 微信 0 次', st2.subscribeCalls.length === 0, st2.subscribeCalls.length)
+    check('13b 开场前不在计划 → 短信 0 条', st2.smsCalls.length === 0, st2.smsCalls)
+    check('13b 仍打 reminded 且记 not-in-plan', b1.reminded === true && b1.reminderSkipped === 'not-in-plan', b1)
+    check('13b sentStart=1', rs2.data.sentStart === 1, rs2.data)
+
+    // 13c：历史预约（无 notifyPlan）→ 保持旧行为，不误拦
+    const { store: st3 } = await run(s => baseEnd(s, { date: end.date, sessionStart: start.hm, sessionEnd: end.hm, reminded: true }))
+    check('13c 无 notifyPlan 的历史预约仍按旧行为发送', st3.subscribeCalls.length === 1 && st3.smsCalls.length === 1, { w: st3.subscribeCalls.length, s: st3.smsCalls.length })
   }
 
   console.log(`\n===== 结果：通过 ${state.pass} / 失败 ${state.fail} =====`)

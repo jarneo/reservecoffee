@@ -4,6 +4,7 @@
     "pages/booking/booking",
     "pages/confirm/confirm",
     "pages/mine/mine",
+    "pages/notifyPref/notifyPref",
     "pages/menu/menu",
     "pages/product/product",
     "pages/admin/hub/hub",

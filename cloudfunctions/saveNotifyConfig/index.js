@@ -7,15 +7,22 @@
 //   approachingOffset 临近偏移分钟（默认 60）
 //   expiredWhen      过期短信：结束前/后（'before' | 'after'，默认 'after'）
 //   expiredOffset    过期偏移分钟（默认 5）
-//   dayBeforeAt      提前一天通知的发送时刻 'HH:mm'（默认 '17:30'，按北京时间判定）
+//   dayBeforeAt      提前一天通知的发送时刻 'HH:mm'（默认 '17:30'，按北京时间判定，支持任意时刻）
+//   dayBeforeWindow  前一天提醒的发送时间窗（分钟，默认 180）
 //   cancelDelay      取消短信延迟分钟（默认 3；与 15 分钟定时精度配合，发前复校预约仍为已取消）
 //   skipSmsIfWxOk    微信优先降级开关：true=微信订阅消息已送达则不发对应短信；false=双通道都发
 const { db, ok, fail, wxCtx, getRole } = require('./lib')
 
+// 订阅/短信开关白名单：
+//   订阅：顾客 5 类（reserveSuccess/dayBefore/reminder/reminderEnd/reserveCancel）+ 管理员 3 类
+//   短信：5 类（success/approaching/expired/dayBefore/cancel）
+// 注：顾客侧「本次预约实际启用哪几类」由 reservations.notifyPlan 按时间轴裁剪（≤3），
+//     但模板目录与开关始终是这 5 类，不随场景删减。
 const SUB_KEYS = ['reserveSuccess', 'reserveCancel', 'reminder', 'reminderEnd', 'dayBefore', 'adminNew', 'adminCancel', 'adminReview']
 const MP_KEYS = ['adminNew', 'reserveSuccess', 'reserveCancel', 'adminReview']
 const SMS_KEYS = ['success', 'approaching', 'expired', 'cancel', 'dayBefore']
-const SMS_TIMING = ['successDelay', 'approachingWhen', 'approachingOffset', 'expiredWhen', 'expiredOffset', 'dayBeforeAt', 'cancelDelay', 'skipSmsIfWxOk']
+// 计时/降级项：dayBeforeAt 支持任意 'HH:mm'（不受管理端选项限制）
+const SMS_TIMING = ['successDelay', 'approachingWhen', 'approachingOffset', 'expiredWhen', 'expiredOffset', 'dayBeforeAt', 'dayBeforeWindow', 'cancelDelay', 'skipSmsIfWxOk']
 
 // 保存 config 集合里的指定文档：存在则 update（只覆盖传入字段），不存在则 set 新建。
 // ⚠️ 文档 id 由 doc(id) 决定，**set({data}) 的 data 里绝不能带 _id**，否则 SDK 抛
@@ -64,7 +71,7 @@ exports.main = async (event) => {
     if (typeof s.approachingOffset === 'number') patch.approachingOffset = Math.max(0, Math.min(1440, s.approachingOffset))
     if (s.expiredWhen === 'before' || s.expiredWhen === 'after') patch.expiredWhen = s.expiredWhen
     if (typeof s.expiredOffset === 'number') patch.expiredOffset = Math.max(0, Math.min(1440, s.expiredOffset))
-    // 提前一天通知的发送时刻（'HH:mm'，北京时间）；非法值丢弃，读取端默认 17:30
+    // 提前一天通知的发送时刻（'HH:mm'，北京时间，任意时刻均合法）；非法值丢弃，读取端默认 17:30
     if (typeof s.dayBeforeAt === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.dayBeforeAt)) patch.dayBeforeAt = s.dayBeforeAt
     // 前一天提醒的发送时间窗（分钟，默认 180）：超出 [dayBeforeAt, +window] 不再补发，避免深夜打扰
     if (typeof s.dayBeforeWindow === 'number') patch.dayBeforeWindow = Math.max(0, Math.min(1440, s.dayBeforeWindow))

@@ -14,6 +14,8 @@ Page({
   },
 
   onShow() {
+    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     this.load()
     // 重新拉取角色，避免 onLaunch 异步未返回时拿到过期的 'none' 导致按钮不显示
     app.refreshRole().then(r => {

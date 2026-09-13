@@ -159,6 +159,115 @@ async function loadSubscribeSwitch(db) {
 // 单个订阅模板是否允许发送：config.subscribe[key] !== false 视为开（缺省开）
 function subOn(subCfg, key) { return subCfg ? (subCfg[key] !== false) : true }
 
+// ===== 统一用户订阅记录（顾客侧）=====
+// 顾客在确认页以「勾选列表一次性收集所有通知类型订阅」，提交时把勾选结果存进 users.subscriptions。
+// 所有顾客侧触发逻辑（预约成功/取消/开场前提醒/结束提醒/前一天提醒）统一读取该记录：
+//   subs[key] !== false 视为已订阅（缺省开）。
+// 全局开关 subOn 与用户记录 subbedOf 是「与」关系——二者皆开才真正发送。
+// 顾客侧通知模板共 5 类；「时间轴上实际会触发的」在任一场景下都不超过 3 条，
+// 由 notifyPlan() 按预约时间轴动态裁剪（见下方「通知计划」段）。
+//    改这里即全链路收敛（normalizeSubs / subbedOf / loadUserSubs 均由 SUB_KEYS 驱动）。
+const SUB_KEYS = ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd', 'reserveCancel']
+
+// 把任意输入规整为 5 个已知键的布尔对象；未显式置 false 一律视为已订阅（缺省开）。
+function normalizeSubs(s) {
+  const out = {}
+  for (const k of SUB_KEYS) out[k] = !!(s && s[k] !== false)
+  return out
+}
+
+// 单个顾客订阅是否生效：subs[key] !== false 视为已订阅（缺省开）；
+// 记录缺失（null/undefined）也视为已订阅，保证「读不到记录」时不会误拦通知。
+function subbedOf(subs, key) { return subs ? (subs[key] !== false) : true }
+
+// 读取并缓存某顾客的订阅记录（users.subscriptions）。cache 为可选 Map<openid, subs>，
+// 供 remindReservation 循环内避免重复 DB 读取。读取失败回退为「全部订阅」默认值。
+async function loadUserSubs(openid, cache) {
+  if (!openid) return normalizeSubs({})
+  if (cache && cache.has(openid)) return cache.get(openid)
+  let subs = normalizeSubs({})
+  try {
+    const r = await db.collection(COL.users).doc(openid).get()
+    if (r && r.data) subs = normalizeSubs(r.data.subscriptions)
+  } catch (e) { /* 文档不存在 → 全部订阅 */ }
+  if (cache) cache.set(openid, subs)
+  return subs
+}
+
+// ===== 通知计划（按预约时间轴动态裁剪）=====
+// 需求：无论哪种提交场景，整条时间轴上的通知不超过 3 条。
+// 做法不是删模板，而是「按预约时间轴动态选择本次预约真正会触发的通知类型」：
+//   当天预约   → 「前一天提醒」窗口已过，自然剔除；
+//   远期预约   → 名额让给更贴身的提醒，「结束提醒」被挤出（按优先级截断到 3）。
+// 「预约取消」不参与该计划：它在用户点「取消预约」时即时申请授权（不占这 3 个名额）。
+// ⚠️ 前端 miniprogram/utils/subscribe.js 的 notifyPlanOf 是本规则的前端镜像
+//    （用于决定提交时向微信申请哪几个模板），两边必须同步修改。
+
+// 'YYYY-MM-DD' ± n 天（非法输入返回 ''）
+function shiftDate(dateStr, n) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number)
+  if (!y || !m || !d) return ''
+  const t = new Date(Date.UTC(y, m - 1, d + (n || 0)))
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
+}
+
+// 通知时间窗配置（自 config.smsnotify 归一化，缺省用默认值）
+function notifyWindowCfg(smsSw) {
+  const s = smsSw || {}
+  return {
+    dayBeforeAt: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s.dayBeforeAt || '')) ? s.dayBeforeAt : '17:30',
+    dayBeforeWindow: typeof s.dayBeforeWindow === 'number' && s.dayBeforeWindow >= 0 ? s.dayBeforeWindow : 180,
+    approachingWhen: s.approachingWhen === 'after' ? 'after' : 'before',
+    approachingOffset: typeof s.approachingOffset === 'number' && s.approachingOffset >= 0 ? s.approachingOffset : 60,
+    expiredWhen: s.expiredWhen === 'before' ? 'before' : 'after',
+    expiredOffset: typeof s.expiredOffset === 'number' && s.expiredOffset >= 0 ? s.expiredOffset : 5
+  }
+}
+
+// 时间轴通知优先级（同时也是截断顺序）：确认 > 前一天 > 开场前 > 结束
+const NOTIFY_PRIORITY = ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd']
+
+// 计算本次预约应启用的时间轴通知：返回 4 键布尔对象（恒含全部键，便于落库与判定）。
+//   reserveSuccess 恒 true（免审即时发 / 待审在审核通过时发）
+//   dayBefore      仅当 now < 前一天窗口终点（D-1 dayBeforeAt + dayBeforeWindow）
+//   reminder       仅当 now < 开场前触发时刻（否则下单后会被定时任务立即补发，与「预约确认」重复）
+//   reminderEnd    仅当 now < 结束触发时刻
+// 最后按 NOTIFY_PRIORITY 截断到至多 3 项。
+function notifyPlan(reservation, cfg, nowTs) {
+  const now = nowTs || Date.now()
+  const f = cfg || notifyWindowCfg({})
+  const r = reservation || {}
+  const plan = { reserveSuccess: true, dayBefore: false, reminder: false, reminderEnd: false }
+
+  const startTs = bjTs(r.date, r.sessionStart)
+  const endTs = bjTs(r.date, r.sessionEnd)
+  const dbFire = bjTs(shiftDate(r.date, -1), f.dayBeforeAt)
+  const dbEnd = isNaN(dbFire) ? NaN : dbFire + f.dayBeforeWindow * 60000
+  const remFire = isNaN(startTs) ? NaN
+    : (f.approachingWhen === 'after' ? startTs + f.approachingOffset * 60000 : startTs - f.approachingOffset * 60000)
+  const endFire = isNaN(endTs) ? NaN
+    : (f.expiredWhen === 'before' ? endTs - f.expiredOffset * 60000 : endTs + f.expiredOffset * 60000)
+
+  if (!isNaN(dbEnd) && now < dbEnd) plan.dayBefore = true
+  if (!isNaN(remFire) && now < remFire) plan.reminder = true
+  if (!isNaN(endFire) && now < endFire) plan.reminderEnd = true
+
+  let kept = 0
+  for (const k of NOTIFY_PRIORITY) {
+    if (!plan[k]) continue
+    if (kept < 3) kept++
+    else plan[k] = false
+  }
+  return plan
+}
+
+// 本次预约是否启用了某类时间轴通知。
+// notifyPlan 缺失（历史预约数据）时返回 true → 保持旧行为，不误拦已有预约的提醒。
+function plannedOf(plan, key) {
+  if (!plan || typeof plan !== 'object') return true
+  return plan[key] !== false
+}
+
 // 读取「短信全局开关」配置（config.smsnotify 文档）。缺省视为全部开启。
 async function loadSmsSwitch(db) {
   try {
@@ -313,5 +422,7 @@ module.exports = {
   sendSubscribe, listAdminOpenids, notifyAdmins,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
   srcLabel, customerTags, loadSubscribeSwitch, subOn,
-  loadSmsSwitch, shouldSkipSms, wxDelivered
+  loadSmsSwitch, shouldSkipSms, wxDelivered,
+  SUB_KEYS, normalizeSubs, subbedOf, loadUserSubs,
+  shiftDate, notifyWindowCfg, notifyPlan, plannedOf, NOTIFY_PRIORITY
 }

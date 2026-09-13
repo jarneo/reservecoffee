@@ -1,5 +1,5 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
-const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms, normalizeSubs, subbedOf, notifyWindowCfg, notifyPlan, plannedOf } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 场次是否已过预约截止（与顾客端 isSessionExpired 同源规则）
@@ -34,7 +34,11 @@ exports.main = async (event) => {
     }
   } catch (e) { /* 查询失败不阻断主流程 */ }
 
-  const { projectId, date, sessionId, name, phone, partySize, note, wechat, gender, age } = event
+  const { projectId, date, sessionId, name, phone, partySize, note, wechat, gender, age, subscribed } = event
+  // 顾客侧统一订阅记录（users.subscriptions）：提交时按用户在确认页勾选结果保存。
+  // 缺省（subscribed 未传/非对象）视为全部订阅；最终落库前规整为 5 键布尔。
+  // ⚠️ 必须在上面解构之后声明：subscribed 由该 const 解构产生，提前引用会撞 TDZ（ReferenceError）。
+  let userSubs = normalizeSubs(subscribed && typeof subscribed === 'object' ? subscribed : {})
   if (!projectId || !date || !sessionId) return fail('参数缺失')
   // 手机号非必填：仅当填写时校验格式
   if (phone && !/^1[3-9]\d{9}$/.test(phone)) return fail('请填写正确的手机号')
@@ -100,6 +104,15 @@ exports.main = async (event) => {
     const successEnabled = !needReview && p.smsEnabled && smsSw.success !== false
     const successDelay = successEnabled ? (typeof smsSw.successDelay === 'number' ? smsSw.successDelay : 0) : -1
 
+    // 本次预约的通知计划：按预约时间轴裁剪出「真正会触发的通知类型」（≤3），
+    // 落库后由 remindReservation / review* 统一按它判定，保证整条时间轴不超过 3 条。
+    // 服务端为准（不信任前端传值）：前端同一规则只为决定「申请哪几个模板」。
+    const plan = notifyPlan(
+      { date, sessionStart: session.start, sessionEnd: session.end },
+      notifyWindowCfg(smsSw),
+      Date.now()
+    )
+
     const reservation = {
       projectId, scheduleId: schedule._id, sessionId,
       openid: OPENID, name: name.trim(), phone: phone || '', partySize: pSize,
@@ -111,17 +124,31 @@ exports.main = async (event) => {
       // 成功短信发送计划：-1 不发送；0 立即（提交后由下方发送）；>0 延迟（到点由 remindReservation 发送）
       // 延迟(>0)才标记为未发送并写入 smsSuccessAt，其余(立即/不发送)直接标记已发送，避免 remindReservation 重复补发
       smsSuccessSent: successDelay > 0 ? false : true,
-      smsSuccessAt: successDelay > 0 ? Date.now() + successDelay * 60000 : 0
+      smsSuccessAt: successDelay > 0 ? Date.now() + successDelay * 60000 : 0,
+      // 提交时用户勾选的订阅快照（统一记录）：缺省全部订阅
+      subscribed: (subscribed && typeof subscribed === 'object') ? normalizeSubs(subscribed) : normalizeSubs({}),
+      // 本次预约启用的时间轴通知（4 键布尔，恒含全部键）
+      notifyPlan: plan
     }
     const add = await transaction.collection(COL.reservations).add({ data: reservation })
     await transaction.commit()
 
-    // 同步顾客资料到 users 集合，使下次预约自动带出（失败不阻断主流程）
+    // 同步顾客资料到 users 集合，使下次预约自动带出；同时合并统一订阅记录（失败不阻断主流程）
     try {
       const up = { name: name.trim(), phone, updatedAt: Date.now() }
       const ex = await db.collection(COL.users).doc(OPENID).get().catch(() => null)
-      if (ex && ex.data) await db.collection(COL.users).doc(OPENID).update({ data: up })
-      else await db.collection(COL.users).doc(OPENID).set({ data: { openid: OPENID, ...up } })
+      if (ex && ex.data) {
+        const patch = { ...up }
+        const base = (ex.data.subscriptions && typeof ex.data.subscriptions === 'object') ? ex.data.subscriptions : {}
+        // 本次勾选覆盖既有：用户显式选择优先，缺失键保留既有值；最终规整为 5 键布尔
+        userSubs = normalizeSubs({ ...base, ...userSubs })
+        patch.subscriptions = userSubs
+        await db.collection(COL.users).doc(OPENID).update({ data: patch })
+      } else {
+        await db.collection(COL.users).doc(OPENID).set({
+          data: { openid: OPENID, ...up, subscriptions: userSubs }
+        })
+      }
     } catch (e) {
       console.warn('[createReservation] save profile failed (ignored):', e.message)
     }
@@ -132,9 +159,10 @@ exports.main = async (event) => {
     const seats = `${pSize}人位`
 
     // A 线 · 给预订人（仅免审立即推送「预约成功」；待审不发，改由管理员审核通过后再推送）
+    // 判定 = 时间轴计划 plannedOf ∩ 全局开关 subOn ∩ 用户订阅记录 subbedOf
     // 返回值决定「微信优先降级」：ok:true（微信已送达）→ 若开关开启则跳过对应短信
     let wxSuccessRes = null
-    if (!needReview && p.subscribeNotify !== false && subOn(subCfg, 'reserveSuccess')) wxSuccessRes = await sendSubscribe({
+    if (!needReview && p.subscribeNotify !== false && plannedOf(plan, 'reserveSuccess') && subOn(subCfg, 'reserveSuccess') && subbedOf(userSubs, 'reserveSuccess')) wxSuccessRes = await sendSubscribe({
       openid: OPENID,
       templateId: TPL.reserveSuccess,
       data: {

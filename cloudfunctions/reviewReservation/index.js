@@ -1,5 +1,5 @@
 // reviewReservation — 审核通过/拒绝（owner）
-const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms } = require('./lib')
+const { db, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms, subbedOf, loadUserSubs } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 exports.main = async (event) => {
@@ -45,10 +45,13 @@ exports.main = async (event) => {
     const storeName = await getStoreName(db)
     const dt = `${monthDay(r.date)} ${r.sessionStart}-${r.sessionEnd}`
 
+    // 读取顾客统一订阅记录（users.subscriptions），与全局开关共同决定是否推送
+    const userSubs = await loadUserSubs(r.openid)
+
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
     // ⚠️ 必须在短信之前发送：其返回值决定「微信优先降级」是否跳过成功短信
     let wxSuccessRes = null
-    if (decision === 'approve' && subOn(subCfg, 'reserveSuccess')) {
+    if (decision === 'approve' && subOn(subCfg, 'reserveSuccess') && subbedOf(userSubs, 'reserveSuccess')) {
       wxSuccessRes = await sendSubscribe({
         openid: r.openid,
         templateId: TPL.reserveSuccess,

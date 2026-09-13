@@ -28,6 +28,8 @@ Page({
     imageFiles: []       // 已上传 fileID（上传后回填）
   },
   onLoad(q) {
+    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     this.setData({ productId: q.productId || '' })
     this.load()
   },

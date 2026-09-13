@@ -30,9 +30,10 @@
   border-color: var(--line);
 }
 
-/* 前一天提醒授权卡 */
-.notify-card { border: 1rpx solid var(--line); }
-.nc-head { display:flex; align-items:center; justify-content:space-between; }
-.nc-title { font-size: 28rpx; font-weight: 600; color: var(--ink); }
-.nc-btn { margin:0; font-size:24rpx; padding:0 24rpx; height:60rpx; line-height:60rpx; }
-.nc-text { margin-top:14rpx; font-size:24rpx; line-height:1.6; color:var(--ink-2); }
+/* 提交按钮下方的说明（通知授权走微信原生弹窗，此处只做提示） */
+.tip {
+  margin-top: 20rpx;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: var(--ink-3);
+}

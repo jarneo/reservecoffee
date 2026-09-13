@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>提前一天提醒 · 样式预览</title>
+<style>
+  :root{
+    --brand:#7A5230;
+    --ink:#1a1a1a;
+    --ink-2:#666;
+    --line:#ededed;
+    --bg:#f2f2f2;
+    --wx-green:#07c160;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);
+    padding:32px 16px;line-height:1.5;
+  }
+  h1{font-size:20px;margin-bottom:6px}
+  .sub{color:var(--ink-2);font-size:13px;margin-bottom:28px;max-width:760px}
+  .section-title{font-size:15px;font-weight:600;margin:36px 0 14px;display:flex;align-items:center;gap:8px}
+  .section-title::before{content:"";width:4px;height:16px;background:var(--brand);border-radius:2px}
+  .note{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--ink-2);margin-bottom:20px;max-width:760px}
+  .note b{color:var(--ink)}
+  /* ===== 微信服务通知卡片（真实下发样式，微信官方固定） ===== */
+  .phone{
+    width:340px;background:#fff;border-radius:28px;box-shadow:0 10px 30px rgba(0,0,0,.12);
+    border:8px solid #111;overflow:hidden;margin-bottom:8px;
+  }
+  .phone .statusbar{
+    background:#ededed;height:30px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;font-size:12px;color:#000;font-weight:600;
+  }
+  .wx-chat{background:#ededed;padding:10px 12px;min-height:340px}
+  /* 服务通知 会话头 */
+  .svc-head{display:flex;align-items:center;gap:8px;padding:6px 4px 12px}
+  .svc-head .dot{width:8px;height:8px;border-radius:50%;background:var(--wx-green)}
+  .svc-head .name{font-size:15px;font-weight:600}
+  .svc-head .time{margin-left:auto;font-size:11px;color:#999}
+  /* 订阅消息卡片 */
+  .sub-card{
+    background:#fff;border-radius:8px;overflow:hidden;
+    box-shadow:0 1px 4px rgba(0,0,0,.08);
+  }
+  .sub-card .sc-top{
+    display:flex;align-items:center;gap:8px;padding:12px 14px;background:#fff;
+    border-bottom:1px solid #f4f4f4;
+  }
+  .sc-top .ico{
+    width:30px;height:30px;border-radius:6px;background:var(--brand);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex:none;
+  }
+  .sc-top .mp-name{font-size:14px;font-weight:600}
+  .sc-top .arrow{margin-left:auto;color:#c8c8c8;font-size:14px}
+  .sc-body{padding:14px}
+  .sc-title{font-size:15px;font-weight:600;margin-bottom:10px}
+  .sc-row{display:flex;font-size:13px;margin:5px 0;line-height:1.5}
+  .sc-row .k{color:#999;width:74px;flex:none}
+  .sc-row .v{color:var(--ink);flex:1}
+  .sc-foot{
+    padding:10px 14px;border-top:1px solid #f4f4f4;text-align:center;
+    color:var(--wx-green);font-size:13px;
+  }
+  /* ===== 小程序内确认页授权卡片（我们可改样式） ===== */
+  .appcard{
+    width:340px;background:#fff;border-radius:14px;padding:16px;
+    box-shadow:0 4px 14px rgba(0,0,0,.06);border:1px solid var(--line);
+  }
+  .appcard .ac-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .appcard .ac-title{font-size:15px;font-weight:600;color:var(--ink)}
+  .appcard .ac-btn{
+    font-size:12px;padding:6px 14px;border:1px solid var(--brand);color:var(--brand);
+    background:#fff;border-radius:18px;line-height:1.2;
+  }
+  .appcard .ac-btn.on{background:var(--brand);color:#fff}
+  .appcard .ac-text{font-size:12px;color:var(--ink-2);line-height:1.7}
+  .grid2{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+  .col-label{font-size:12px;color:var(--ink-2);margin-bottom:8px}
+  .tag{display:inline-block;font-size:11px;background:#f6f1ea;color:var(--brand);padding:2px 8px;border-radius:4px;margin-left:6px}
+</style>
+</head>
+<body>
+  <h1>提前一天提醒 · 样式预览</h1>
+  <p class="sub">
+    左：用户在微信「服务通知」里实际收到的 day-before 卡片（微信官方样式，固定不可改）。
+    右：小程序确认页内的「前一天微信提醒」授权卡片（我们可改样式）。
+    下面分别标注了「微信固定」与「可改」的部分。
+  </p>
+
+  <div class="section-title">① 微信「服务通知」卡片 <span class="tag">微信官方固定样式</span></div>
+  <div class="grid2">
+    <div class="phone">
+      <div class="statusbar"><span>9:13</span><span>🔋</span></div>
+      <div class="wx-chat">
+        <div class="svc-head">
+          <span class="dot"></span>
+          <span class="name">服务通知</span>
+          <span class="time">昨天 23:49</span>
+        </div>
+        <div class="sub-card">
+          <div class="sc-top">
+            <span class="ico">咖</span>
+            <span class="mp-name">二曜路8号咖啡和清酒</span>
+            <span class="arrow">›</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-title">入场时间通知</div>
+            <div class="sc-row"><span class="k">地点</span><span class="v">二曜路8号咖啡和清酒</span></div>
+            <div class="sc-row"><span class="k">入场时间</span><span class="v">2026-09-20 10:00</span></div>
+            <div class="sc-row"><span class="k">入场时长</span><span class="v">90分钟</span></div>
+            <div class="sc-row"><span class="k">温馨提醒</span><span class="v">明天有预约哦，别忘记了。</span></div>
+          </div>
+          <div class="sc-foot">进入小程序「二曜路8号咖啡和清酒」</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="col-label">这份卡片的可改 / 不可改</div>
+      <div class="note">
+        <b>微信固定（改不了）：</b>卡片圆角、白色底、发送方头像/名称、标题栏、底部「进入小程序」绿字、整体排版间距。<br/><br/>
+        <b>我们可改（仅文字）：</b>四行内容的值 ——
+        地点（thing2）、入场时间（time1）、入场时长（thing3）、温馨提醒（thing4）。
+        模板字段键已钉死，不能增删行。<br/><br/>
+        <b>当前可疑点：</b>「地点」填的是店名「二曜路8号咖啡和清酒」，与发送方名称<b>完全重名</b>，显得冗余。可改为真实街道地址（如「武昌区二曜路8号」），或干脆把这句挪作别的用途。
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">② 小程序确认页内「前一天微信提醒」卡片 <span class="tag">我们可改样式</span></div>
+  <div class="grid2">
+    <div class="appcard">
+      <div class="ac-head">
+        <span class="ac-title">📅 前一天微信提醒</span>
+        <span class="ac-btn">开启提醒</span>
+      </div>
+      <div class="ac-text">
+        我们将在您到店前一天 17:30 通过「微信服务通知」推送次日预约提醒，避免遗忘。点击「开启提醒」并在弹窗中允许「前一天提醒」即可。若未开启，到时将通过短信通知您。
+      </div>
+    </div>
+    <div>
+      <div class="col-label">说明</div>
+      <div class="note">
+        这是确认页里的授权引导卡片（非弹窗），用户点「开启提醒」会触发微信原生订阅授权弹窗（也是微信固定样式）。<br/><br/>
+        点击后按钮变「已开启 ✓」（当前 HTML 静态示意）：<br/><br/>
+        <span class="ac-btn on" style="display:inline-block">已开启 ✓</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">③ 微信原生订阅授权弹窗 <span class="tag">微信官方固定样式</span></div>
+  <div class="note" style="max-width:760px">
+    用户点「开启提醒」后出现的弹窗，是微信 <code>requestSubscribeMessage</code> 的原生 UI，同样<b>不可改样式</b>，只列出我们请求的模板（含「前一天提醒」）。能否收到提醒，取决于用户是否在此弹窗点「允许」。
+  </div>
+</body>
+</html>

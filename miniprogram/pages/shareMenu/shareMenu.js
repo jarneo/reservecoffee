@@ -14,6 +14,8 @@ Page({
     reviews: []
   },
   onLoad(q) {
+    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
+    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     // projectId 可选：指定某预约项目的菜单；缺省展示全店已发布项目
     this.setData({ projectId: q.projectId || '' })
     this.load()

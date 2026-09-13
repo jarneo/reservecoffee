@@ -3,28 +3,34 @@
 //
 // 本函数承担四件事：
 //  ① 成功短信延迟补发：smsSuccessAt 到点且未发过 → success 模板（仅预订人）
-//  ② 提前一天提醒：每天 dayBeforeAt（默认 17:30，北京时间）给「次日有预约」的顾客推送
+//  ② 提前一天提醒：每天 dayBeforeAt（默认 17:30，管理端可配任意 HH:mm，北京时间）给「次日有预约」的顾客推送
 //     微信 dayBefore 模板 + 短信 dayBefore 模板（2729722）；同一用户次日多笔只发最早一场
 //  ③ 取消短信延迟补发：smsCancelAt 到点 → 发送前复校该预约此刻仍为 cancelled 才发（cancel 模板 2729679）
 //  ④ 开场前提醒（reminder）+ 结束提醒（reminderEnd），仅预订人
 //
+// ⚠️ 时间轴裁剪（notifyPlan）：顾客侧共 5 类通知，但任一场景下「时间轴上真正会触发的」不超过 3 条。
+//    提交预约时 createReservation 已按预约时间轴算出 reservations.notifyPlan（4 键布尔），
+//    本函数所有发送点都按 plannedOf(r.notifyPlan, key) 判定：不在计划内的**两通道都不发**，
+//    从而保证整条时间轴 ≤3 条（当天预约的前一天提醒本就过窗；远期预约的结束提醒被优先级挤出）。
+//
 // 短信总控：全局开关(config.smsnotify) + 项目开关(projects.smsEnabled) 双重控制；
 // 【微信优先降级】skipSmsIfWxOk=true 时，若同一事件的微信订阅消息已送达（ok:true），该事件不再补发短信。
-const { db, _, COL, TPL, ok, sendSubscribe, subOn, shouldSkipSms, getStoreName } = require('./lib')
+const { db, _, COL, TPL, ok, sendSubscribe, subOn, shouldSkipSms, getStoreName, subbedOf, loadUserSubs, plannedOf } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 const DAY_BEFORE_DEFAULT_AT = '17:30'
 const DAY_BEFORE_TIP = '明天有预约哦，别忘记了。'
 // 前一天提醒的发送时间窗（分钟）：仅在 [dayBeforeAt, dayBeforeAt + 本值] 内触发。
 // 目的：① 避免定时任务长时间故障/停用后，恢复当天在深夜补发（如 23:00 推送「明天有预约」很打扰）；
-//      ② 避免「部署当天已过 17:30」时立刻补发一批。窗口内新建的预约仍会在下一轮（≤15 分钟）被覆盖。
+//      ② 避免「部署当天已过 dayBeforeAt」时立刻补发一批。窗口内新建的预约仍会在下一轮（≤15 分钟）被覆盖。
 // 当天错过窗口即不再补发（顾客在下单时已收到「预约成功」卡片，不重复打扰）。
+// ⚠️ 已知限制：窗口不跨零点。若 dayBeforeAt 设为 23:00 且窗口 180，则 00:00 之后不再补发
+//    （符合「错过即不补」的既有取向）。
 const DAY_BEFORE_WINDOW_MIN = 180
 
 // 结束提醒 / 过期短信的发送时间窗（分钟）：仅在 [expiredFireAt, expiredFireAt + 本值] 内**发送**。
 // 超窗只落 `ended: true` 标记（幂等、不再重试），并记 `reminderEndSkipped: 'too-late'`。
-// 目的：定时任务长时间停用后恢复、或历史积压被批量补扫时，不在深夜给顾客补发
-//      「预约已完成，感谢您的到来」（与 DAY_BEFORE_WINDOW_MIN 同一设计取向）。
+// 目的：定时任务长时间停用后恢复、或历史积压被批量补扫时，不在深夜给顾客补发「预约已完成」。
 const END_SEND_WINDOW_MIN = 120
 
 // 北京时间读数：SCF 运行时为 UTC，整体 +8h 后用 UTC getter 读即得北京时间（勿用本地 getter）
@@ -41,12 +47,13 @@ function plusDays(dateStr, n) {
   const t = new Date(Date.UTC(y, m - 1, d + n))
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
 }
-// 'HH:mm' → 当日分钟数（非法返回 null）
+// 'HH:mm' → 当日分钟数（非法返回 null）。
+// 已支持任意 00:00–23:59：管理端把 dayBeforeAt 配成 6 点 / 3 点等任意时刻都能正常生效，不存在写死。
 function hhmmMin(s) {
   const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(s || ''))
   return m ? Number(m[1]) * 60 + Number(m[2]) : null
 }
-// 场次时长（分钟）= 结束 - 开始
+// 场次时长（分钟）= 结束 - 开始（前一天提醒的「入场时长」用）
 function durationMin(start, end) {
   const a = /^(\d{1,2}):(\d{2})$/.exec(String(start || ''))
   const b = /^(\d{1,2}):(\d{2})$/.exec(String(end || ''))
@@ -109,6 +116,10 @@ exports.main = async () => {
     return p
   }
 
+  // 顾客订阅记录缓存（一次执行内复用：同一 openid 只查一次 users.subscriptions）
+  const subsCache = new Map()
+  const userSubsOf = async (openid) => loadUserSubs(openid, subsCache)
+
   let sentSuccess = 0
   let sentStart = 0
   let sentEnd = 0
@@ -142,7 +153,7 @@ exports.main = async () => {
     }
   } catch (e) { console.warn('[remindReservation] success pass failed (ignored):', e.message) }
 
-  // ===== ② 提前一天提醒（每天 dayBeforeAt，默认 17:30） =====
+  // ===== ② 前一天提醒（每天 dayBeforeAt，默认 17:30，管理端可配任意 HH:mm） =====
   try {
     const fireMin = hhmmMin(smsSw.dayBeforeAt)
     const atMin = fireMin == null ? hhmmMin(DAY_BEFORE_DEFAULT_AT) : fireMin
@@ -171,9 +182,12 @@ exports.main = async () => {
         const patch = { dayBeforeNotified: true }
         if (picked.has(r._id)) {
           const p = await projectOf(r.projectId)
-          // —— 微信订阅（顾客）——
+          // 时间轴计划：不在计划内 → 两通道都不发（当天预约本就过窗，此处为一致性兜底）
+          const inPlan = plannedOf(r.notifyPlan, 'dayBefore')
+          // —— 微信订阅（顾客）：计划 ∩ 全局开关 ∩ 用户订阅记录 ——
           let notify = null
-          if (TPL.dayBefore && TPL.dayBefore.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'dayBefore')) {
+          const uSubs = await userSubsOf(r.openid)
+          if (inPlan && TPL.dayBefore && TPL.dayBefore.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'dayBefore') && subbedOf(uSubs, 'dayBefore')) {
             notify = await sendSubscribe({
               openid: r.openid,
               templateId: TPL.dayBefore,
@@ -188,7 +202,7 @@ exports.main = async () => {
           }
           // —— 短信兜底（微信优先降级）——
           let smsRes = null
-          if (smsDayBeforeOn && p.smsEnabled && tpls.dayBefore && r.phone) {
+          if (inPlan && smsDayBeforeOn && p.smsEnabled && tpls.dayBefore && r.phone) {
             if (shouldSkipSms(smsSw, notify)) {
               smsRes = { skipped: true, reason: 'wx subscribe delivered (skipSmsIfWxOk)' }
             } else {
@@ -200,6 +214,7 @@ exports.main = async () => {
           }
           patch.dayBeforeNotify = notify
           patch.dayBeforeSms = smsRes
+          if (!inPlan) patch.dayBeforeSkipped = 'not-in-plan'
           sentDayBefore++
         } else {
           // 同一用户同日已由更早一场覆盖，本笔不再重复打扰
@@ -262,19 +277,27 @@ exports.main = async () => {
     const pName = p.name || '预约'
     const smsEnabled = !!p.smsEnabled
 
+    // 时间轴计划：不在计划内的类型两通道都不发（保持整条时间轴 ≤3 条）
+    const planRem = plannedOf(r.notifyPlan, 'reminder')
+    const planEnd = plannedOf(r.notifyPlan, 'reminderEnd')
+
     // 触发时刻：根据「开始前/后 + 偏移」与「结束前/后 + 偏移」计算
     const approachFireAt = approachingWhen === 'after' ? start + approachingOffset * 60000 : start - approachingOffset * 60000
     const expiredFireAt = expiredWhen === 'after' ? endTime + expiredOffset * 60000 : endTime - expiredOffset * 60000
 
-    // 过期提醒优先：到达 expiredFireAt 且未发过 → reminderEnd（仅顾客）+ 过期短信
+    // 结束提醒优先：到达 expiredFireAt 且未发过 → reminderEnd（仅顾客）+ 过期短信
     if (now >= expiredFireAt) {
       const patch = { ended: true }
       if (now - expiredFireAt > END_SEND_WINDOW_MIN * 60000) {
         // 超出发送时间窗（任务长时间停用后恢复 / 历史积压）→ 只打标记，不再深夜打扰
         patch.reminderEndSkipped = 'too-late'
+      } else if (!planEnd) {
+        // 本次预约计划未含「结束提醒」（时间轴 3 条已满，被优先级挤出）→ 两通道都不发
+        patch.reminderEndSkipped = 'not-in-plan'
       } else {
         let reminderEndNotify = null
-        if (TPL.reminderEnd && TPL.reminderEnd.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'reminderEnd')) {
+        const uSubsEnd = await userSubsOf(r.openid)
+        if (TPL.reminderEnd && TPL.reminderEnd.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'reminderEnd') && subbedOf(uSubsEnd, 'reminderEnd')) {
           reminderEndNotify = await sendSubscribe({
             openid: r.openid,
             templateId: TPL.reminderEnd,
@@ -302,26 +325,34 @@ exports.main = async () => {
 
     // 临近提醒：到达 approachFireAt 且**未发过** → reminder（仅顾客）+ 临近短信
     if (!r.reminded && now >= approachFireAt) {
-      let reminderNotify = null
-      if (TPL.reminder && TPL.reminder.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'reminder')) {
-        reminderNotify = await sendSubscribe({
-          openid: r.openid,
-          templateId: TPL.reminder,
-          data: {
-            thing10: { value: pName },
-            time1: { value: `${r.date} ${r.sessionStart}` },
-            // ⚠️ thing 关键字上限 20 字，超长直接 47003 data.thingN.value invalid（失败被静默吞）
-            thing5: { value: '预约快到了，路上注意安全哦' }
-          },
-          page: 'pages/mine/mine'
-        })
-      }
-      if (smsSw.approaching !== false && smsEnabled && tpls.approaching && !shouldSkipSms(smsSw, reminderNotify)) {
-        try { await sendTemplateSms({ db, phone: r.phone, templateId: tpls.approaching }) }
-        catch (e) { console.warn('[remindReservation] approaching sms failed (ignored):', e.message) }
+      const patch = { reminded: true }
+      if (!planRem) {
+        // 本次预约计划未含「开场前提醒」（下单时触发点已过，补发只会与「预约确认」重复）→ 两通道都不发
+        patch.reminderSkipped = 'not-in-plan'
+      } else {
+        let reminderNotify = null
+        const uSubsRem = await userSubsOf(r.openid)
+        if (TPL.reminder && TPL.reminder.indexOf('TPL_ID_') !== 0 && subOn(subCfg, 'reminder') && subbedOf(uSubsRem, 'reminder')) {
+          reminderNotify = await sendSubscribe({
+            openid: r.openid,
+            templateId: TPL.reminder,
+            data: {
+              thing10: { value: pName },
+              time1: { value: `${r.date} ${r.sessionStart}` },
+              // ⚠️ thing 关键字上限 20 字，超长直接 47003 data.thingN.value invalid（失败被静默吞）
+              thing5: { value: '预约快到了，路上注意安全哦' }
+            },
+            page: 'pages/mine/mine'
+          })
+        }
+        if (smsSw.approaching !== false && smsEnabled && tpls.approaching && !shouldSkipSms(smsSw, reminderNotify)) {
+          try { await sendTemplateSms({ db, phone: r.phone, templateId: tpls.approaching }) }
+          catch (e) { console.warn('[remindReservation] approaching sms failed (ignored):', e.message) }
+        }
+        patch.reminderNotify = reminderNotify
       }
       // 照常打 reminded（避免无限重试）；结果落库便于排查 43101
-      await db.collection(COL.reservations).doc(r._id).update({ data: { reminded: true, reminderNotify } }).catch(() => {})
+      await db.collection(COL.reservations).doc(r._id).update({ data: patch }).catch(() => {})
       sentStart++
     }
   }

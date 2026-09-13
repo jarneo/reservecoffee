@@ -1,5 +1,5 @@
 // getProject — 单项目详情 + 全部日期场次（顾客端选日期/场次用）
-const { db, COL, ok, fail, cloud } = require('./lib')
+const { db, COL, ok, fail, cloud, notifyWindowCfg } = require('./lib')
 
 // 解析介绍图片临时 URL：输入 [{fileId,...}]，返回带 url 的数组（按 sort 排序）
 async function resolveIntroImages(list) {
@@ -56,6 +56,10 @@ exports.main = async (event) => {
 
   const introImages = await resolveIntroImages(p.introImages || [])
 
+  // 通知时间窗配置：顾客端据此按预约时间轴裁剪「本次该申请哪几个订阅模板」（≤3，一次弹窗）
+  const swRes2 = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
+  const notifyCfg = notifyWindowCfg(swRes2 && swRes2.data)
+
   const project = {
     _id: p._id,
     name: p.name,
@@ -80,5 +84,5 @@ exports.main = async (event) => {
     slotTemplate: p.slotTemplate || []
   }
 
-  return ok({ project, schedules })
+  return ok({ project, schedules, notifyCfg })
 }

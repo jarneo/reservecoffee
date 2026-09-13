@@ -1,5 +1,13 @@
 const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
+// 通知类型/文案统一取自 subscribe.js（与顾客端确认页、通知偏好页同源），避免各端各写一份而走样
+const { CUSTOMER_SUBS, ADMIN_SUBS } = require('../../../utils/subscribe')
+
+// 前一天提醒时刻选择器：扩到全量 0–23 时 / 0–59 分。
+// ⚠️ 这是「把 17:30 改成 6 点、3 点等任意时刻」的真正卡点——此前小时只有 16–20、分钟只有 00/15/30/45，
+//    UI 上根本选不到，看起来像"写死"。后端正则早已支持任意 HH:mm，故只需放开这里的选项。
+const HOUR_OPTS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTE_OPTS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
 // 偏移选项 → 索引
 function approachingIdx(offset) {
@@ -22,19 +30,24 @@ function cancelDelayIdx(delay) {
   return 1
 }
 
+// 短信配置默认值（缺省全开）
+const SMS_DEFAULT = {
+  success: true, successDelay: 0,
+  approaching: true, approachingWhen: 'before', approachingOffset: 60,
+  expired: true, expiredWhen: 'after', expiredOffset: 5,
+  dayBefore: true, dayBeforeAt: '17:30',
+  cancel: true, cancelDelay: 3,
+  skipSmsIfWxOk: false
+}
+
 Page({
   behaviors: [guard],
   data: {
-    subList: [
-      { key: 'reserveSuccess', label: '预约成功（顾客）' },
-      { key: 'reserveCancel', label: '取消（顾客）' },
-      { key: 'reminder', label: '开场前提醒（顾客）' },
-      { key: 'reminderEnd', label: '结束提醒（顾客）' },
-      { key: 'dayBefore', label: '前一天提醒（顾客）' },
-      { key: 'adminNew', label: '新预约（管理员）' },
-      { key: 'adminCancel', label: '取消（管理员）' },
-      { key: 'adminReview', label: '待审核（管理员）' }
-    ],
+    // 订阅消息开关：类型与文案由 subscribe.js 统一派生（顾客 5 类 + 管理员 3 类）
+    subList: [].concat(
+      CUSTOMER_SUBS.map(s => ({ key: s.key, label: `${s.label}（顾客）` })),
+      ADMIN_SUBS.map(s => ({ key: s.key, label: `${s.label}（管理员）` }))
+    ),
     sub: {},
     smsList: [
       { key: 'success', label: '预定成功短信（顾客）' },
@@ -43,47 +56,33 @@ Page({
       { key: 'dayBefore', label: '前一天提醒短信（顾客）' },
       { key: 'cancel', label: '取消通知短信（顾客）' }
     ],
-    // 短信全局配置（含发送时间 + 微信优先降级）
-    sms: {
-      success: true, successDelay: 0,
-      approaching: true, approachingWhen: 'before', approachingOffset: 60,
-      expired: true, expiredWhen: 'after', expiredOffset: 5,
-      dayBefore: true, dayBeforeAt: '17:30',
-      cancel: true, cancelDelay: 3,
-      skipSmsIfWxOk: false
-    },
+    sms: Object.assign({}, SMS_DEFAULT),
     // 选择器展示用选项与索引
     approachingWhenOpts: ['开始前', '开始后'],
     approachingOffsetOpts: ['30分钟', '60分钟', '自定义'],
     expiredWhenOpts: ['结束前', '结束后'],
     expiredOffsetOpts: ['5分钟', '15分钟', '30分钟', '自定义'],
-    dayBeforeHourOpts: ['16', '17', '18', '19', '20'],
-    dayBeforeMinuteOpts: ['00', '15', '30', '45'],
+    dayBeforeHourOpts: HOUR_OPTS,
+    dayBeforeMinuteOpts: MINUTE_OPTS,
     cancelDelayOpts: ['立即（下一轮 15 分钟内）', '3 分钟', '5 分钟', '10 分钟'],
     approachingOffsetIdx: 1,
     expiredOffsetIdx: 0,
-    dayBeforeHourIdx: 1,
-    dayBeforeMinuteIdx: 2,
+    dayBeforeHourIdx: 17,
+    dayBeforeMinuteIdx: 30,
     cancelDelayIdx: 1
   },
+
   onLoad() {
     this.guard(['owner']).then(role => {
       if (!role) return
       call('getNotifyConfig').then(d => {
+        // —— 订阅开关 ——
         const sub = d.subscribe || {}
-        const subKeys = this.data.subList.map(x => x.key)
-        const subObj = {}; subKeys.forEach(k => { subObj[k] = sub[k] !== false })
+        const subObj = {}
+        this.data.subList.forEach(x => { subObj[x.key] = sub[x.key] !== false })
 
-        const s = d.sms || {}
-        const sms = Object.assign({
-          success: true, successDelay: 0,
-          approaching: true, approachingWhen: 'before', approachingOffset: 60,
-          expired: true, expiredWhen: 'after', expiredOffset: 5,
-          dayBefore: true, dayBeforeAt: '17:30',
-          cancel: true, cancelDelay: 3,
-          skipSmsIfWxOk: false
-        }, s)
-        // 归一化非法值
+        // —— 短信开关 + 计时配置（归一化非法值） ——
+        const sms = Object.assign({}, SMS_DEFAULT, d.sms || {})
         if (sms.successDelay !== 10) sms.successDelay = 0
         if (sms.approachingWhen !== 'after') sms.approachingWhen = 'before'
         if (!(sms.approachingOffset > 0)) sms.approachingOffset = 60
@@ -94,8 +93,8 @@ Page({
         sms.skipSmsIfWxOk = sms.skipSmsIfWxOk === true
 
         const [bh, bm] = sms.dayBeforeAt.split(':')
-        const hIdx = Math.max(0, this.data.dayBeforeHourOpts.indexOf(bh))
-        const mIdx = Math.max(0, this.data.dayBeforeMinuteOpts.indexOf(bm))
+        const hIdx = Math.max(0, HOUR_OPTS.indexOf(bh))
+        const mIdx = Math.max(0, MINUTE_OPTS.indexOf(bm))
 
         this.setData({
           sub: subObj,
@@ -109,6 +108,7 @@ Page({
       }).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
     })
   },
+
   toggleSub(e) { this.setData({ [`sub.${e.currentTarget.dataset.k}`]: e.detail.value }) },
   toggleSms(e) { this.setData({ [`sms.${e.currentTarget.dataset.k}`]: e.detail.value }) },
 
@@ -149,16 +149,16 @@ Page({
   },
   onExpiredCustom(e) { this.setData({ 'sms.expiredOffset': Number(e.detail.value) || 5 }) },
 
-  // 前一天提醒：发送时刻（时:分，北京时间）
+  // 前一天提醒时刻（北京时间，任意 HH:mm）
   onDayBeforeHour(e) {
     const hIdx = Number(e.detail.value)
-    const [_, bm] = this.data.sms.dayBeforeAt.split(':')
-    this.setData({ dayBeforeHourIdx: hIdx, 'sms.dayBeforeAt': `${this.data.dayBeforeHourOpts[hIdx]}:${bm}` })
+    const [, bm] = this.data.sms.dayBeforeAt.split(':')
+    this.setData({ dayBeforeHourIdx: hIdx, 'sms.dayBeforeAt': `${HOUR_OPTS[hIdx]}:${bm}` })
   },
   onDayBeforeMinute(e) {
     const mIdx = Number(e.detail.value)
     const [bh] = this.data.sms.dayBeforeAt.split(':')
-    this.setData({ dayBeforeMinuteIdx: mIdx, 'sms.dayBeforeAt': `${bh}:${this.data.dayBeforeMinuteOpts[mIdx]}` })
+    this.setData({ dayBeforeMinuteIdx: mIdx, 'sms.dayBeforeAt': `${bh}:${MINUTE_OPTS[mIdx]}` })
   },
 
   // 取消短信延迟（发前会复校预约仍为已取消；定时任务 15 分钟一轮，精度即 15 分钟）
@@ -169,10 +169,27 @@ Page({
   },
 
   goSms() { wx.navigateTo({ url: '/pages/admin/smsConfig/smsConfig' }) },
+
   save() {
     const d = this.data
-    const sub = {}; d.subList.forEach(it => { sub[it.key] = !!d.sub[it.key] })
-    const sms = Object.assign({}, d.sms)
+    const sub = {}
+    d.subList.forEach(it => { sub[it.key] = !!d.sub[it.key] })
+    // 显式构造，避免夹带历史脏字段回写 config
+    const sms = {
+      success: !!d.sms.success,
+      successDelay: Number(d.sms.successDelay) || 0,
+      approaching: !!d.sms.approaching,
+      approachingWhen: d.sms.approachingWhen,
+      approachingOffset: Number(d.sms.approachingOffset) || 60,
+      expired: !!d.sms.expired,
+      expiredWhen: d.sms.expiredWhen,
+      expiredOffset: Number(d.sms.expiredOffset) || 5,
+      dayBefore: !!d.sms.dayBefore,
+      dayBeforeAt: d.sms.dayBeforeAt,
+      cancel: !!d.sms.cancel,
+      cancelDelay: Number(d.sms.cancelDelay) || 0,
+      skipSmsIfWxOk: !!d.sms.skipSmsIfWxOk
+    }
     wx.showLoading({ title: '保存中' })
     call('saveNotifyConfig', { subscribe: sub, sms }).then(() => {
       wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' })

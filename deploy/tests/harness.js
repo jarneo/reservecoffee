@@ -150,12 +150,10 @@ module.exports = {
 `
 
 /**
- * 在沙箱里跑一次云函数
- * @param {string} fnName 云函数目录名
- * @param {function} setup 构造 store（cols / smsTemplates / wx 等）
- * @param {object} [opts] { event }  传给 main 的事件参数
+ * 建一个临时沙箱目录：假 wx-server-sdk + 真实共享库（转成 lib.js）；可选拷入被测函数。
+ * @param {string|null} fnName 云函数目录名；为 null 时只准备共享库
  */
-async function runFunction(fnName, setup, opts = {}) {
+function makeTmp(fnName) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rc-test-'))
   fs.mkdirSync(path.join(tmpDir, 'node_modules/wx-server-sdk'), { recursive: true })
   fs.writeFileSync(path.join(tmpDir, 'node_modules/wx-server-sdk/package.json'), JSON.stringify({ name: 'wx-server-sdk', main: 'index.js' }))
@@ -163,7 +161,26 @@ async function runFunction(fnName, setup, opts = {}) {
   fs.writeFileSync(path.join(tmpDir, 'sms.js'), STUB_SMS)
   fs.copyFileSync(path.join(ROOT, 'cloudfunctions/_lib/index.js'), path.join(tmpDir, 'lib-src.js'))
   fs.writeFileSync(path.join(tmpDir, 'lib.js'), "module.exports = require('./lib-src.js')\n")
-  fs.copyFileSync(path.join(ROOT, 'cloudfunctions', fnName, 'index.js'), path.join(tmpDir, 'index.js'))
+  if (fnName) fs.copyFileSync(path.join(ROOT, 'cloudfunctions', fnName, 'index.js'), path.join(tmpDir, 'index.js'))
+  return tmpDir
+}
+
+/**
+ * 直接加载【真实】共享库（cloudfunctions/_lib/index.js），用于单测库内纯函数
+ * （如 notifyPlan / normalizeSubs / bjTs）。每次调用生成独立沙箱，互不干扰。
+ */
+function loadLib() {
+  return require(path.join(makeTmp(null), 'lib.js'))
+}
+
+/**
+ * 在沙箱里跑一次云函数
+ * @param {string} fnName 云函数目录名
+ * @param {function} setup 构造 store（cols / smsTemplates / wx 等）
+ * @param {object} [opts] { event }  传给 main 的事件参数
+ */
+async function runFunction(fnName, setup, opts = {}) {
+  const tmpDir = makeTmp(fnName)
 
   const store = {
     cols: {}, writes: [], subscribeCalls: [], smsCalls: [],
@@ -206,4 +223,4 @@ function hhmmFromMin(min) {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
-module.exports = { runFunction, makeChecker, bjNow, plusDays, hhmmFromMin }
+module.exports = { runFunction, loadLib, makeChecker, bjNow, plusDays, hhmmFromMin }

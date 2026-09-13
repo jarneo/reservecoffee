@@ -3,7 +3,7 @@
 // ⚠️ 单条审核逻辑与 reviewReservation/index.js 保持同步；后者改动时本函数须同步。
 // ⚠️ 黑名单保护：批量「全部通过」不得放行黑名单用户（其待审预约可能提交于加黑之前），
 //    一律跳过并保持 pending，由管理员在审核页看到红标后逐条人工决定。
-const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms, subbedOf, loadUserSubs } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // 拉全部黑名单 openid 集合（分页，规避单批上限）
@@ -26,7 +26,8 @@ async function loadBlacklist() {
 
 // 处理单条待审核预约（与 reviewReservation 内部逻辑一致）
 // blSet: 黑名单 openid 集合；命中且为通过操作时跳过
-async function processOne(reservationId, decision, blSet) {
+// subsCache: 顾客订阅记录缓存（Map），批量审核时避免同一 openid 重复查库
+async function processOne(reservationId, decision, blSet, subsCache) {
   const rRes = await db.collection(COL.reservations).doc(reservationId).get().catch(() => ({ data: null }))
   const r = rRes.data
   if (!r) return { ok: false, reservationId, reason: 'not found' }
@@ -64,10 +65,13 @@ async function processOne(reservationId, decision, blSet) {
     const p = pRes.data
     const subCfg = await loadSubscribeSwitch(db)
 
+    // 读取顾客统一订阅记录（users.subscriptions），与全局开关共同决定是否推送
+    const userSubs = await loadUserSubs(r.openid, subsCache)
+
     // 审核通过 → 推送「预约成功」给顾客（小程序订阅）
     // ⚠️ 先发订阅再发短信：其返回值决定「微信优先降级」是否跳过成功短信
     let wxSuccessRes = null
-    if (decision === 'approve' && subOn(subCfg, 'reserveSuccess')) {
+    if (decision === 'approve' && subOn(subCfg, 'reserveSuccess') && subbedOf(userSubs, 'reserveSuccess')) {
       wxSuccessRes = await sendSubscribe({
         openid: r.openid,
         templateId: TPL.reserveSuccess,
@@ -147,11 +151,13 @@ exports.main = async (event) => {
 
   // 黑名单集合：批量通过时跳过（仅 approve 方向）
   const blSet = decision === 'approve' ? await loadBlacklist() : new Set()
+  // 顾客订阅记录缓存：批量审核时同一 openid 只查一次库
+  const subsCache = new Map()
 
   let approved = 0, skipped = 0, failed = 0, blacklisted = 0
   const errors = []
   for (const r of pending) {
-    const out = await processOne(r._id, decision, blSet)
+    const out = await processOne(r._id, decision, blSet, subsCache)
     if (out.ok) approved++
     else if (out.reason === 'blacklisted') blacklisted++
     else if (out.reason === 'not pending') skipped++

@@ -1,6 +1,6 @@
 const { call } = require('../../utils/cloud')
 const { isPhone, requestSubscribe } = require('../../utils/util')
-const { TPLS, BOOKER_TPLS } = require('../../utils/subscribe')
+const { normalizeSubs, notifyPlanOf, tmplIdsOfPlan, CUSTOMER_SUBS } = require('../../utils/subscribe')
 
 Page({
   data: {
@@ -11,12 +11,15 @@ Page({
     showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false,
     // 黑名单阻断态：进入页面即检出，禁用提交
     blocked: false, blockReason: '',
-    // 前一天提醒微信授权态：'' 未操作 / 'granted' 已授权 / 'declined' 未授权
-    dayBeforeAuth: ''
+    // 用户长期通知偏好（users.subscriptions，缺省全订阅）。
+    // 页面不再自绘勾选弹窗：授权直接交给微信原生弹窗（它本身就是带勾选框的列表）。
+    // 这里只用于「提交时随预约一起落库」以及「哪几类不必申请」的过滤。
+    subs: {}
   },
 
   onLoad(q) {
     this.setData({ projectId: q.projectId, date: q.date, sessionId: q.sessionId })
+    this.setData({ subs: normalizeSubs({}) })
     this.load()
   },
 
@@ -27,6 +30,13 @@ Page({
         const s = (d.schedules.find(x => x.date === this.data.date) || {})
         const sess = (s.sessions || []).find(x => x.id === this.data.sessionId)
         const fields = p.fields || ['name', 'phone']
+        // 按预约时间轴算出「本次会真正触发」的通知类型（≤3），提交时只申请这几个模板。
+        // 在页面加载时算好，使 submit 的 tap 处理器能同步取用（requestSubscribe 必须在手势内同步调用）。
+        this.notifyCfg = d.notifyCfg               // 通知时间窗配置（getProject 下发；缺失时用默认值）
+        this.plan = notifyPlanOf(
+          { date: this.data.date, sessionStart: sess && sess.start, sessionEnd: sess && sess.end },
+          d.notifyCfg
+        )
         this.setData({
           projectName: p.name,
           session: sess ? { ...sess, remaining: sess.capacity - sess.booked } : null,
@@ -46,6 +56,7 @@ Page({
 
   // 从 users 集合预填称呼/手机号（仅当本页尚未输入时），实现"下次预约自动带出"
   // 同时检出黑名单：命中则进入阻断态，避免用户填完表单提交后才被服务端拒绝
+  // 并取回该顾客的长期通知偏好（提交时随预约落库；也可在「我的 → 通知偏好」修改）
   prefill() {
     call('getMyProfile')
       .then(d => {
@@ -59,6 +70,7 @@ Page({
         if (profile.name && !this.data.name) patch.name = profile.name
         if (profile.phone && !this.data.phone) patch.phone = profile.phone
         if (Object.keys(patch).length) this.setData(patch)
+        if (profile.subscriptions) this.setData({ subs: normalizeSubs(profile.subscriptions) })
       })
       .catch(() => {})
   },
@@ -97,17 +109,59 @@ Page({
     this.setData({ partySize: v })
   },
 
-  // 前一天提醒：单独的微信订阅授权入口，让用户能明确开启次日提醒
-  // 避免被提交时整组授权弹窗淹没而漏点；点一次即可，提交时仍会再次请求（已授权则微信不再重复弹）
-  authDayBefore() {
-    requestSubscribe([TPLS.dayBefore]).then(r => {
-      const granted = (r.accepted || []).indexOf(TPLS.dayBefore) >= 0
-      this.setData({ dayBeforeAuth: granted ? 'granted' : 'declined' })
-      wx.showToast({ title: granted ? '已开启前一天提醒' : '未授权，将改发短信', icon: 'none' })
-    })
+  // 取本次通知计划；若 load() 尚未返回或失败则就地补算，保证永远有值
+  // （否则会一个模板都不申请、原生弹窗根本不出现）
+  ensurePlan() {
+    if (this.plan) return this.plan
+    const s = this.data.session
+    this.plan = notifyPlanOf(
+      { date: this.data.date, sessionStart: s && s.start, sessionEnd: s && s.end },
+      this.notifyCfg
+    )
+    return this.plan
   },
 
-  submit() {
+  // 直接拉起微信原生订阅弹窗（它本身就是带勾选框的列表，无需再自绘一层）。
+  // 只申请「本次预约会真正触发」的模板（按时间轴裁剪到 ≤3），且**忽略长期偏好**：
+  //    长期偏好只闸「后端是否发送」，不闸「前端申请」——否则用户在偏好里关掉的项永远不在弹窗里、无法重新开启。
+  //    弹窗里用户勾选/取消的结果会回写 this.data.subs（作为本次预约的订阅快照，并供 doSubmit 落库）。
+  // ⚠️ 必须在本 tap 处理器里**同步**发起（不能放在任何 await 之后），否则脱离用户手势上下文 → 微信不弹窗。
+  requestNotify() {
+    const plan = this.ensurePlan()
+    const ids = tmplIdsOfPlan(plan, null) // 始终申请时间轴内的全部适用模板（忽略 subs）
+    console.info('[confirm] notifyPlan=', JSON.stringify(plan), 'requestIds=', ids.length, 'ids=', JSON.stringify(ids))
+    if (!ids.length) {
+      // 走到这里只可能是日期/场次异常导致计划为空；显式记录，避免静默失败被误认为「功能没生效」
+      console.warn('[confirm] 无任何模板需要申请，微信订阅弹窗不会出现')
+      return Promise.resolve()
+    }
+    return requestSubscribe(ids).then(r => {
+      const accepted = (r && r.accepted) || []
+      const rejected = (r.rejected || [])
+      const failed = (r.failed || [])
+      const code = r && r.errCode
+      console.info('[confirm] subscribe accepted=', accepted.length, 'rejected=', rejected.length, 'failed=', failed.length, 'errCode=', code)
+      // 回写订阅偏好：用户在该弹窗里允许的项 → true，拒绝/被禁用 → false（仅限本次申请的模板）
+      const subs = { ...this.data.subs }
+      const keyOf = id => { const s = CUSTOMER_SUBS.find(x => x.tmplId === id); return s ? s.key : null }
+      accepted.forEach(id => { const k = keyOf(id); if (k) subs[k] = true })
+      rejected.forEach(id => { const k = keyOf(id); if (k) subs[k] = false })
+      this.setData({ subs })
+      if (!accepted.length) {
+        // 未拿到任何授权 —— 必须让用户/开发者看得见原因，否则表现为「弹窗不弹、静默改短信」
+        //   errCode 20003：tmplIds 非法（含后台未选用/已失效的模板）→ 整次调用失败且不弹窗
+        //   errCode 20004：用户在弹窗里点了「取消」（整体拒绝）
+        //   注意：「一次性额度用尽 / 用户拒绝接收」是「发送」阶段(subscribeMessage.send)返回的 43101，
+        //        不是本「请求授权」阶段；本阶段「总是保持+拒绝」会走 success 回调的 reject 分支（见上）。
+        const msg = code
+          ? ('订阅授权失败 ' + code + '，将改用短信通知')
+          : (rejected.length ? '未开启微信通知，将改用短信通知' : '微信订阅未生效，将改用短信通知')
+        wx.showToast({ title: msg, icon: 'none', duration: 2500 })
+      }
+    }).catch(() => { wx.showToast({ title: '微信订阅调用失败，将改用短信通知', icon: 'none', duration: 2500 }) })
+  },
+
+  async submit() {
     // 黑名单兜底：profile 尚未返回时用户就点了提交（服务端 createReservation 亦会拦截，此处仅为体验兜底）
     if (this.data.blocked) {
       return wx.showModal({
@@ -127,16 +181,24 @@ Page({
     if (fields.indexOf('note') >= 0) payload.note = note || ''
     if (fields.indexOf('gender') >= 0) payload.gender = gender || ''
     if (fields.indexOf('age') >= 0) payload.age = age || ''
-    // 必须在用户点击手势内同步请求订阅授权（前一天提醒/成功/取消/开场提醒/结束提醒），否则微信会拦截导致授权失败、收不到推送
-    requestSubscribe(BOOKER_TPLS)
+    // 先同步拉起微信订阅弹窗（必须在手势内）；等用户授权/拒绝结果回写 subs 后再提交预约。
+    // 用 Promise.race 加 20s 兜底：万一弹窗异常未回调（如用户强行退出），不至于卡住提交。
+    await Promise.race([
+      this.requestNotify(),
+      new Promise(res => setTimeout(res, 20000))
+    ])
+    this.doSubmit(payload)
+  },
+
+  doSubmit(payload) {
     wx.showLoading({ title: '提交中' })
-    call('createReservation', payload)
+    call('createReservation', { ...payload, subscribed: this.data.subs })
       .then(() => {
         wx.hideLoading()
         wx.showToast({ title: '预约成功', icon: 'success' })
         // 持久化顾客资料，下次预约自动带出（失败不阻断主流程）
         const prof = { name: this.data.name.trim() }
-        if (phone) prof.phone = this.data.phone
+        if (this.data.phone) prof.phone = this.data.phone
         call('saveProfile', prof).catch(() => {})
         // 我的预约是 tabBar 页面，必须用 switchTab（redirectTo/navigateTo 对 tabBar 页无效）
         setTimeout(() => wx.switchTab({ url: '/pages/mine/mine' }), 800)
