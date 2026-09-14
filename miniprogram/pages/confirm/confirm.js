@@ -17,9 +17,7 @@ Page({
     subs: {},
     // 提交成功页（应用内必达确认 UI）：成功后展示留座信息覆盖层
     success: false,
-    successInfo: null,
-    // [DEBUG] 订阅计划诊断：提交后展示手机实际算出的 plan/date/sessionEnd/申请模板数
-    debug: ''
+    successInfo: null
   },
 
   onLoad(q) {
@@ -135,10 +133,6 @@ Page({
     const plan = this.ensurePlan()
     const ids = tmplIdsOfPlan(plan, null) // 申请集由 tmplIdsOfPlan 按档位分配（预约成功必含 + 时间轴≤2 + 有空位填取消），恒≤3
     console.info('[confirm] notifyPlan=', JSON.stringify(plan), 'requestIds=', ids.length, 'ids=', JSON.stringify(ids))
-    // [DEBUG] 把运行时真实值暴露到成功页，便于定位"结束提醒丢失"问题
-    this.setData({
-      debug: `plan=${JSON.stringify(plan)} | date=${this.data.date} | end=${this.data.session ? this.data.session.end : '(none)'} | ids=${ids.length}`
-    })
     if (!ids.length) {
       // 走到这里只可能是日期/场次异常导致计划为空；显式记录，避免静默失败被误认为「功能没生效」
       console.warn('[confirm] 无任何模板需要申请，微信订阅弹窗不会出现')
@@ -150,14 +144,6 @@ Page({
       const failed = (r.failed || [])
       const code = r && r.errCode
       console.info('[confirm] subscribe accepted=', accepted.length, 'rejected=', rejected.length, 'failed=', failed.length, 'errCode=', code)
-      // [DEBUG] 暴露微信原生返回(每个模板 accept/reject/ban)，定位"结束提醒丢失"
-      const raw = (r && r.raw) || {}
-      const remEntry = CUSTOMER_SUBS.find(s => s.key === 'reminderEnd')
-      const remTpl = remEntry && remEntry.tmplId
-      const remStatus = raw[remTpl] ? raw[remTpl] : 'missing(未渲染/未配置/已ban)'
-      const resInfo = `RES req=${ids.length} got=${Object.keys(raw).length} | 结束提醒=${remStatus} | raw=${JSON.stringify(raw)}`
-      console.info('[confirm]', resInfo)
-      this.setData({ debug: (this.data.debug || '') + ' || ' + resInfo })
       // 回写订阅偏好：用户在该弹窗里允许的项 → true，拒绝/被禁用 → false（仅限本次申请的模板）
       const subs = { ...this.data.subs }
       const keyOf = id => { const s = CUSTOMER_SUBS.find(x => x.tmplId === id); return s ? s.key : null }

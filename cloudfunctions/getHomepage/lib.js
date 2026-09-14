@@ -27,7 +27,7 @@ const TPL = {
   adminNew: 'AJ8iCZgYFaNoSmwmrwwivnRTnJ3BvFu5sOeg4Wa-3aM',          // 新预约提醒（管理员 owner+manager）
   adminCancel: 'TpTXSsqC4i8F_GtN_boeKh4TXjVI-1rXUwA01AIdO5Q',       // 预约取消提醒（管理员 owner+manager）
   adminReview: 'UQJ5AfBWVUTQO-upC-3_W-UeDu_BgPPGoyj11Ei5Py8',       // 待审核提醒（管理员 owner+manager）
-  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo',      // 结束提醒（顾客，仅预订人）
+  reminderEnd: '6-dCpVBL6RL0IOjnzVZfpK_2apG2hwSpv01BrKvvRzM',    // 结束提醒（顾客，仅预订人）· 模板21337「预约过期通知」
   dayBefore: 'rQEgm5zUep1S9oGeYKYUEawhPK3rs48EQwNncx0HP04'        // 前一天提醒（顾客，每天 17:30 推送次日预约）
 }
 

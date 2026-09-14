@@ -302,11 +302,9 @@ exports.main = async () => {
             openid: r.openid,
             templateId: TPL.reminderEnd,
             data: {
-              thing10: { value: pName },
-              time12: { value: `${r.date} ${r.sessionStart}` },
-              time14: { value: `${r.date} ${r.sessionEnd}` },
-              // ⚠️ 同上：thing 关键字 ≤ 20 字（原 27 字，授权后必踩 47003）
-              thing9: { value: '预约已完成，感谢您的到来，期待下次相见' }
+              // 模板 21337「预约过期通知」：time4=预约时间+结束时间；thing5=温馨提醒
+              time4: { value: `${r.date} ${r.sessionStart}-${r.sessionEnd}` },
+              thing5: { value: '预约已完成，感谢您的到来，期待下次相见' }
             },
             page: 'pages/mine/mine'
           })

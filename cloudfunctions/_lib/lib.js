@@ -27,7 +27,8 @@ const TPL = {
   adminNew: 'AJ8iCZgYFaNoSmwmrwwivnRTnJ3BvFu5sOeg4Wa-3aM',          // 新预约提醒（管理员 owner+manager）
   adminCancel: 'TpTXSsqC4i8F_GtN_boeKh4TXjVI-1rXUwA01AIdO5Q',       // 预约取消提醒（管理员 owner+manager）
   adminReview: 'UQJ5AfBWVUTQO-upC-3_W-UeDu_BgPPGoyj11Ei5Py8',       // 待审核提醒（管理员 owner+manager）
-  reminderEnd: 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo'       // 结束提醒（顾客，仅预订人）
+  reminderEnd: '6-dCpVBL6RL0IOjnzVZfpK_2apG2hwSpv01BrKvvRzM',    // 结束提醒（顾客，仅预订人）· 模板21337「预约过期通知」
+  dayBefore: 'rQEgm5zUep1S9oGeYKYUEawhPK3rs48EQwNncx0HP04'        // 前一天提醒（顾客，每天 17:30 推送次日预约）
 }
 
 // 服务号「订阅通知」模板 ID（公众号后台 → 订阅通知 申请，非已废弃的「模板消息」）。
@@ -80,11 +81,41 @@ function addDays(n) {
   return ymd(t)
 }
 
+// 北京时间 'YYYY-MM-DD' + 'HH:mm' → 真实时间戳（毫秒）。
+// ⚠️ 云函数容器时区是 **UTC**，而库里 date / sessionStart / sessionEnd 存的是**北京时间**字符串。
+//    因此绝不能用 `new Date('2026-09-11 20:00')`（按容器本地时区解析 → UTC 下等于北京 09-12 04:00），
+//    那会让所有「结束/过期」判定整体延后 8 小时。统一用 Date.UTC(...) − 8h 还原真实时刻。
+// 解析失败返回 NaN，调用方需保守处理（不要当成已过期）。
+function bjTs(dateStr, hm) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number)
+  if (!y || !m || !d) return NaN
+  const [hh, mm] = String(hm || '23:59').split(':').map(Number)
+  return Date.UTC(y, m - 1, d, isNaN(hh) ? 23 : hh, isNaN(mm) ? 59 : mm) - 8 * 3600 * 1000
+}
+
+// 预约的有效状态（五态）：cancelled / completed / expired / pending / confirmed
+// 场次结束时刻（北京时间）已过 → expired。共享库同源实现，避免各函数各写一份走样。
+function effStatus(r, nowTs) {
+  if (!r) return 'pending'
+  if (r.status === 'cancelled') return 'cancelled'
+  if (r.status === 'completed') return 'completed'
+  const end = bjTs(r.date, r.sessionEnd)
+  if (!isNaN(end) && end < (nowTs || Date.now())) return 'expired'
+  return r.status // pending | confirmed
+}
+
 // 友好短日期：YYYY-MM-DD -> M月D日（如 8月20日），用于订阅/短信文案
 function monthDay(ymdStr) {
   const [y, m, d] = String(ymdStr || '').split('-').map(Number)
   if (!m || !d) return ymdStr || ''
   return `${m}月${d}日`
+}
+
+// 日历/列表日期标签：YYYY-MM-DD -> MM/DD（如 09/07），顾客端日历与项目卡片用
+function monthDaySlash(ymdStr) {
+  const [y, m, d] = String(ymdStr || '').split('-').map(Number)
+  if (!m || !d) return ymdStr || ''
+  return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`
 }
 
 // 读取店铺名（以店铺名义发消息）。优先 config 集合文档 store.name，回退默认常量。
@@ -96,11 +127,10 @@ async function getStoreName(db) {
   return DEFAULT_STORE_NAME
 }
 
-// 发送订阅消息（占位实现：捕获失败不抛出）
+// 发送订阅消息；返回结构化结果（不再静默吞，便于排查 43101/47003/47004）
 async function sendSubscribe({ openid, templateId, data, page }) {
   if (!openid || !templateId || templateId.indexOf('TPL_ID_') === 0) {
-    console.log('[subscribe] skip (template not configured):', templateId)
-    return
+    return { ok: false, skipped: true, reason: 'template not configured', openid, templateId }
   }
   try {
     await cloud.openapi.subscribeMessage.send({
@@ -109,10 +139,152 @@ async function sendSubscribe({ openid, templateId, data, page }) {
       data,
       page: page || 'pages/index/index'
     })
+    return { ok: true, openid, templateId }
   } catch (e) {
-    console.warn('[subscribe] send failed (ignored):', e.message)
+    // 关键错误码：43101=用户未授权订阅模板；47003=字段值/关键字非法；47004=模板不存在
+    const errCode = e && (e.errCode !== undefined ? e.errCode : e.code)
+    const errMsg = (e && e.message) ? e.message : String(e)
+    console.warn('[subscribe] send failed:', errCode, errMsg, 'tmpl=', templateId)
+    return { ok: false, openid, templateId, errCode, errMsg }
   }
 }
+
+// 读取「订阅消息开关」配置（config.subscribe 文档）。缺省视为全部开启。
+async function loadSubscribeSwitch(db) {
+  try {
+    const r = await db.collection('config').doc('subscribe').get()
+    return (r && r.data) || {}
+  } catch (e) { return {} }
+}
+// 单个订阅模板是否允许发送：config.subscribe[key] !== false 视为开（缺省开）
+function subOn(subCfg, key) { return subCfg ? (subCfg[key] !== false) : true }
+
+// ===== 统一用户订阅记录（顾客侧）=====
+// 顾客在确认页以「勾选列表一次性收集所有通知类型订阅」，提交时把勾选结果存进 users.subscriptions。
+// 所有顾客侧触发逻辑（预约成功/取消/开场前提醒/结束提醒/前一天提醒）统一读取该记录：
+//   subs[key] !== false 视为已订阅（缺省开）。
+// 全局开关 subOn 与用户记录 subbedOf 是「与」关系——二者皆开才真正发送。
+// 顾客侧通知模板共 5 类；「时间轴上实际会触发的」在任一场景下都不超过 3 条，
+// 由 notifyPlan() 按预约时间轴动态裁剪（见下方「通知计划」段）。
+//    改这里即全链路收敛（normalizeSubs / subbedOf / loadUserSubs 均由 SUB_KEYS 驱动）。
+const SUB_KEYS = ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd', 'reserveCancel']
+
+// 把任意输入规整为 5 个已知键的布尔对象；未显式置 false 一律视为已订阅（缺省开）。
+function normalizeSubs(s) {
+  const out = {}
+  for (const k of SUB_KEYS) out[k] = !!(s && s[k] !== false)
+  return out
+}
+
+// 单个顾客订阅是否生效：subs[key] !== false 视为已订阅（缺省开）；
+// 记录缺失（null/undefined）也视为已订阅，保证「读不到记录」时不会误拦通知。
+function subbedOf(subs, key) { return subs ? (subs[key] !== false) : true }
+
+// 读取并缓存某顾客的订阅记录（users.subscriptions）。cache 为可选 Map<openid, subs>，
+// 供 remindReservation 循环内避免重复 DB 读取。读取失败回退为「全部订阅」默认值。
+async function loadUserSubs(openid, cache) {
+  if (!openid) return normalizeSubs({})
+  if (cache && cache.has(openid)) return cache.get(openid)
+  let subs = normalizeSubs({})
+  try {
+    const r = await db.collection(COL.users).doc(openid).get()
+    if (r && r.data) subs = normalizeSubs(r.data.subscriptions)
+  } catch (e) { /* 文档不存在 → 全部订阅 */ }
+  if (cache) cache.set(openid, subs)
+  return subs
+}
+
+// ===== 通知计划（按预约时间轴裁剪：返回完整未来适用集合，不硬截断）=====
+// 本函数只回答「这场预约在时间轴上哪些提醒类型仍处于未来、应当被启用」，返回 4 键布尔（恒含全部键）。
+//   reserveSuccess 恒 true（免审即时发 / 待审在审核通过时发）
+//   dayBefore      仅当 now < 前一天窗口终点（D-1 dayBeforeAt + dayBeforeWindow）
+//   reminder       仅当 now < 开场前触发时刻（否则下单后会被定时任务立即补发，与「预约确认」重复）
+//   reminderEnd    仅当 now < 结束触发时刻
+// 注意：本计划是「完整未来适用集合」，**不做 ≤3 硬截断**——
+//   ① 远期预约的「结束提醒」仍记为 true，remindReservation 会先尝试微信（未授权 → 43101）再走短信兜底，
+//      从而保证「短信确保触达」；② 所谓「≤3 条」只约束【提交瞬间的微信授权弹窗】（前端 allocation，见 subscribe.js tmplIdsOfPlan），
+//      不约束整条生命周期的发送条数（时间轴类提醒本来就分布在不同的未来节点，互不重叠）。
+// 「预约取消」是事件型、不在本计划内：它随取消事件触发，由 cancelReservation 发送并走短信兜底。
+// ⚠️ 前端 miniprogram/utils/subscribe.js 的 notifyPlanOf 是本规则的前端镜像（同样返回完整计划，不截断）；
+//    提交授权的 ≤3 分配在 tmplIdsOfPlan 实现，两边必须同步修改。
+
+// 'YYYY-MM-DD' ± n 天（非法输入返回 ''）
+function shiftDate(dateStr, n) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number)
+  if (!y || !m || !d) return ''
+  const t = new Date(Date.UTC(y, m - 1, d + (n || 0)))
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
+}
+
+// 通知时间窗配置（自 config.smsnotify 归一化，缺省用默认值）
+function notifyWindowCfg(smsSw) {
+  const s = smsSw || {}
+  return {
+    dayBeforeAt: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s.dayBeforeAt || '')) ? s.dayBeforeAt : '17:30',
+    dayBeforeWindow: typeof s.dayBeforeWindow === 'number' && s.dayBeforeWindow >= 0 ? s.dayBeforeWindow : 180,
+    approachingWhen: s.approachingWhen === 'after' ? 'after' : 'before',
+    approachingOffset: typeof s.approachingOffset === 'number' && s.approachingOffset >= 0 ? s.approachingOffset : 60,
+    expiredWhen: s.expiredWhen === 'before' ? 'before' : 'after',
+    expiredOffset: typeof s.expiredOffset === 'number' && s.expiredOffset >= 0 ? s.expiredOffset : 5
+  }
+}
+
+// 时间轴通知优先级（仅用于文档化顺序，以及作为前端提交弹窗分配时的参考；本函数不再据此截断）
+const NOTIFY_PRIORITY = ['reserveSuccess', 'dayBefore', 'reminder', 'reminderEnd']
+
+// 计算本次预约应启用的时间轴通知：返回 4 键布尔对象（恒含全部键，便于落库与判定）。
+//   reserveSuccess 恒 true（免审即时发 / 待审在审核通过时发）
+//   dayBefore      仅当 now < 前一天窗口终点（D-1 dayBeforeAt + dayBeforeWindow）
+//   reminder       仅当 now < 开场前触发时刻（否则下单后会被定时任务立即补发，与「预约确认」重复）
+//   reminderEnd    仅当 now < 结束触发时刻
+// 不截断：完整未来适用集合（见上方说明）。提交弹窗的 ≤3 分配由前端 tmplIdsOfPlan 负责。
+function notifyPlan(reservation, cfg, nowTs) {
+  const now = nowTs || Date.now()
+  const f = cfg || notifyWindowCfg({})
+  const r = reservation || {}
+  const plan = { reserveSuccess: true, dayBefore: false, reminder: false, reminderEnd: false }
+
+  const startTs = bjTs(r.date, r.sessionStart)
+  const endTs = bjTs(r.date, r.sessionEnd)
+  const dbFire = bjTs(shiftDate(r.date, -1), f.dayBeforeAt)
+  const dbEnd = isNaN(dbFire) ? NaN : dbFire + f.dayBeforeWindow * 60000
+  const remFire = isNaN(startTs) ? NaN
+    : (f.approachingWhen === 'after' ? startTs + f.approachingOffset * 60000 : startTs - f.approachingOffset * 60000)
+  const endFire = isNaN(endTs) ? NaN
+    : (f.expiredWhen === 'before' ? endTs - f.expiredOffset * 60000 : endTs + f.expiredOffset * 60000)
+
+  if (!isNaN(dbEnd) && now < dbEnd) plan.dayBefore = true
+  if (!isNaN(remFire) && now < remFire) plan.reminder = true
+  if (!isNaN(endFire) && now < endFire) plan.reminderEnd = true
+
+  return plan
+}
+
+// 本次预约是否启用了某类时间轴通知。
+// notifyPlan 缺失（历史预约数据）时返回 true → 保持旧行为，不误拦已有预约的提醒。
+function plannedOf(plan, key) {
+  if (!plan || typeof plan !== 'object') return true
+  return plan[key] !== false
+}
+
+// 读取「短信全局开关」配置（config.smsnotify 文档）。缺省视为全部开启。
+async function loadSmsSwitch(db) {
+  try {
+    const r = await db.collection('config').doc('smsnotify').get()
+    return (r && r.data) || {}
+  } catch (e) { return {} }
+}
+
+// 【微信优先降级】是否跳过短信：
+//   开关 skipSmsIfWxOk 为 true 且同一事件的微信订阅消息确已投递（ok:true = errcode 0，微信服务端已受理）
+//   → 该用户已在微信「服务通知」收到卡片，不再补发短信，避免重复打扰。
+// 注意：ok:false（43101 未授权 / 47003 字段非法 / -501001 凭证异常）一律视为「微信没送到」，短信照发兜底。
+function shouldSkipSms(smsSw, wxRes) {
+  return !!(smsSw && smsSw.skipSmsIfWxOk === true && wxRes && wxRes.ok === true && !wxRes.skipped)
+}
+
+// 判定一条订阅发送结果是否「确实送达微信侧」（供落库排查用）
+function wxDelivered(wxRes) { return !!(wxRes && wxRes.ok === true && !wxRes.skipped) }
 
 // 取所有管理员（role 为 owner 或 manager）的 openid，使 owner + manager 都收管理侧通知
 async function listAdminOpenids(db) {
@@ -121,27 +293,23 @@ async function listAdminOpenids(db) {
 }
 
 // 给所有管理员（owner + manager）推送订阅消息（新预约 / 取消等管理侧通知）
-// 占位跳过 + 逐个发送 + 失败不阻断主流程
+// 占位跳过 + 逐个发送 + 失败不阻断主流程；返回每个管理员的发送结果数组供排查
 async function notifyAdmins(db, { templateId, data, page }) {
   if (!templateId || templateId.indexOf('TPL_ID_') === 0) {
-    console.log('[notifyAdmins] skip (template not configured):', templateId)
-    return
+    return [{ ok: false, skipped: true, reason: 'template not configured', templateId }]
   }
   const ids = await listAdminOpenids(db)
   if (!ids.length) {
-    console.log('[notifyAdmins] no admin(owner/manager) found')
-    return
+    return [{ ok: false, skipped: true, reason: 'no admin(owner/manager) found' }]
   }
   console.log('[notifyAdmins] sending', templateId, 'to', ids.length, 'admin(s):', ids)
+  const results = []
   for (const oid of ids) {
-    try {
-      await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
-      console.log('[notifyAdmins] sent ok to', oid)
-    } catch (e) {
-      // 关键错误码：43101=用户未授权订阅模板；47003=字段值非法；47004=模板不存在
-      console.warn('[notifyAdmins] send failed to', oid, ':', e && e.message)
-    }
+    const r = await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
+    r.role = 'admin'
+    results.push(r)
   }
+  return results
 }
 
 // ===== 服务号模板消息（templateMessage）相关 =====
@@ -186,9 +354,74 @@ async function notifyAdminsMp() {
   return
 }
 
+// ===== 顾客自动标签规则引擎 =====
+
+// scene → 来源标签（仅三类有业务语义；其他返回 '' 不展示）
+function srcLabel(scene) {
+  const s = Number(scene)
+  if (s === 1035) return '公众号菜单'
+  if (s === 1005 || s === 1150) return '搜索'
+  if (s === 1007 || s === 1008 || s === 1036) return '链接分享'
+  return ''
+}
+
+function daysAgo(ts) {
+  if (!ts) return null
+  return Math.floor((Date.now() - ts) / 86400000)
+}
+
+// 24 小时分布取峰值小时（仅计数最大且 >0 才有意义）
+function peakHour(arr24) {
+  if (!arr24 || !arr24.length) return -1
+  let hi = 0
+  for (let i = 1; i < 24; i++) if (arr24[i] > arr24[hi]) hi = i
+  return arr24[hi] > 0 ? hi : -1
+}
+
+// 自动标签：根据顾客资料(profile) + 聚合结果(agg) 生成标签数组（云端算、不存储，保证单一真相）
+// agg 字段：total / firstAt / lastAt / avgParty / avgLeadDays / perProject[{projectId,name,cnt}] / submitHour[24] / sessionHour[24] / weekendRatio
+// 缺字段的标签自动跳过（roster 聚合不携带时段/周末时仍可用）。
+function customerTags(profile, agg) {
+  const tags = []
+  if (!agg) return tags
+  const total = agg.total || 0
+  if (total >= 5) tags.push('高频常客')
+  else if (total >= 2) tags.push('回头客')
+
+  const df = daysAgo(agg.firstAt)
+  if (df != null && df <= 30) tags.push('新客')
+
+  const dl = daysAgo(agg.lastAt)
+  if (total > 0 && dl != null && dl > 90) tags.push('沉睡客')
+
+  const lead = agg.avgLeadDays
+  if (typeof lead === 'number' && !isNaN(lead)) {
+    if (lead >= 3) tags.push('计划型')
+    else if (lead <= 1) tags.push('临时型')
+  }
+
+  const peak = peakHour(agg.submitHour) >= 0 ? peakHour(agg.submitHour) : peakHour(agg.sessionHour)
+  if (peak >= 20 && peak <= 22) tags.push('夜场客')
+  if (typeof agg.weekendRatio === 'number' && agg.weekendRatio >= 0.6) tags.push('周末客')
+  if (typeof agg.avgParty === 'number' && agg.avgParty >= 3) tags.push('大桌客')
+
+  if (agg.perProject && agg.perProject.length) {
+    const top = agg.perProject.reduce((a, b) => (b.cnt > a.cnt ? b : a), agg.perProject[0])
+    if (top.cnt / total >= 0.6 && top.name) tags.push(top.name + '爱好者')
+  }
+
+  const src = srcLabel(profile && profile.firstSource)
+  if (src) tags.push(src)
+  return tags
+}
+
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, monthDay, getStoreName,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
-  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp
+  readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
+  srcLabel, customerTags, loadSubscribeSwitch, subOn,
+  loadSmsSwitch, shouldSkipSms, wxDelivered,
+  SUB_KEYS, normalizeSubs, subbedOf, loadUserSubs,
+  shiftDate, notifyWindowCfg, notifyPlan, plannedOf, NOTIFY_PRIORITY
 }

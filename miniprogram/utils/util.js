@@ -69,7 +69,7 @@ function requestSubscribe(tmplIds) {
   // ⚠️ 所有分片必须在**同一个同步 tick** 内下发：微信要求 requestSubscribeMessage 在用户 TAP 手势
   //    上下文里调用，若放进 Promise 回调串行下发，第 2 组起会因脱离手势上下文而弹窗失败。
   //    因此这里同步 forEach 全部下发，结果异步汇总后 resolve。
-  const acc = { accepted: [], rejected: [], failed: [], errCode: undefined, raw: {} }
+  const acc = { accepted: [], rejected: [], failed: [], errCode: undefined }
   return new Promise(resolve => {
     let done = 0
     const settle = () => { if (++done === chunks.length) resolve({ ...acc, total: valid.length }) }
@@ -78,8 +78,6 @@ function requestSubscribe(tmplIds) {
         tmplIds: ids,
         success(res) {
           console.log('[subscribe] 授权结果:', JSON.stringify({ ids, res }))
-          // [DEBUG] 保留原生 res（含每个模板 accept/reject/ban），供 confirm 页诊断"模板被永久拒绝/未配置"
-          if (res && typeof res === 'object') Object.assign(acc.raw, res)
           ids.forEach(id => {
             if (res[id] === 'accept') acc.accepted.push(id)
             else if (res[id] === 'reject' || res[id] === 'ban') acc.rejected.push(id)

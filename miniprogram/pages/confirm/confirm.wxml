@@ -62,7 +62,6 @@
       </view>
       <button class="btn block" bindtap="goMine">查看我的预约</button>
       <button class="btn ghost block" bindtap="closeSuccess">返回首页</button>
-      <view class="debug-box" wx:if="{{debug}}">{{debug}}</view>
     </view>
   </view>
 </view>
