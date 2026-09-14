@@ -91,3 +91,17 @@
 .sd-k { color: var(--ink-3, #999); }
 .sd-v { color: var(--ink-1, #1a1a1a); }
 .success-card .btn { margin-top: 16rpx; }
+
+/* [DEBUG] 订阅计划诊断盒子：提交成功页底部展示运行时真实值 */
+.debug-box {
+  margin-top: 24rpx;
+  padding: 18rpx 20rpx;
+  background: #f6f1e9;
+  border: 1rpx solid #e3d5c0;
+  border-radius: 12rpx;
+  font-size: 21rpx;
+  line-height: 1.5;
+  color: #6b4f2a;
+  text-align: left;
+  word-break: break-all;
+}
