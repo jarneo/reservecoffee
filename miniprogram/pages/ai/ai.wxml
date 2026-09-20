@@ -31,6 +31,16 @@
     <view class="chip" bindtap="quick" data-q="你们家怎么走？营业到几点？">到店引导</view>
   </view>
 
+  <!-- 隐私授权弹窗（录音属隐私接口，须先同步用户已同意《用户隐私保护指引》） -->
+  <view wx:if="{{showPrivacy}}" class="pmask">
+    <view class="pcard">
+      <view class="ptitle">用户隐私保护提示</view>
+      <view class="pbody">语音预约需要用到麦克风。使用前请先阅读并同意<text class="plink" bindtap="openPrivacyContract">{{privacyName}}</text>。点击同意后方可开启语音输入。</view>
+      <button id="agree-btn" class="btn block" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacy">同意并开启语音</button>
+      <view class="tap muted sm" bindtap="onDisagreePrivacy" style="text-align:center;margin-top:20rpx">不同意，用文字输入</view>
+    </view>
+  </view>
+
   <!-- 录音中：实时识别浮层 -->
   <view wx:if="{{recording}}" class="live">
     <view class="live-dot"></view>

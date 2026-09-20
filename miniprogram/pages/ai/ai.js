@@ -25,7 +25,10 @@ Page({
     voiceMode: false,      // false=键盘态 true=语音态
     recording: false,
     liveText: '',          // 录音过程中的实时识别结果
-    pluginOk: !!plugin     // WechatSI 不可用时自动隐藏麦克风图标
+    pluginOk: !!plugin,    // WechatSI 不可用时自动隐藏麦克风图标
+    // 隐私授权（录音属隐私接口，须先让用户同意《用户隐私保护指引》）
+    showPrivacy: false,
+    privacyName: '《用户隐私保护指引》'
   },
 
   onLoad(q) {
@@ -56,21 +59,86 @@ Page({
       }
       m.onError = (res) => {
         this.setData({ recording: false, liveText: '' })
-        const msg = (res && res.msg) || ''
-        wx.showToast({
-          title: msg ? ('识别失败：' + String(msg).slice(0, 18)) : '识别失败，请重试或改用文字',
-          icon: 'none'
-        })
+        const errmsg = String(((res && res.msg) || (res && res.errMsg) || ''))
+        // 微信侧隐私/授权类报错单独给出可执行指引，避免只看到「没权限」却不知为何
+        if (errmsg.indexOf('not declared in the privacy agreement') >= 0) {
+          wx.showModal({
+            title: '隐私声明尚未生效',
+            content: '后台《用户隐私保护指引》需声明「访问你的麦克风」并通过审核（新增声明约 5 分钟后生效）。请稍后重试。',
+            showCancel: false
+          })
+        } else if (errmsg.indexOf('privacy api banned') >= 0 || errmsg.indexOf('api scope is not declared') >= 0) {
+          wx.showModal({
+            title: '录音接口暂不可用',
+            content: '多为后台提审时勾选了「未采集隐私」或未声明隐私协议导致。请到 mp 后台检查《用户隐私保护指引》后重试。',
+            showCancel: false
+          })
+        } else {
+          wx.showToast({ title: '没听清，请再说一次', icon: 'none' })
+        }
       }
       this._rec = m
     } catch (e) {
       this.setData({ pluginOk: false })
     }
+
+    // 被动监听：微信在调用隐私接口而用户未同步过同意状态时触发（基础库 ≥2.32.3）
+    if (wx.onNeedPrivacyAuthorization) {
+      wx.onNeedPrivacyAuthorization(resolve => {
+        this._privacyResolve = resolve
+        this.setData({ showPrivacy: true })
+      })
+    }
+    if (wx.getPrivacySetting) {
+      wx.getPrivacySetting({
+        success: r => { if (r && r.privacyContractName) this.setData({ privacyName: r.privacyContractName }) },
+        fail: () => {}
+      })
+    }
   },
 
-  toggleMode() {
+  // ===== 隐私授权 =====
+  // 录音属隐私接口：须先让用户点击同意按钮同步「已阅读隐私协议」，否则接口被微信拦截
+  ensurePrivacy() {
+    return new Promise(resolve => {
+      if (!wx.getPrivacySetting) return resolve(true) // 低基础库无隐私校验，不阻断
+      wx.getPrivacySetting({
+        success: r => {
+          if (!r || !r.needAuthorization) return resolve(true)
+          this._privacyWaiter = resolve
+          this.setData({ showPrivacy: true })
+        },
+        fail: () => resolve(true)
+      })
+    })
+  },
+
+  openPrivacyContract() {
+    if (wx.openPrivacyContract) wx.openPrivacyContract({})
+  },
+
+  onAgreePrivacy() {
+    this.setData({ showPrivacy: false })
+    if (this._privacyResolve) { const r = this._privacyResolve; this._privacyResolve = null; r({ buttonId: 'agree-btn', event: 'agree' }) }
+    if (this._privacyWaiter) { const w = this._privacyWaiter; this._privacyWaiter = null; w(true) }
+  },
+
+  onDisagreePrivacy() {
+    this.setData({ showPrivacy: false, voiceMode: false })
+    if (this._privacyResolve) { const r = this._privacyResolve; this._privacyResolve = null; r({ event: 'disagree' }) }
+    if (this._privacyWaiter) { const w = this._privacyWaiter; this._privacyWaiter = null; w(false) }
+    wx.showToast({ title: '已切换为文字输入', icon: 'none' })
+  },
+
+  async toggleMode() {
     if (this.data.recording) return
-    this.setData({ voiceMode: !this.data.voiceMode, liveText: '' })
+    const toVoice = !this.data.voiceMode
+    // 切入语音态前先过隐私授权，避免「按住才发现没权限」的挫败感
+    if (toVoice) {
+      const agreed = await this.ensurePrivacy()
+      if (!agreed) return
+    }
+    this.setData({ voiceMode: toVoice, liveText: '' })
   },
 
   ensureRecordAuth() {
@@ -91,7 +159,10 @@ Page({
           wx.authorize({
             scope: 'scope.record',
             success: () => resolve(true),
-            fail: () => { wx.showToast({ title: '未获得麦克风权限', icon: 'none' }); resolve(false) }
+            fail: (e) => {
+              this.reportAuthError(e)
+              resolve(false)
+            }
           })
         },
         fail: () => resolve(true) // 取不到授权状态时交给微信自身弹窗处理
@@ -99,8 +170,33 @@ Page({
     })
   },
 
+  // 把微信原始 errMsg 翻译成可执行指引，避免只看到「没权限」
+  reportAuthError(e) {
+    const m = String((e && e.errMsg) || (e && e.msg) || '')
+    if (m.indexOf('not declared in the privacy agreement') >= 0) {
+      wx.showModal({
+        title: '隐私声明尚未生效',
+        content: '后台《用户隐私保护指引》需声明「访问你的麦克风」。补充声明约 5 分钟后生效，请在 mp 后台确认已发布后重试。',
+        showCancel: false
+      })
+    } else if (m.indexOf('privacy api banned') >= 0) {
+      wx.showModal({
+        title: '录音接口被禁用',
+        content: '多为提审时勾选了「未采集隐私」或未声明隐私协议所致。请到 mp 后台重新提交《用户隐私保护指引》。',
+        showCancel: false
+      })
+    } else if (m.indexOf('auth deny') >= 0 || m.indexOf('auth denied') >= 0) {
+      wx.showToast({ title: '你拒绝了麦克风授权', icon: 'none' })
+    } else {
+      wx.showToast({ title: '未获得麦克风权限：' + (m ? m.slice(0, 40) : '未知原因'), icon: 'none' })
+    }
+  },
+
   async onVoiceStart() {
     if (this.data.recording || !this._rec) return
+    // 顺序很关键：先同步隐私授权，再申请系统录音权限，最后才开始录音
+    const agreed = await this.ensurePrivacy()
+    if (!agreed) return
     const ok = await this.ensureRecordAuth()
     if (!ok) return
     try {
