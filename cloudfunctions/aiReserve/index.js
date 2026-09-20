@@ -85,22 +85,28 @@ function buildSystemPrompt(availability) {
   ].join('\n')
 }
 
-// ===== 3) 调用 CloudBase AI（@cloudbase/node-sdk 的 app.ai()）=====
-// 实测：wx-server-sdk@2.7.2 无 cloud.ai / cloud.extend.AI 入口；升级 4.x 虽官方支持 cloud.ai()，
-// 但 wx-server-sdk 的 DYNAMIC_CURRENT_ENV 在 AI 场景拿不到环境 ID（社区 issue #1087）。
-// 故采用官方推荐的 @cloudbase/node-sdk ≥3.16.0：app.ai() 入口已实测存在（探针用 3.18.3 通过），
-// 且 init({}) 不传 env 时 v3+ 自动识别当前云函数环境，规避上述 env 坑。
-// 数据库 / OPENID 仍由 lib.js 的 wx-server-sdk 负责（已验证可用），两套 SDK 指向同一环境、互不干扰。
-// provider / model 用云函数环境变量 AI_PROVIDER / AI_MODEL 覆盖（缺省见下，待 §14 控制台启用模型后回填/覆盖）。
+// ===== 3) 调用 CloudBase AI =====
+// 【2026-09-21 运行时实测（探针 aiProbe，同一环境同一依赖）】
+//   ✔ wx-server-sdk(4.0.2):cloud.ai()   + provider=hunyuan-exp + model=hunyuan-turbos-latest → ok（22 tokens）
+//   ✔ wx-server-sdk(4.0.2):cloud.ai()   + provider=hunyuan-v3  + model=hy3                   → ok
+//   ✘ @cloudbase/node-sdk(3.18.3):app.ai() + 任意 provider                                    → HTTP 404（本环境不可用，勿走）
+// 结论：必须使用 wx-server-sdk 的 cloud.ai() 入口。注意 'cloud.extend.AI' 是小程序端形态，云函数端不存在。
+// 失败一律抛出，由主入口统一转成 fail('AI 服务暂不可用：…')，前端降级兜底。
+// provider / model 可用云函数环境变量 AI_PROVIDER / AI_MODEL 覆盖，无需改代码。
 async function callAI(messages) {
-  const tcb = require('@cloudbase/node-sdk')
-  const app = tcb.init({ timeout: 60000 })
-  const ai = app.ai()
   const provider = process.env.AI_PROVIDER || 'hunyuan-exp'
   const model = process.env.AI_MODEL || 'hunyuan-turbos-latest'
+  const cloud = require('wx-server-sdk')
+  let ai = null
+  if (typeof cloud.ai === 'function') ai = cloud.ai()
+  else if (cloud.extend && cloud.extend.AI) ai = cloud.extend.AI // 兜底（云端若降级到旧版仍可尝试）
+  if (!ai) throw new Error('当前 wx-server-sdk 无 cloud.ai() 入口，请确认依赖版本 ≥3.0.5-beta.1')
+
   const m = ai.createModel(provider)
+  // 云函数端为平铺参数形态（小程序端才需要 { data:{...} } 包裹）
   const resp = await m.generateText({ model, messages })
-  const text = (resp && (resp.text || (resp.data && resp.data.text))) || ''
+  const text = (resp && (resp.text || (resp.data && resp.data.text))) ||
+    (resp && resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || ''
   if (!text) throw new Error('AI 返回为空')
   return text
 }
