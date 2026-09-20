@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="banner">关闭后，顾客端首页与项目详情页的「AI预约」浮窗与入口将全部隐藏，常规预约不受影响。开关默认开启。</view>
+
+  <view class="card">
+    <view class="sec">AI 智能预约</view>
+    <view class="field row between">
+      <view style="flex:1;padding-right:24rpx">
+        <view class="label">启用 AI 预约助理</view>
+        <view class="muted xs" style="margin-top:6rpx;line-height:1.6">开启后顾客可用自然语言预约 / 咨询；关闭则隐藏所有 AI 入口。</view>
+      </view>
+      <switch checked="{{enabled}}" bindchange="toggle"/>
+    </view>
+  </view>
+
+  <button class="btn block" bindtap="save">保存</button>
+</view>

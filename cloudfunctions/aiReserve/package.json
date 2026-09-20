@@ -1,0 +1,10 @@
+{
+  "name": "aiReserve",
+  "version": "1.0.0",
+  "description": "reservecoffee AI 智能预约（对话 + 信息抽取 + 真实可用性校验，只读）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^4.0.2",
+    "@cloudbase/node-sdk": "^3.16.0"
+  }
+}

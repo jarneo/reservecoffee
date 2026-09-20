@@ -1,5 +1,5 @@
 // getHomepage — 顾客端首页数据：首页配置 + 已发布且未删除项目列表 + 在售店铺菜单
-const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDaySlash } = require('./lib')
+const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDaySlash, loadAiSwitch } = require('./lib')
 
 // 首页店铺菜单最多展示数量（按 sort 升序取前 N 个）
 const MENU_LIMIT = 10
@@ -142,5 +142,7 @@ exports.main = async () => {
     try { homepage.heroImageUrl = await resolveImage(homepage.heroImage) } catch (e) { homepage.heroImageUrl = '' }
   }
   console.log('[getHomepage] openid=', OPENID, 'projects=', projects.length, 'products=', products.length)
-  return ok({ homepage, projects, products })
+  // AI 智能预约总开关（缺省开）：用于前端控制首页浮窗与 AI 入口显隐（详见 ai-reserve-spec.md §15）
+  const aiEnabled = await loadAiSwitch(db).catch(() => true)
+  return ok({ homepage, projects, products, aiEnabled })
 }

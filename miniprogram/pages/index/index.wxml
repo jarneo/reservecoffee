@@ -54,4 +54,6 @@
   </view>
 
   <view wx:if="{{role!=='none'}}" class="btn ghost block" bindtap="goAdmin" style="margin-top:24rpx">进入管理端</view>
+
+  <aiFab aiEnabled="{{aiEnabled}}" />
 </view>

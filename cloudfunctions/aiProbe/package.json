@@ -1,0 +1,10 @@
+{
+  "name": "aiProbe",
+  "version": "1.0.0",
+  "description": "临时探针：验证 wx-server-sdk cloud.ai() 与 @cloudbase/node-sdk app.ai() 两条路径 × provider/model 组合",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^4.0.2",
+    "@cloudbase/node-sdk": "^3.16.0"
+  }
+}

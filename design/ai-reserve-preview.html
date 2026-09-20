@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 智能预约 · 设计预览</title>
+<style>
+  :root{
+    --ink:#1A1A1A; --ink-2:#555555; --ink-3:#999999; --line:#E7E7E7;
+    --fill:#F5F5F5; --fill-2:#FAFAFA; --brand:#7A5230; --orange:#E8833A; --danger:#A32D2D;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:#EDEDED; color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Helvetica Neue",Helvetica,sans-serif;
+    display:flex; justify-content:center; align-items:flex-start; padding:24px; gap:28px; flex-wrap:wrap;
+  }
+  /* 手机外框 */
+  .frame{
+    width:375px; height:812px; background:var(--fill-2); border-radius:36px;
+    box-shadow:0 18px 50px rgba(0,0,0,.18); border:1px solid #dcdcdc;
+    display:flex; flex-direction:column; overflow:hidden; position:relative;
+  }
+  .frame.flash{ outline:3px solid var(--brand); outline-offset:2px; }
+  .notch{height:28px; display:flex; align-items:center; justify-content:center;}
+  .notch span{width:120px;height:18px;background:#111;border-radius:0 0 14px 14px;}
+  /* 顶部导航 */
+  .navbar{
+    height:52px; display:flex; align-items:center; gap:10px; padding:0 16px;
+    border-bottom:1rpx solid var(--line); background:#fff; flex:0 0 auto;
+  }
+  .navbar .back{font-size:22px;color:var(--ink);width:28px;cursor:pointer;}
+  .navbar .title{font-weight:600;font-size:17px;flex:1;}
+  .navbar .dot{width:9px;height:9px;border-radius:50%;background:var(--brand);display:inline-block;}
+  .navbar .ai-tag{font-size:11px;color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:2px 7px;}
+  /* 聊天区 */
+  .chat{flex:1;overflow-y:auto;padding:16px 14px;background:var(--fill-2);}
+  .chat::-webkit-scrollbar{width:0;}
+  .welcome{font-size:13px;color:var(--ink-3);line-height:1.6;margin-bottom:14px;}
+  .welcome b{color:var(--ink);}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+  .chip{font-size:12px;color:var(--brand);border:1px solid var(--brand);border-radius:8px;padding:6px 10px;background:#fff;cursor:pointer;transition:opacity .15s;}
+  .chip:active{opacity:.6;}
+  .row-msg{display:flex;margin-bottom:14px;align-items:flex-end;gap:8px;}
+  .row-msg.user{flex-direction:row-reverse;}
+  .avatar{width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .avatar.ai{background:var(--brand);color:#fff;}
+  .avatar.me{background:var(--ink);color:#fff;}
+  .bubble{max-width:74%;padding:11px 14px;font-size:14px;line-height:1.5;border-radius:14px;word-break:break-word;}
+  .bubble.ai{background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px;color:var(--ink);}
+  .bubble.user{background:var(--ink);color:#fff;border-bottom-right-radius:4px;}
+  /* 打字态 */
+  .typing{display:inline-flex;gap:4px;padding:4px 2px;}
+  .typing i{width:6px;height:6px;border-radius:50%;background:var(--ink-3);display:inline-block;animation:blink 1.2s infinite;}
+  .typing i:nth-child(2){animation-delay:.2s;}
+  .typing i:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+  /* 结构化确认卡（复用 confirm 视觉） */
+  .confirm-card{
+    background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:6px;width:100%;
+  }
+  .confirm-card .pname{font-weight:600;font-size:15px;}
+  .confirm-card .meta{font-size:12px;color:var(--ink-2);margin-top:6px;}
+  .confirm-card .remain{font-size:12px;color:var(--ink-3);margin-top:2px;}
+  .confirm-card .hint{font-size:12px;color:var(--brand);margin:10px 0 12px;}
+  .confirm-card .acts{display:flex;gap:10px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;font-size:14px;padding:11px 18px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;}
+  .btn:active{opacity:.7;}
+  .btn.ghost{background:#fff;color:var(--ink);}
+  .btn.block{width:100%;}
+  .btn.sm{padding:9px 14px;font-size:13px;}
+  /* 边界：满员/过期提示 */
+  .notice{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:12px;font-size:13px;color:var(--ink-2);line-height:1.6;}
+  .notice b{color:var(--ink);}
+  .notice .alt{margin-top:8px;color:var(--brand);}
+  /* 降级卡 */
+  .degrade{background:rgba(163,45,45,.05);border-left:4px solid var(--danger);border-radius:8px;padding:12px;font-size:13px;color:var(--danger);line-height:1.6;}
+  .degrade .manual{margin-top:10px;}
+  /* 成功覆盖层 */
+  .success-mask{position:absolute;left:0;right:0;top:80px;bottom:0;background:rgba(250,250,250,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;z-index:20;}
+  .success-mask.hide{display:none;}
+  .success-icon{width:64px;height:64px;border-radius:50%;background:var(--ink);position:relative;margin-bottom:18px;}
+  .success-icon::after{content:"";position:absolute;left:22px;top:14px;width:14px;height:26px;border-right:3px solid #fff;border-bottom:3px solid #fff;transform:rotate(45deg);}
+  .success-title{font-size:18px;font-weight:600;}
+  .success-sub{font-size:13px;color:var(--ink-2);margin-top:8px;text-align:center;line-height:1.5;}
+  .success-detail{width:100%;margin:20px 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .sd-row{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;border-bottom:1px solid var(--fill);}
+  .sd-row:last-child{border-bottom:none;}
+  .sd-k{color:var(--ink-3);}
+  .sd-v{color:var(--ink);font-weight:500;}
+  /* 演示控制条 */
+  .demo-bar{border-top:1px solid var(--line);background:#fff;padding:10px 12px;display:flex;flex-wrap:wrap;gap:6px;flex:0 0 auto;}
+  .demo-bar .lab{width:100%;font-size:11px;color:var(--ink-3);margin-bottom:2px;}
+  .demo-btn{font-size:11px;border:1px solid var(--line);background:var(--fill-2);border-radius:7px;padding:6px 9px;cursor:pointer;color:var(--ink-2);}
+  .demo-btn:active{background:var(--fill);}
+  /* 输入栏 */
+  .composer{display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid var(--line);align-items:flex-end;flex:0 0 auto;}
+  .composer textarea{flex:1;height:40px;max-height:90px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;resize:none;font-family:inherit;}
+  .composer .send{width:42px;height:42px;border-radius:10px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;border:none;cursor:pointer;}
+
+  /* ===== 首页（新增） ===== */
+  .home-scroll{flex:1;overflow-y:auto;padding:14px;background:var(--fill-2);}
+  .home-scroll::-webkit-scrollbar{width:0;}
+  .hero{font-size:18px;font-weight:600;margin:4px 2px 14px;}
+  .hero small{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:4px;}
+  .proj-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .proj-card .pn{font-weight:600;font-size:15px;}
+  .proj-card .pm{font-size:12px;color:var(--ink-2);margin-top:6px;line-height:1.5;}
+  .proj-card .pact{display:flex;gap:10px;margin-top:12px;}
+  .tag-line{font-size:11px;color:var(--ink-3);margin-top:8px;}
+  /* 球形浮窗（新增，可拖动） */
+  .ai-fab{
+    position:absolute; right:18px; bottom:96px; width:58px; height:58px; border-radius:50%;
+    background:var(--brand); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 8px 20px rgba(122,82,48,.38); cursor:grab; z-index:15; user-select:none; touch-action:none;
+    font-size:12px; line-height:1.3; text-align:center;
+  }
+  .ai-fab:active{cursor:grabbing;}
+  .ai-fab .fab-ico{font-size:18px;}
+  .ai-fab.dim{display:none;}
+  .ai-off-hint{
+    position:absolute; left:0; right:0; bottom:0; padding:12px 14px; background:rgba(245,245,245,.96);
+    border-top:1px solid var(--line); font-size:12px; color:var(--ink-3); text-align:center; display:none; z-index:14;
+  }
+  .ai-off-hint.show{display:block;}
+
+  /* ===== 管理后台 AI 设置（新增） ===== */
+  .cfg-scroll{flex:1;overflow-y:auto;padding:14px;background:var(--fill-2);}
+  .cfg-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .cfg-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .cfg-row .ct{font-weight:600;font-size:15px;}
+  .cfg-row .cs{font-size:12px;color:var(--ink-3);margin-top:4px;line-height:1.5;}
+  .cfg-badge{display:inline-block;font-size:11px;color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:2px 7px;margin-top:10px;}
+  .switch{width:48px;height:28px;border-radius:14px;background:var(--line);position:relative;transition:background .2s;cursor:pointer;flex:0 0 auto;}
+  .switch.on{background:var(--brand);}
+  .switch .knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  .switch.on .knob{left:23px;}
+  .toast{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);background:rgba(26,26,26,.9);color:#fff;font-size:13px;padding:10px 16px;border-radius:10px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.show{opacity:1;}
+
+  /* 右侧说明 */
+  .side{max-width:340px;font-size:13px;color:var(--ink-2);line-height:1.7;}
+  .side h3{color:var(--ink);font-size:15px;margin:18px 0 6px;}
+  .side h3:first-child{margin-top:0;}
+  .side .k{display:inline-block;background:var(--fill);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:12px;color:var(--ink);}
+  .side ul{margin:6px 0;padding-left:18px;}
+  .side li{margin-bottom:6px;}
+  .side .ok{color:#2E7D32;font-weight:600;}
+  .side .wait{color:var(--orange);font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ========== 帧 1：首页（含球形浮窗） ========== -->
+<div class="frame" id="homeFrame">
+  <div class="notch"><span></span></div>
+  <div class="navbar">
+    <div class="title">二曜路8号</div>
+    <div class="ai-tag">预约</div>
+  </div>
+
+  <div class="home-scroll">
+    <div class="hero">门店预约<small>法兰绒深烘 · 清酒品鉴 · 研习社</small></div>
+
+    <div class="proj-card">
+      <div class="pn">法兰绒深烘咖啡</div>
+      <div class="pm">手冲冰/热，单品豆每日限量，约 60 分钟。</div>
+      <div class="pact">
+        <button class="btn sm" onclick="goBooking('flannel')">常规预约</button>
+        <button class="btn ghost sm" onclick="openAi()">✦ 问 AI预约</button>
+      </div>
+    </div>
+
+    <div class="proj-card">
+      <div class="pn">清酒品鉴</div>
+      <div class="pm">纯米/吟酿多款，含小食搭配，约 90 分钟。</div>
+      <div class="pact">
+        <button class="btn sm" onclick="goBooking('sake')">常规预约</button>
+        <button class="btn ghost sm" onclick="openAi()">✦ 问 AI预约</button>
+      </div>
+    </div>
+
+    <div class="proj-card">
+      <div class="pn">法兰绒研习社</div>
+      <div class="pm">冲泡教学体验，适合新手，约 120 分钟。</div>
+      <div class="pact">
+        <button class="btn sm" onclick="goBooking('lab')">常规预约</button>
+        <button class="btn ghost sm" onclick="openAi()">✦ 问 AI预约</button>
+      </div>
+    </div>
+    <div class="tag-line">向下拖动右下角浮窗可调整位置；点击浮窗进入 AI 助手。</div>
+  </div>
+
+  <!-- 球形浮窗（可拖动） -->
+  <div class="ai-fab" id="aiFab" onpointerdown="dragStart(event)">
+    <div class="fab-ico">✦</div>
+    <div>AI</div>
+  </div>
+  <div class="ai-off-hint" id="aiOffHint">AI 智能预约已关闭，仅提供常规预约</div>
+
+  <div class="demo-bar">
+    <div class="lab">原型演示：AI 总开关（与第 3 帧管理后台联动）</div>
+    <div class="demo-btn" id="homeToggleBtn" onclick="toggleAiFromHome()">🔘 AI 总开关：开</div>
+    <div class="demo-btn" onclick="resetFab()">↺ 浮窗复位</div>
+  </div>
+</div>
+
+<!-- ========== 帧 2：AI 对话页（独立路由 pages/ai） ========== -->
+<div class="frame" id="aiFrame">
+  <div class="notch"><span></span></div>
+  <div class="navbar">
+    <div class="back" onclick="backHome()">‹</div>
+    <div class="title"><span class="dot"></span>&nbsp;智能预约助手</div>
+    <div class="ai-tag">AI</div>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="welcome">你好，我是店里的预约助手 ✦ 用一句话告诉我你想约什么，我来帮你留座。<br><b>例如：</b></div>
+    <div class="chips">
+      <div class="chip" onclick="run('full')">明天下午3点法兰绒深烘两人位</div>
+      <div class="chip" onclick="run('missing')">想约清酒品鉴</div>
+      <div class="chip" onclick="run('fullup')">今晚7点清酒品鉴一位</div>
+      <div class="chip" onclick="run('degrade')">智能对话不可用</div>
+    </div>
+  </div>
+
+  <div class="demo-bar">
+    <div class="lab">原型演示控制（点击下方场景，体验交互流程）</div>
+    <div class="demo-btn" onclick="run('full')">① 完整一句话预约</div>
+    <div class="demo-btn" onclick="run('missing')">② 信息不全·追问</div>
+    <div class="demo-btn" onclick="run('fullup')">③ 满员/过期·改荐</div>
+    <div class="demo-btn" onclick="run('degrade')">④ 服务降级·回退</div>
+    <div class="demo-btn" onclick="reset()">↺ 重置</div>
+  </div>
+
+  <div class="composer">
+    <textarea placeholder="说点什么，比如「后天上午10点研习社三人」"></textarea>
+    <button class="send" onclick="run('full')">发送</button>
+  </div>
+
+  <!-- 成功覆盖层 -->
+  <div class="success-mask hide" id="successMask">
+    <div class="success-icon"></div>
+    <div class="success-title" id="succTitle">已为您留座</div>
+    <div class="success-sub" id="succSub">我们已收到您的预约，期待与您相见</div>
+    <div class="success-detail">
+      <div class="sd-row"><span class="sd-k">项目</span><span class="sd-v" id="sdProj">法兰绒深烘咖啡</span></div>
+      <div class="sd-row"><span class="sd-k">日期</span><span class="sd-v" id="sdDate">2026-09-21</span></div>
+      <div class="sd-row"><span class="sd-k">场次</span><span class="sd-v" id="sdSess">15:00 – 17:00</span></div>
+      <div class="sd-row"><span class="sd-k">人数</span><span class="sd-v" id="sdNum">2 人</span></div>
+    </div>
+    <button class="btn block" onclick="closeSuccess()">查看我的预约</button>
+    <button class="btn ghost block" style="margin-top:10px" onclick="backHome()">返回首页</button>
+  </div>
+</div>
+
+<!-- ========== 帧 3：管理后台 · AI 设置 ========== -->
+<div class="frame" id="adminFrame">
+  <div class="notch"><span></span></div>
+  <div class="navbar">
+    <div class="back" onclick="backHome()">‹</div>
+    <div class="title">AI 智能预约</div>
+  </div>
+
+  <div class="cfg-scroll">
+    <div class="cfg-card">
+      <div class="cfg-row">
+        <div>
+          <div class="ct">启用 AI 智能预约</div>
+          <div class="cs">关闭后，首页与项目详情页的 AI 浮窗及入口将全部隐藏，仅保留常规预约流程。</div>
+        </div>
+        <div class="switch on" id="adminSwitch" onclick="toggleAiFromAdmin()"><div class="knob"></div></div>
+      </div>
+      <div class="cfg-badge">仅超级管理员可设置</div>
+    </div>
+
+    <div class="cfg-card">
+      <div class="ct" style="font-size:14px">说明</div>
+      <div class="cs" style="margin-top:8px;line-height:1.7">
+        • 开关即时生效，用户下次加载首页即生效，无需发版。<br>
+        • 与「AI 服务降级」（超时/不可用自动回退常规预约）正交：关闭=整块隐藏；开启但异常=降级提示。
+      </div>
+    </div>
+
+    <button class="btn block" onclick="saveAiConfig()">保存</button>
+  </div>
+  <div class="toast" id="adminToast">已保存</div>
+</div>
+
+<!-- ========== 右侧说明 ========== -->
+<div class="side">
+  <h3>设计说明（更新 · 2026-09-20）</h3>
+  <p>本预览覆盖 <b>A 路径（小程序内自然语言预约）</b> 的完整入口与开关：① 首页球形浮窗 → ② 独立路由 AI 对话页 → ③ 管理后台总开关。遵循「黑白极简 + 品牌色 <span class="k">#7A5230</span>」设计系统。</p>
+
+  <h3>帧 1 · 首页 + 球形浮窗</h3>
+  <ul>
+    <li>右下角 <b>球形浮窗（✦ AI预约）</b> 常驻、<b>可拖动</b>（点住拖到任意位置）；进入 AI 页后自动隐藏。</li>
+    <li>浮窗与项目卡内「✦ 问 AI」按钮均为入口，点击进入 <span class="k">pages/ai</span> 独立路由（可被公众号菜单直达）。</li>
+    <li>显隐由 <span class="k">aiEnabled</span> 控制：来自 <span class="k">getHomepage</span>/<span class="k">getProject</span> 返回（客户端不直读 config 集合，已核实）。</li>
+  </ul>
+
+  <h3>帧 2 · AI 对话页（独立路由）</h3>
+  <ul>
+    <li>自然语言 → <span class="k">aiReserve</span> function calling 抽取要素 → <b>确认卡前置</b>（不盲信）→ 点「确认预约」才调 <span class="k">createReservation</span>。</li>
+    <li>缺要素多轮澄清（②）；满员/过期改荐（③）；AI 不可用降级回常规预约（④）。</li>
+    <li>卡信息默认复用已授权资料（微信昵称+手机号），<b>不展示可编辑表单</b>。</li>
+  </ul>
+
+  <h3>帧 3 · 管理后台 AI 总开关</h3>
+  <ul>
+    <li>路径 <span class="k">pages/admin/aiConfig</span>（仅 owner 可见），开关写入 <span class="k">config/ai</span> 文档 <span class="k">{enabled}</span>。</li>
+    <li>本原型中开关与帧 1 浮窗<b>联动</b>：关闭 → 浮窗隐藏 + 提示「AI 已关闭，仅常规预约」。</li>
+  </ul>
+
+  <h3>已确认决策</h3>
+  <ul>
+    <li><span class="ok">✅</span> 入口：首页+详情页可拖动球形浮窗 → 独立路由页，可公众号菜单直达。</li>
+    <li><span class="ok">✅</span> 卡信息：复用已授权资料，不展示可编辑表单。</li>
+    <li><span class="ok">✅</span> 管理后台可一键开关 AI；关闭则浮窗与 AI 入口全隐藏。</li>
+    <li><span class="wait">⏳</span> CloudBase AI：成长计划 token 已领，AI 资源点/API 待联调前新建（spec §14）。</li>
+  </ul>
+  <p style="color:var(--ink-3)">规划细节见 docs/ai-reserve-spec.md（§9 入口 / §15 总开关 / §10–§12 知识库与测试）。</p>
+</div>
+
+<script>
+/* ===== 全局 AI 开关状态（原型联动） ===== */
+const state = { aiOn: true };
+const fab = document.getElementById('aiFab');
+const offHint = document.getElementById('aiOffHint');
+const homeToggleBtn = document.getElementById('homeToggleBtn');
+const adminSwitch = document.getElementById('adminSwitch');
+
+function applyAi(on){
+  state.aiOn = on;
+  fab.classList.toggle('dim', !on);
+  offHint.classList.toggle('show', !on);
+  homeToggleBtn.textContent = (on ? '🔘 AI 总开关：开' : '⚫ AI 总开关：关');
+  adminSwitch.classList.toggle('on', on);
+}
+function toggleAiFromHome(){ applyAi(!state.aiOn); }
+function toggleAiFromAdmin(){ applyAi(!state.aiOn); }
+function saveAiConfig(){
+  const t = document.getElementById('adminToast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1200);
+}
+
+/* ===== 浮窗拖动 ===== */
+let drag = null;
+function dragStart(e){
+  if(!state.aiOn) return;
+  const r = fab.getBoundingClientRect();
+  const fr = document.getElementById('homeFrame').getBoundingClientRect();
+  drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, fr };
+  fab.style.right = 'auto'; fab.style.bottom = 'auto';
+  fab.style.left = (r.left - fr.left) + 'px';
+  fab.style.top  = (r.top  - fr.top ) + 'px';
+  window.addEventListener('pointermove', dragMove);
+  window.addEventListener('pointerup', dragEnd);
+  e.preventDefault();
+}
+function dragMove(e){
+  if(!drag) return;
+  const fr = drag.fr;
+  let x = e.clientX - drag.dx - fr.left;
+  let y = e.clientY - drag.dy - fr.top;
+  x = Math.max(6, Math.min(x, fr.width  - fab.offsetWidth  - 6));
+  y = Math.max(56, Math.min(y, fr.height - fab.offsetHeight - 70));
+  fab.style.left = x + 'px'; fab.style.top = y + 'px';
+}
+function dragEnd(){
+  drag = null;
+  window.removeEventListener('pointermove', dragMove);
+  window.removeEventListener('pointerup', dragEnd);
+}
+function resetFab(){
+  fab.style.left='auto'; fab.style.top='auto'; fab.style.right='18px'; fab.style.bottom='96px';
+}
+
+/* ===== 导航（原型演示） ===== */
+function openAi(){
+  if(!state.aiOn){ return; }
+  const f = document.getElementById('aiFrame');
+  f.scrollIntoView({behavior:'smooth', block:'center'});
+  f.classList.add('flash');
+  setTimeout(()=>f.classList.remove('flash'), 900);
+}
+function backHome(){
+  document.getElementById('homeFrame').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function goBooking(p){ /* 原型：跳常规预约占位 */ }
+
+/* ===== 帧 2 对话逻辑（原样保留） ===== */
+const chat = document.getElementById('chat');
+const mask = document.getElementById('successMask');
+function scrollBottom(){ chat.scrollTop = chat.scrollHeight; }
+function bubble(role, html){
+  const wrap = document.createElement('div');
+  wrap.className = 'row-msg ' + role;
+  const av = role==='user' ? 'me' : 'ai';
+  const avTxt = role==='user' ? '我' : '✦';
+  wrap.innerHTML = '<div class="avatar '+av+'">'+avTxt+'</div><div class="bubble '+role+'">'+html+'</div>';
+  chat.appendChild(wrap); scrollBottom(); return wrap;
+}
+function typing(){
+  const wrap = document.createElement('div');
+  wrap.className = 'row-msg ai';
+  wrap.innerHTML = '<div class="avatar ai">✦</div><div class="bubble ai"><span class="typing"><i></i><i></i><i></i></span></div>';
+  chat.appendChild(wrap); scrollBottom(); return wrap;
+}
+function confirmCard(){
+  bubble('ai','已为您识别到预约信息，请确认：');
+  const wrap = document.createElement('div');
+  wrap.className = 'row-msg ai';
+  wrap.innerHTML = '<div class="avatar ai">✦</div><div class="bubble ai" style="max-width:82%"><div class="confirm-card">'
+    + '<div class="pname">法兰绒深烘咖啡</div>'
+    + '<div class="meta">2026-09-21（周日） · 15:00 – 17:00</div>'
+    + '<div class="remain">可约剩 4 / 6</div>'
+    + '<div class="hint">将以您微信昵称「咖啡也上头」作为留座称呼，手机号沿用已授权号码。</div>'
+    + '<div class="acts"><button class="btn sm" onclick="commit()">确认预约</button>'
+    + '<button class="btn ghost sm" onclick="run(\'manual\')">改用常规填写</button></div>'
+    + '</div></div>';
+  chat.appendChild(wrap); scrollBottom();
+}
+function commit(){ mask.classList.remove('hide'); document.getElementById('succTitle').textContent = '已为您留座'; }
+function closeSuccess(){ mask.classList.add('hide'); }
+function reset(){
+  chat.innerHTML = '<div class="welcome">你好，我是店里的预约助手 ✦ 用一句话告诉我你想约什么，我来帮你留座。<br><b>例如：</b></div>'
+    + '<div class="chips"><div class="chip" onclick="run(\'full\')">明天下午3点法兰绒深烘两人位</div>'
+    + '<div class="chip" onclick="run(\'missing\')">想约清酒品鉴</div>'
+    + '<div class="chip" onclick="run(\'fullup\')">今晚7点清酒品鉴一位</div>'
+    + '<div class="chip" onclick="run(\'degrade\')">智能对话不可用</div></div>';
+  mask.classList.add('hide'); scrollBottom();
+}
+function run(scene){
+  if(scene==='manual'){
+    bubble('user','改用常规填写');
+    const t = typing();
+    setTimeout(()=>{ t.remove(); bubble('ai','好的，已为你打开常规预约页，请手动选择日期与场次～'); }, 700);
+    return;
+  }
+  if(scene==='full'){
+    bubble('user','明天下午3点法兰绒深烘两人位');
+    const t = typing();
+    setTimeout(()=>{ t.remove(); bubble('ai','好的，我来帮你预约 <b>法兰绒深烘咖啡</b>：明天（9/21 周日）15:00–17:00，2 人位。'); confirmCard(); }, 900);
+  }
+  else if(scene==='missing'){
+    bubble('user','想约清酒品鉴');
+    const t = typing();
+    setTimeout(()=>{
+      t.remove(); bubble('ai','好的，清酒品鉴～ 还差一点点信息：');
+      const q = document.createElement('div');
+      q.className='row-msg ai';
+      q.innerHTML='<div class="avatar ai">✦</div><div class="bubble ai">📅 想约哪一天？（如「明天」「本周六」）<br>⏰ 大概几点？<br>👥 几位？</div>';
+      chat.appendChild(q); scrollBottom();
+    }, 900);
+  }
+  else if(scene==='fullup'){
+    bubble('user','今晚7点清酒品鉴一位');
+    const t = typing();
+    setTimeout(()=>{
+      t.remove();
+      const n = document.createElement('div');
+      n.className='row-msg ai';
+      n.innerHTML='<div class="avatar ai">✦</div><div class="bubble ai"><div class="notice">'
+        + '<b>清酒品鉴 · 今晚 19:00</b> 这一场已约满啦 🙈<br>'
+        + '为你查到其他可选场次：<br>· 明晚（9/21）19:00 – 20:30 · 剩 3 位<br>· 本周六（9/26）15:00 – 16:30 · 剩 5 位'
+        + '<div class="alt">要帮你约明晚这场吗？回复「好」即可。</div></div></div>';
+      chat.appendChild(n); scrollBottom();
+    }, 900);
+  }
+  else if(scene==='degrade'){
+    bubble('user','帮我约个位置');
+    const t = typing();
+    setTimeout(()=>{
+      t.remove();
+      const d = document.createElement('div');
+      d.className='row-msg ai';
+      d.innerHTML='<div class="avatar ai">✦</div><div class="bubble ai"><div class="degrade">'
+        + '⚠ 智能对话暂时不可用，已为你切换到常规预约方式，不影响正常约位。'
+        + '<div class="manual"><button class="btn sm" onclick="run(\'manual\')">进入常规预约</button></div>'
+        + '</div></div>';
+      chat.appendChild(d); scrollBottom();
+    }, 700);
+  }
+}
+</script>
+</body>
+</html>

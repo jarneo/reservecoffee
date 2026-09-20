@@ -1,0 +1,5 @@
+{
+  "permissions": [
+    { "name": "ai.inference", "reason": "探针验证 AI 推理通道" }
+  ]
+}

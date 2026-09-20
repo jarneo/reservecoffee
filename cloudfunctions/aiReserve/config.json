@@ -1,0 +1,5 @@
+{
+  "permissions": [
+    { "name": "ai.inference", "reason": "调用混元大模型进行智能预约对话与信息抽取" }
+  ]
+}

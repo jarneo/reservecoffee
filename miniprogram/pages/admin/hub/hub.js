@@ -22,7 +22,8 @@ Page({
         { t: '顾客名录', u: '/pages/admin/customers/customers' },
         { t: '黑名单', u: '/pages/admin/blacklist/blacklist' },
         { t: '管理员管理', u: '/pages/admin/admins/admins' },
-        { t: '全局通知配置', u: '/pages/admin/notifyConfig/notifyConfig' }
+        { t: '全局通知配置', u: '/pages/admin/notifyConfig/notifyConfig' },
+        { t: 'AI 智能预约设置', u: '/pages/admin/aiConfig/aiConfig' }
       ]
       const manager = [
         { t: '店铺菜单管理', u: '/pages/admin/menuAdmin/menuAdmin' },

@@ -1,0 +1,16 @@
+.fab {
+  position: fixed;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 999rpx;
+  padding: 14rpx 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, .20);
+  font-size: 24rpx;
+}
+.fab-ico { font-size: 26rpx; line-height: 1; }
+.fab-txt { font-weight: 600; letter-spacing: 1rpx; }
+.fab:active { opacity: .85; }

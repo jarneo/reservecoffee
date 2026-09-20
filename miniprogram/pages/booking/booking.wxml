@@ -53,4 +53,6 @@
     </view>
   </block>
   <view wx:else class="note">请选择上方可预约的日期</view>
+
+  <aiFab aiEnabled="{{aiEnabled}}" projectId="{{projectId}}" />
 </view>

@@ -34,7 +34,8 @@ Page({
           products,
           colA: cols.colA,
           colB: cols.colB,
-          featured: (d.projects && d.projects[0]) || null
+          featured: (d.projects && d.projects[0]) || null,
+          aiEnabled: d.aiEnabled !== false
         })
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))

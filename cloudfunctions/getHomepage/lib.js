@@ -275,6 +275,15 @@ async function loadSmsSwitch(db) {
   } catch (e) { return {} }
 }
 
+// 读取「AI 智能预约总开关」配置（config.ai 文档）。缺省视为开启（enabled !== false 即开）。
+// 关闭后首页/详情页浮窗与 AI 入口整块隐藏（详见 ai-reserve-spec.md §15）。
+async function loadAiSwitch(db) {
+  try {
+    const r = await db.collection('config').doc('ai').get()
+    return r && r.data ? (r.data.enabled !== false) : true
+  } catch (e) { return true }
+}
+
 // 【微信优先降级】是否跳过短信：
 //   开关 skipSmsIfWxOk 为 true 且同一事件的微信订阅消息确已投递（ok:true = errcode 0，微信服务端已受理）
 //   → 该用户已在微信「服务通知」收到卡片，不再补发短信，避免重复打扰。
@@ -421,7 +430,7 @@ module.exports = {
   sendSubscribe, listAdminOpenids, notifyAdmins,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
   srcLabel, customerTags, loadSubscribeSwitch, subOn,
-  loadSmsSwitch, shouldSkipSms, wxDelivered,
+  loadSmsSwitch, shouldSkipSms, wxDelivered, loadAiSwitch,
   SUB_KEYS, normalizeSubs, subbedOf, loadUserSubs,
   shiftDate, notifyWindowCfg, notifyPlan, plannedOf, NOTIFY_PRIORITY
 }

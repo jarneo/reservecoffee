@@ -1,0 +1,5 @@
+<view wx:if="{{visible}}" class="fab" style="left:{{left}}px;top:{{top}}px"
+      catchtouchstart="onStart" catchtouchmove="onMove" catchtouchend="onEnd">
+  <text class="fab-ico">✦</text>
+  <text class="fab-txt">AI预约</text>
+</view>

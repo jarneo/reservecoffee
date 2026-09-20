@@ -40,7 +40,8 @@ Page({
         const adv = p.advanceDays || 7
         this.setData({
           project: p, introImages: p.introImages || [], schedules: sched,
-          openDays, advanceDays: adv, showSeatInfo: p.showSeatInfo !== false
+          openDays, advanceDays: adv, showSeatInfo: p.showSeatInfo !== false,
+          aiEnabled: d.aiEnabled !== false
         }, () => {
           this.buildDateChips()
           // 默认展开「离当天最近、且确有可选场次」的可约日（今天若有可选场次则为今天，否则向后取第一个）

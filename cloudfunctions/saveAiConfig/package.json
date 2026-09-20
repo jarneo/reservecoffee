@@ -1,0 +1,9 @@
+{
+  "name": "saveAiConfig",
+  "version": "1.0.0",
+  "description": "reservecoffee 保存 AI 智能预约开关",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3"
+  }
+}

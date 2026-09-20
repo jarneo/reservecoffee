@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/booking/booking",
+    "pages/ai/ai",
     "pages/confirm/confirm",
     "pages/mine/mine",
     "pages/notifyPref/notifyPref",
@@ -19,6 +20,7 @@
     "pages/admin/reviewAdmin/reviewAdmin",
     "pages/admin/smsConfig/smsConfig",
     "pages/admin/notifyConfig/notifyConfig",
+    "pages/admin/aiConfig/aiConfig",
     "pages/admin/mpAuthWeb/mpAuthWeb",
     "pages/admin/templates/templates",
     "pages/admin/customers/customers",

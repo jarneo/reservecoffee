@@ -1,0 +1,49 @@
+<view class="page chat">
+  <scroll-view scroll-y class="msgs" scroll-into-view="{{scrollTo}}" scroll-with-animation>
+    <view wx:for="{{messages}}" wx:key="id" id="m{{item.id}}" class="msg {{item.role}}">
+      <view class="bubble">{{item.content}}</view>
+    </view>
+
+    <!-- 确认卡（复用已授权资料，不展示可编辑表单） -->
+    <view wx:if="{{intent==='confirm'}}" class="card confirm">
+      <view class="sec">预约确认</view>
+      <view class="ci"><text class="ck">项目</text>{{confirmation.projectName}}</view>
+      <view class="ci"><text class="ck">日期</text>{{confirmation.date}}</view>
+      <view class="ci"><text class="ck">时段</text>{{confirmation.sessionStart}}–{{confirmation.sessionEnd}}</view>
+      <view class="ci"><text class="ck">人数</text>{{confirmation.partySize}} 人位</view>
+      <view class="ci muted xs">称呼：{{profile.name||'—'}}　手机：{{profile.phone||'—'}}（已复用您授权资料）</view>
+      <button class="btn block" bindtap="confirm">确认预约</button>
+      <view class="tap muted sm" bindtap="cancelConfirm" style="text-align:center;margin-top:14rpx">重新说 / 取消</view>
+    </view>
+
+    <!-- 降级提示卡（AI 不可用时） -->
+    <view wx:if="{{downgraded}}" class="card down">
+      <view class="sec">AI 助理暂不可用</view>
+      <view class="muted sm" style="margin:10rpx 0 18rpx;line-height:1.6">可先使用常规预约，不影响您的操作。</view>
+      <button class="btn block" bindtap="goBooking">进入常规预约</button>
+    </view>
+  </scroll-view>
+
+  <!-- 快捷示例（仅在尚未进入确认/降级时展示） -->
+  <view class="chips" wx:if="{{!intent && !downgraded}}">
+    <view class="chip" bindtap="quick" data-q="明天两点，两人，法兰绒深烘">明天·法兰绒</view>
+    <view class="chip" bindtap="quick" data-q="清酒品鉴怎么约？">清酒品鉴</view>
+    <view class="chip" bindtap="quick" data-q="你们家怎么走？营业到几点？">到店引导</view>
+  </view>
+
+  <view class="inputbar">
+    <input class="inp" value="{{draft}}" bindinput="onDraft" placeholder="说点什么，例如：后天三人约清酒" confirm-type="send" bindconfirm="send"/>
+    <button class="btn send" bindtap="send">发送</button>
+  </view>
+
+  <!-- 提交成功覆盖层 -->
+  <view wx:if="{{success}}" class="mask">
+    <view class="success">
+      <view class="big">{{successInfo.needReview ? '已提交，待审核' : '预约成功'}}</view>
+      <view class="muted" style="margin:10rpx 0 4rpx">{{successInfo.projectName}}</view>
+      <view class="muted sm">{{successInfo.date}}　{{successInfo.sessionStart}}–{{successInfo.sessionEnd}}　{{successInfo.partySize}}人位</view>
+      <view class="btn block" bindtap="goMine" style="margin-top:24rpx">查看我的预约</view>
+      <view class="tap muted sm" bindtap="closeSuccess" style="text-align:center;margin-top:14rpx">返回首页</view>
+    </view>
+  </view>
+</view>
