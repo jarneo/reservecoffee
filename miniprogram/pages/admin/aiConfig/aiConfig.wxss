@@ -4,15 +4,30 @@
 .field.row.between .label { margin-bottom:0; font-size:26rpx; color:var(--ink); }
 
 /* ===== 快捷短语编辑（顾客端 AI 页输入框上方的按钮） ===== */
-.qr { padding:18rpx 0 8rpx; border-top:1rpx solid var(--line); }
-.qr-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; }
-.qr-no { font-size:22rpx; color:var(--ink-3); }
+.qr { padding:22rpx 0 16rpx; border-top:1rpx solid var(--line); }
+.qr-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:14rpx; }
+.qr-no { font-size:24rpx; color:var(--ink-3); }
 .qr-act { display:flex; align-items:center; }
-.mv, .rm { font-size:22rpx; color:var(--ink-3); padding:6rpx 16rpx; border-radius:8rpx; margin-left:10rpx; }
+/* 操作按钮：保证触控区 ≥44px（min-height + padding），避免点不准 */
+.mv, .rm {
+  font-size:24rpx; color:var(--ink-3); padding:10rpx 20rpx; margin-left:10rpx;
+  border-radius:8rpx; min-height:56rpx; min-width:88rpx; text-align:center;
+}
 .mv { border:1rpx solid var(--line); }
 .rm { border:1rpx dashed var(--line); }
 .mv:active, .rm:active { opacity:.5; }
+
+/* 单行输入（按钮文字，≤8字）：
+   小程序 input 有默认高度，只给 padding 会被裁切 —— 必须显式 height + line-height */
 .inp {
   width:100%; box-sizing:border-box; background:#fff; color:var(--ink);
-  border:1rpx solid var(--line); border-radius:10rpx; padding:14rpx 16rpx; font-size:26rpx; margin-bottom:10rpx;
+  border:1rpx solid var(--line); border-radius:10rpx;
+  padding:0 16rpx; font-size:28rpx; line-height:44rpx; height:80rpx; margin-bottom:12rpx;
 }
+/* 多行输入（发送话术，≤60字）：auto-height 随内容增高，中文不会被截 */
+.qta {
+  width:100%; box-sizing:border-box; background:#fff; color:var(--ink);
+  border:1rpx solid var(--line); border-radius:10rpx;
+  padding:16rpx; font-size:28rpx; line-height:44rpx; min-height:88rpx;
+}
+.inp-placeholder, .qta-placeholder { color:var(--ink-3); font-size:28rpx; }

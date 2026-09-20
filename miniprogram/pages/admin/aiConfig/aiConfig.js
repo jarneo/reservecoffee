@@ -21,13 +21,15 @@ Page({
 
   toggle(e) { this.setData({ enabled: !!e.detail.value }) },
 
+  // 只改数据模型、不回写 value：避免每次输入都 setData 导致中文输入法下光标跳动 / 内容被截断。
+  // 列表本身（增删/排序）走 reindex 时统一 setData，输入值不会被丢。
   onLabel(e) {
     const i = +e.currentTarget.dataset.i
-    this.setData({ ['quick[' + i + '].label']: e.detail.value })
+    if (this.data.quick[i]) this.data.quick[i].label = e.detail.value
   },
   onText(e) {
     const i = +e.currentTarget.dataset.i
-    this.setData({ ['quick[' + i + '].text']: e.detail.value })
+    if (this.data.quick[i]) this.data.quick[i].text = e.detail.value
   },
 
   addQuick() {

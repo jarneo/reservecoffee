@@ -25,8 +25,8 @@
           <text class="rm" bindtap="rmQuick" data-i="{{index}}">删除</text>
         </view>
       </view>
-      <input class="inp" value="{{item.label}}" placeholder="按钮文字（≤8字）" maxlength="8" bindinput="onLabel" data-i="{{index}}"/>
-      <input class="inp" value="{{item.text}}" placeholder="点击后发送的话术（≤60字）" maxlength="60" bindinput="onText" data-i="{{index}}"/>
+      <input class="inp" value="{{item.label}}" placeholder="按钮文字（≤8字）" placeholder-class="inp-placeholder" maxlength="8" bindinput="onLabel" data-i="{{index}}"/>
+      <textarea class="qta" value="{{item.text}}" placeholder="点击后发送的话术（≤60字）" placeholder-class="qta-placeholder" maxlength="60" auto-height cursor-spacing="24" bindinput="onText" data-i="{{index}}"/>
     </view>
 
     <view wx:if="{{!quick.length}}" class="muted xs" style="padding:18rpx 0 6rpx">还没有短语，顾客端将不显示这一排按钮。</view>
