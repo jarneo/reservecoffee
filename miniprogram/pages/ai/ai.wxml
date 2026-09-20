@@ -31,9 +31,23 @@
     <view class="chip" bindtap="quick" data-q="你们家怎么走？营业到几点？">到店引导</view>
   </view>
 
+  <!-- 录音中：实时识别浮层 -->
+  <view wx:if="{{recording}}" class="live">
+    <view class="live-dot"></view>
+    <view class="live-txt">{{liveText || '正在聆听…'}}</view>
+  </view>
+
   <view class="inputbar">
-    <input class="inp" value="{{draft}}" bindinput="onDraft" placeholder="说点什么，例如：后天三人约清酒" confirm-type="send" bindconfirm="send"/>
-    <button class="btn send" bindtap="send">发送</button>
+    <!-- 左侧：语音 / 键盘 切换（微信聊天样式，插件不可用时自动隐藏） -->
+    <view wx:if="{{pluginOk}}" class="icon-btn {{voiceMode ? 'kbd' : 'mic'}}" bindtap="toggleMode"></view>
+
+    <input wx:if="{{!voiceMode}}" class="inp" value="{{draft}}" bindinput="onDraft" placeholder="说点什么，例如：后天三人约清酒" confirm-type="send" bindconfirm="send"/>
+    <view wx:else class="voice-btn {{recording ? 'on' : ''}}"
+          bindtouchstart="onVoiceStart" bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceEnd">
+      {{recording ? '松开 发送' : '按住 说话'}}
+    </view>
+
+    <button wx:if="{{!voiceMode}}" class="btn send" bindtap="send">发送</button>
   </view>
 
   <!-- 提交成功覆盖层 -->

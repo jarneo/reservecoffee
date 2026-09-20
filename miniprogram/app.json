@@ -48,6 +48,12 @@
     ]
   },
   "componentFramework": "glass-easel",
+  "plugins": {
+    "WechatSI": {
+      "version": "0.3.10",
+      "provider": "wx069ba97219f66d99"
+    }
+  },
   "sitemapLocation": "sitemap.json",
   "style": "v2"
 }
