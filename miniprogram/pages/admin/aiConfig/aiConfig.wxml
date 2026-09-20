@@ -12,5 +12,32 @@
     </view>
   </view>
 
+  <view class="card">
+    <view class="sec">快捷短语</view>
+    <view class="muted xs" style="line-height:1.6">顾客进入 AI 预约页时，输入框上方会显示这排按钮；点一下就直接发送对应的话术，用来引导顾客怎么开口。</view>
+
+    <view wx:for="{{quick}}" wx:key="_i" class="qr">
+      <view class="qr-hd">
+        <text class="qr-no">第 {{index + 1}} 条</text>
+        <view class="qr-act">
+          <text class="mv" wx:if="{{index > 0}}" bindtap="moveUp" data-i="{{index}}">↑</text>
+          <text class="mv" wx:if="{{index < quick.length - 1}}" bindtap="moveDown" data-i="{{index}}">↓</text>
+          <text class="rm" bindtap="rmQuick" data-i="{{index}}">删除</text>
+        </view>
+      </view>
+      <input class="inp" value="{{item.label}}" placeholder="按钮文字（≤8字）" maxlength="8" bindinput="onLabel" data-i="{{index}}"/>
+      <input class="inp" value="{{item.text}}" placeholder="点击后发送的话术（≤60字）" maxlength="60" bindinput="onText" data-i="{{index}}"/>
+    </view>
+
+    <view wx:if="{{!quick.length}}" class="muted xs" style="padding:18rpx 0 6rpx">还没有短语，顾客端将不显示这一排按钮。</view>
+
+    <view wx:if="{{quick.length < 6}}" class="btn ghost sm" bindtap="addQuick">＋ 添加短语</view>
+
+    <view class="muted xs" style="margin-top:16rpx;line-height:1.6">
+      最多 6 条，按顺序排列。按钮文字建议 2–6 字；话术写成顾客自然会开口的一句话，例如「明天下午两点，两个人」。
+      两条都填才会生效，留空或只填一半的条目会被忽略。
+    </view>
+  </view>
+
   <button class="btn block" bindtap="save">保存</button>
 </view>

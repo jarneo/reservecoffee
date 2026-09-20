@@ -24,11 +24,9 @@
     </view>
   </scroll-view>
 
-  <!-- 快捷示例（仅在尚未进入确认/降级时展示） -->
-  <view class="chips" wx:if="{{!intent && !downgraded}}">
-    <view class="chip" bindtap="quick" data-q="明天两点，两人，法兰绒深烘">明天·法兰绒</view>
-    <view class="chip" bindtap="quick" data-q="清酒品鉴怎么约？">清酒品鉴</view>
-    <view class="chip" bindtap="quick" data-q="你们家怎么走？营业到几点？">到店引导</view>
+  <!-- 快捷短语（仅在尚未进入确认/降级时展示）：来自后台「AI 预约 · 快捷短语」，点一下即发送 item.text -->
+  <view class="chips" wx:if="{{!intent && !downgraded && quickReplies.length}}">
+    <view wx:for="{{quickReplies}}" wx:key="_i" class="chip" bindtap="quick" data-q="{{item.text}}">{{item.label}}</view>
   </view>
 
   <!-- 隐私授权弹窗（录音属隐私接口，须先同步用户已同意《用户隐私保护指引》） -->

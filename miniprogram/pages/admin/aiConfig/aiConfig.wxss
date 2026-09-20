@@ -2,3 +2,17 @@
 .sec { font-size:28rpx; font-weight:600; color:var(--ink); margin-bottom:14rpx; }
 .field.row.between { display:flex; align-items:center; justify-content:space-between; padding:20rpx 0; }
 .field.row.between .label { margin-bottom:0; font-size:26rpx; color:var(--ink); }
+
+/* ===== 快捷短语编辑（顾客端 AI 页输入框上方的按钮） ===== */
+.qr { padding:18rpx 0 8rpx; border-top:1rpx solid var(--line); }
+.qr-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; }
+.qr-no { font-size:22rpx; color:var(--ink-3); }
+.qr-act { display:flex; align-items:center; }
+.mv, .rm { font-size:22rpx; color:var(--ink-3); padding:6rpx 16rpx; border-radius:8rpx; margin-left:10rpx; }
+.mv { border:1rpx solid var(--line); }
+.rm { border:1rpx dashed var(--line); }
+.mv:active, .rm:active { opacity:.5; }
+.inp {
+  width:100%; box-sizing:border-box; background:#fff; color:var(--ink);
+  border:1rpx solid var(--line); border-radius:10rpx; padding:14rpx 16rpx; font-size:26rpx; margin-bottom:10rpx;
+}

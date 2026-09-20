@@ -9,6 +9,13 @@ try { plugin = requirePlugin('WechatSI') } catch (e) { plugin = null }
 let _mid = 0
 function mkId() { return ++_mid }
 
+// 快捷短语兜底：后台未配置 / 拉取失败时使用（与云端 getAiConfig 的 DEFAULT_QUICK 保持一致）
+const DEFAULT_QUICK = [
+  { label: '明天·法兰绒', text: '明天两点，两人，法兰绒深烘' },
+  { label: '清酒品鉴', text: '清酒品鉴怎么约？' },
+  { label: '到店引导', text: '你们家怎么走？营业到几点？' }
+]
+
 Page({
   data: {
     messages: [],
@@ -28,7 +35,9 @@ Page({
     pluginOk: !!plugin,    // WechatSI 不可用时自动隐藏麦克风图标
     // 隐私授权（录音属隐私接口，须先让用户同意《用户隐私保护指引》）
     showPrivacy: false,
-    privacyName: '《用户隐私保护指引》'
+    privacyName: '《用户隐私保护指引》',
+    // 快捷短语（输入框上方）：后台「AI 预约 · 快捷短语」可配置，点一下即发送 item.text
+    quickReplies: DEFAULT_QUICK.map((x, i) => ({ _i: i, label: x.label, text: x.text }))
   },
 
   onLoad(q) {
@@ -38,7 +47,17 @@ Page({
       ? '我是 AI 预约助理，可以帮你完成预约或解答疑问～想约哪个时段直接说就行。'
       : '我是 AI 预约助理，可以帮你预约或解答疑问。试着说「明天两点，两人，法兰绒深烘」？'
     this.setData({ messages: [{ id: mkId(), role: 'assistant', content: welcome }] })
+    this.loadQuick()
     this.initVoice()
+  },
+
+  // 拉取后台配置的快捷短语；失败/未配置时静默沿用内置默认，不打断进入 AI 页
+  loadQuick() {
+    call('getAiConfig').then(d => {
+      const list = (d && d.quickReplies) || []
+      if (!list.length) return
+      this.setData({ quickReplies: list.map((x, i) => ({ _i: i, label: x.label, text: x.text })) })
+    }).catch(() => {})
   },
 
   // ===== 语音输入（WechatSI 端侧识别）=====

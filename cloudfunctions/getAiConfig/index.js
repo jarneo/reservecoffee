@@ -1,12 +1,23 @@
-// getAiConfig — 读取 AI 智能预约总开关（owner）
-// 返回 config.ai.enabled（缺省 true）
-const { db, ok, fail, wxCtx, getRole } = require('./lib')
+// getAiConfig — 读取 AI 智能预约配置：总开关 enabled + 快捷短语 quickReplies
+// ⚠️ 说明：快捷短语需由「顾客端 AI 页」读取后渲染输入框上方的按钮，故本函数不再限定 owner
+//    （返回内容仅为开关与引导话术，无敏感信息；写入仍由 saveAiConfig 严格限定 owner）。
+const { db, ok } = require('./lib')
+
+// 内置默认快捷短语：后台未配置时使用（与旧版硬编码的三条保持一致）
+const DEFAULT_QUICK = [
+  { label: '明天·法兰绒', text: '明天两点，两人，法兰绒深烘' },
+  { label: '清酒品鉴', text: '清酒品鉴怎么约？' },
+  { label: '到店引导', text: '你们家怎么走？营业到几点？' }
+]
 
 exports.main = async () => {
-  const { OPENID } = wxCtx()
-  const role = await getRole(OPENID)
-  if (role.role !== 'owner') return fail('仅超级管理员可查看')
   const r = await db.collection('config').doc('ai').get().catch(() => ({ data: null }))
   const d = r.data || {}
-  return ok({ enabled: d.enabled !== false })
+  const list = Array.isArray(d.quickReplies) ? d.quickReplies : []
+  const quick = list
+    .filter(x => x && typeof x.label === 'string' && typeof x.text === 'string' && x.label.trim() && x.text.trim())
+    .slice(0, 6)
+    .map(x => ({ label: x.label.trim(), text: x.text.trim() }))
+  // 后台未配置（或全是空项）时回落到内置默认，保证「不配置也和以前一样」
+  return ok({ enabled: d.enabled !== false, quickReplies: quick.length ? quick : DEFAULT_QUICK })
 }

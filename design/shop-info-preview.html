@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>店铺信息 · 设计预览（顾客端展示 + 后台可编辑）</title>
+<style>
+  :root{
+    --ink:#0A0A0A; --ink-2:#6B6B6B; --ink-3:#9A9A9A; --line:#E7E7E7;
+    --fill:#F5F5F5; --fill-2:#FAFAFA; --brand:#7A5230;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:#EDEDED; color:var(--ink);
+    font-family:-apple-system,"PingFang SC","Helvetica Neue",Helvetica,sans-serif;
+    display:flex; justify-content:center; align-items:flex-start; gap:26px; padding:28px 20px 80px; flex-wrap:wrap;
+  }
+  /* ---------- 手机外框 ---------- */
+  .frame{
+    width:375px; height:812px; background:var(--fill-2); border-radius:36px; border:1px solid #dcdcdc;
+    box-shadow:0 18px 50px rgba(0,0,0,.16); display:flex; flex-direction:column; overflow:hidden;
+    outline:3px solid transparent; outline-offset:4px; transition:outline-color .35s; position:relative;
+  }
+  .frame.flash{outline-color:var(--brand);}
+  .notch{height:28px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .notch span{width:120px; height:18px; background:#111; border-radius:0 0 14px 14px;}
+  .navbar{
+    height:52px; display:flex; align-items:center; gap:10px; padding:0 16px;
+    background:#fff; border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  .navbar .back{font-size:20px; color:var(--ink); width:24px; cursor:pointer;}
+  .navbar .title{font-weight:600; font-size:17px; flex:1;}
+  .navbar .tag{font-size:11px; color:var(--brand); border:1px solid var(--brand); border-radius:6px; padding:2px 7px;}
+  .scroll{flex:1; overflow-y:auto; padding:14px; background:var(--fill-2);}
+  .scroll::-webkit-scrollbar{width:0;}
+
+  /* ---------- 通用 ---------- */
+  .sec{font-size:13px; font-weight:600; color:var(--ink); margin:18px 2px 10px;}
+  .sec:first-child{margin-top:4px;}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px;}
+  .card + .card{margin-top:12px;}
+  .tappable{cursor:pointer; transition:border-color .15s;}
+  .tappable:active{border-color:var(--ink);}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:11px; border-radius:999px; padding:3px 9px; border:1px solid var(--ink); color:var(--ink);}
+  .badge.brand{border-color:var(--brand); color:var(--brand);}
+  .badge .dot{width:5px; height:5px; border-radius:50%; background:var(--brand); display:inline-block;}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    border-radius:10px; font-size:14px; padding:11px 16px; border:1px solid var(--ink);
+    background:var(--ink); color:#fff; cursor:pointer; font-family:inherit;
+  }
+  .btn:active{opacity:.75;}
+  .btn.ghost{background:#fff; color:var(--ink);}
+  .btn.block{width:100%;}
+  .btn.sm{padding:8px 12px; font-size:13px; border-radius:9px;}
+  .btn.brand{background:var(--brand); border-color:var(--brand);}
+  .muted{color:var(--ink-2);}
+  .xs{font-size:12px; line-height:1.6;}
+  .ic{width:16px; height:16px; flex:0 0 auto; stroke:var(--ink-2); stroke-width:1.6; fill:none; stroke-linecap:round; stroke-linejoin:round;}
+  .ic.b{stroke:var(--brand);}
+
+  /* ---------- 首页 ---------- */
+  .hero{background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px;}
+  .hero .bn{font-size:19px; font-weight:600; letter-spacing:.5px;}
+  .hero .bt{font-size:11px; color:var(--brand); margin-top:6px; letter-spacing:1.4px;}
+  .hero .bi{font-size:13px; color:var(--ink-2); line-height:1.7; margin-top:10px;}
+  .proj{display:flex; gap:12px; align-items:flex-start;}
+  .proj .ico{width:44px; height:44px; border-radius:11px; border:1px solid var(--line); background:var(--fill-2); display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .proj .pn{font-weight:600; font-size:15px;}
+  .proj .pm{font-size:12px; color:var(--ink-3); margin-top:6px;}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .chip{font-size:11px; border:1px solid var(--line); border-radius:999px; padding:3px 9px; color:var(--ink-2);}
+  .chip.on{background:var(--ink); color:#fff; border-color:var(--ink);}
+  /* 到店信息卡 */
+  .shop-hd{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .shop-hd .nm{font-weight:600; font-size:15px;}
+  .kv{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-2); margin-top:10px;}
+  .kv .v{color:var(--ink);}
+  .more{display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid var(--fill); font-size:13px; color:var(--brand);}
+
+  /* ---------- 到店信息详情 ---------- */
+  .dsec{margin-bottom:12px;}
+  .dtitle{display:flex; align-items:center; gap:7px; font-weight:600; font-size:14px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--fill);}
+  .slot{display:flex; align-items:center; justify-content:space-between; font-size:13px; padding:7px 0;}
+  .slot .sn{color:var(--ink-2); display:flex; align-items:center; gap:7px;}
+  .slot .st{font-weight:600; letter-spacing:.3px;}
+  .addr{font-size:14px; line-height:1.6;}
+  .acts{display:flex; gap:10px; margin-top:12px;}
+  .acts .btn{flex:1;}
+  .notelist{font-size:13px; color:var(--ink-2); line-height:1.9;}
+  .notelist .li{display:flex; gap:8px;}
+  .notelist .li i{color:var(--ink-3); font-style:normal;}
+  .wifi{display:flex; gap:10px; align-items:center; justify-content:space-between; font-size:13px; padding:8px 0;}
+  .wifi .k{color:var(--ink-3);}
+  .copybtn{border:1px solid var(--line); border-radius:8px; padding:5px 9px; font-size:12px; color:var(--ink-2); background:#fff; cursor:pointer; font-family:inherit;}
+
+  /* ---------- 后台配置页 ---------- */
+  .cfg{padding:14px; background:var(--fill-2);}
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .label{font-size:12px; color:var(--ink-2); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;}
+  .label .cnt{font-size:11px; color:var(--ink-3);}
+  input[type=text], textarea{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-size:13px; font-family:inherit; color:var(--ink); background:#fff; outline:none; resize:none;
+  }
+  input[type=text]:focus, textarea:focus{border-color:var(--ink);}
+  .slotrow{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .slotrow input[type=text]:first-child{flex:0 0 88px;}
+  .slotrow input[type=text]{flex:1;}
+  .slotrow .del{width:30px; height:36px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink-3); cursor:pointer; font-size:15px; line-height:1; flex:0 0 auto;}
+  .addrow{border:1px dashed var(--line); border-radius:10px; padding:10px; text-align:center; font-size:13px; color:var(--ink-2); cursor:pointer; background:#fff;}
+  .addrow:active{border-color:var(--ink); color:var(--ink);}
+  .hintbar{display:flex; gap:8px; align-items:flex-start; background:var(--fill); border-radius:10px; padding:10px 12px; font-size:12px; color:var(--ink-2); line-height:1.6; margin-bottom:14px;}
+  .hintbar .ic{margin-top:1px;}
+  .savebar{position:absolute; left:0; right:0; bottom:0; padding:12px 14px 16px; background:rgba(255,255,255,.97); border-top:1px solid var(--line);}
+  .toast{
+    position:absolute; left:50%; top:44%; transform:translate(-50%,-50%);
+    background:rgba(10,10,10,.9); color:#fff; font-size:13px; padding:11px 18px; border-radius:10px;
+    opacity:0; transition:opacity .25s; pointer-events:none; z-index:30; max-width:80%; text-align:center; line-height:1.5;
+  }
+  .toast.show{opacity:1;}
+
+  /* ---------- 说明区 ---------- */
+  .doc{
+    width:100%; max-width:1180px; background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:24px 28px; font-size:13px; color:var(--ink-2); line-height:1.8;
+  }
+  .doc h2{font-size:16px; color:var(--ink); margin:0 0 4px;}
+  .doc h3{font-size:14px; color:var(--ink); margin:22px 0 8px;}
+  .doc h3:first-of-type{margin-top:16px;}
+  .doc code{background:var(--fill); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:12px; color:var(--ink);}
+  .doc table{border-collapse:collapse; width:100%; margin-top:8px;}
+  .doc th, .doc td{border:1px solid var(--line); padding:8px 10px; text-align:left; font-size:12.5px; vertical-align:top;}
+  .doc th{background:var(--fill-2); color:var(--ink); font-weight:600;}
+  .doc td b{color:var(--ink); font-weight:600;}
+  .pill{display:inline-block; font-size:11px; border-radius:999px; padding:2px 9px; border:1px solid var(--line); color:var(--ink-2); margin-right:5px;}
+  .pill.brand{border-color:var(--brand); color:var(--brand);}
+  .pill.no{text-decoration:line-through;}
+  .auto{font-size:12px; color:var(--ink-3); margin-top:6px;}
+</style>
+</head>
+<body>
+
+<!-- ==================== 屏 1 · 顾客端首页 ==================== -->
+<div class="frame" id="f1">
+  <div class="notch"><span></span></div>
+  <div class="navbar">
+    <div class="title">二曜路8号</div>
+    <div class="tag">预约制</div>
+  </div>
+  <div class="scroll" style="padding-bottom:26px">
+    <div class="hero">
+      <div class="bn">二曜路8号咖啡和清酒</div>
+      <div class="bt">SLOW COFFEE · 预约制</div>
+      <div class="bi">法兰绒手冲与清酒的小小空间，每日少量接待，请提前预约留座。</div>
+    </div>
+
+    <div class="sec">预约项目</div>
+    <div class="card tappable">
+      <div class="proj">
+        <div class="ico">
+          <svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M4 8h12v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"/><path d="M16 9h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M6 3.5v2M9.5 3v2M13 3.5v2"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="pn">法兰绒深烘咖啡</div>
+          <div class="chips">
+            <span class="chip on">可预约</span>
+            <span class="chip">09/22 周一</span>
+            <span class="chip">09/23 周二</span>
+            <span class="chip">等5天</span>
+          </div>
+          <div class="pm">深烘豆法兰绒滤布手冲，一对一冲煮</div>
+        </div>
+      </div>
+    </div>
+    <div class="card tappable">
+      <div class="proj">
+        <div class="ico">
+          <svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M8 4h8l-1 5a3 3 0 0 1-6 0L8 4Z"/><path d="M12 12v5"/><path d="M8.5 20h7"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="pn">清酒品鉴</div>
+          <div class="chips">
+            <span class="chip on">可预约</span>
+            <span class="chip">09/24 周三</span>
+          </div>
+          <div class="pm">每场 4–6 款小杯，配简单下酒</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ↓↓↓ 本次新增 ↓↓↓ -->
+    <div class="sec">到店信息</div>
+    <div class="card tappable" onclick="showDetail()">
+      <div class="shop-hd">
+        <div class="nm">二曜路8号咖啡和清酒</div>
+        <span class="badge brand"><i class="dot"></i>营业中</span>
+      </div>
+      <div class="kv">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+        <span>周一至周日&nbsp;&nbsp;<span class="v">10:00 – 24:00</span></span>
+      </div>
+      <div class="kv">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 21s6.5-5.6 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.4 12 21 12 21Z"/><circle cx="12" cy="10.6" r="2.3"/></svg>
+        <span class="v">广州市越秀区二曜路8号</span>
+      </div>
+      <div class="kv">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M6.8 4.5 9 8l-1.8 2a11 11 0 0 0 5 5l2-1.8 3.5 2.2-1 3c-6.3.6-12-5.1-11.4-11.4l1.5-1.5Z"/></svg>
+        <span class="v">020-8888 8888</span>
+      </div>
+      <div class="more"><span>营业时间 · 地址导航 · 到店须知</span><span>查看全部 ›</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 屏 2 · 到店信息详情页 ==================== -->
+<div class="frame" id="f2">
+  <div class="notch"><span></span></div>
+  <div class="navbar">
+    <div class="back">‹</div>
+    <div class="title">到店信息</div>
+  </div>
+  <div class="scroll">
+    <div class="card" style="padding:0; overflow:hidden">
+      <div style="height:150px; background:linear-gradient(135deg,#7A5230 0%,#4A3220 100%); display:flex; align-items:flex-end; padding:14px; color:#fff;">
+        <div>
+          <div style="font-size:17px; font-weight:600;">二曜路8号咖啡和清酒</div>
+          <div style="font-size:11px; opacity:.85; margin-top:5px; letter-spacing:1.2px;">SLOW COFFEE · 预约制</div>
+        </div>
+      </div>
+      <div style="padding:14px; font-size:13px; color:var(--ink-2); line-height:1.7;">
+        法兰绒手冲与清酒的小小空间，每日少量接待，请提前预约留座。
+      </div>
+    </div>
+
+    <!-- 营业时间 -->
+    <div class="card dsec" style="margin-top:12px">
+      <div class="dtitle">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+        营业时间
+      </div>
+      <div class="xs muted" style="margin-bottom:6px">周一至周日</div>
+      <div class="slot">
+        <span class="sn">咖啡 · 手冲</span>
+        <span class="st">10:00 – 18:00</span>
+      </div>
+      <div class="slot" style="border-top:1px solid var(--fill)">
+        <span class="sn">清酒 · 品鉴</span>
+        <span class="st">18:00 – 24:00</span>
+      </div>
+      <div class="xs" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--fill); color:var(--ink-3)">
+        备注：24:00 为最后点单时间，24:30 打烊。
+      </div>
+    </div>
+
+    <!-- 地址导航 -->
+    <div class="card dsec">
+      <div class="dtitle">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 21s6.5-5.6 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.4 12 21 12 21Z"/><circle cx="12" cy="10.6" r="2.3"/></svg>
+        地址与导航
+      </div>
+      <div class="addr">广州市越秀区二曜路8号<br><span class="xs muted">（地铁 1 号线 · 出口步行约 6 分钟）</span></div>
+      <div class="acts">
+        <button class="btn brand" onclick="tip('将调用微信地图，一键导航到店')">
+          <svg class="ic" viewBox="0 0 24 24" style="stroke:#fff"><path d="M12 3 20.5 20 12 16.5 3.5 20 12 3Z"/></svg>导航到店
+        </button>
+        <button class="btn ghost" onclick="tip('已复制地址')">复制地址</button>
+      </div>
+      <div class="xs muted" style="margin-top:12px; padding-top:11px; border-top:1px solid var(--fill); line-height:1.75">
+        <b style="color:var(--ink)">停车 / 交通</b><br>门前无车位，可停斜对面商场地下车库（首 2 小时 10 元）；骑行有划线停车区。
+      </div>
+    </div>
+
+    <!-- 联系 -->
+    <div class="card dsec">
+      <div class="dtitle">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M6.8 4.5 9 8l-1.8 2a11 11 0 0 0 5 5l2-1.8 3.5 2.2-1 3c-6.3.6-12-5.1-11.4-11.4l1.5-1.5Z"/></svg>
+        联系与网络
+      </div>
+      <div class="wifi">
+        <span><span class="k">电话</span>&nbsp;&nbsp;020-8888 8888</span>
+        <button class="copybtn" onclick="tip('将调用拨号')">拨打</button>
+      </div>
+      <div class="wifi" style="border-top:1px solid var(--fill)">
+        <span><span class="k">WiFi</span>&nbsp;&nbsp;Eryao8-Guest</span>
+        <button class="copybtn" onclick="tip('WiFi 密码已复制：eryao8888')">复制密码</button>
+      </div>
+    </div>
+
+    <!-- 到店须知 -->
+    <div class="card dsec" style="margin-bottom:20px">
+      <div class="dtitle">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></svg>
+        到店须知
+      </div>
+      <div class="notelist">
+        <div class="li"><i>·</i><span>预约制小店，请按预约时段到店，迟到 15 分钟场次自动释放。</span></div>
+        <div class="li"><i>·</i><span>店内禁烟；可带宠物（请自备牵引）。</span></div>
+        <div class="li"><i>·</i><span>可开具电子发票，结账时告知店员即可。</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 屏 3 · 后台配置页（owner） ==================== -->
+<div class="frame" id="f3">
+  <div class="notch"><span></span></div>
+  <div class="navbar">
+    <div class="back">‹</div>
+    <div class="title">店铺信息</div>
+    <div class="tag">仅店主可改</div>
+  </div>
+  <div class="scroll cfg" style="padding-bottom:96px">
+    <div class="hintbar">
+      <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></svg>
+      <span>这里的文字会直接显示在顾客端「到店信息」。保存后<b style="color:var(--ink)">立即生效，无需更新版本</b>。留空的字段顾客端不展示。</span>
+    </div>
+
+    <div class="sec" style="margin-top:0">基本信息</div>
+    <div class="card">
+      <div class="field">
+        <div class="label"><span>店铺名称</span><span class="cnt">20</span></div>
+        <input type="text" value="二曜路8号咖啡和清酒">
+      </div>
+      <div class="field">
+        <div class="label"><span>一句话标语</span><span class="cnt">14</span></div>
+        <input type="text" value="SLOW COFFEE · 预约制">
+      </div>
+      <div class="field">
+        <div class="label"><span>店铺介绍</span><span class="cnt">32 / 300</span></div>
+        <textarea rows="3">法兰绒手冲与清酒的小小空间，每日少量接待，请提前预约留座。</textarea>
+      </div>
+    </div>
+
+    <div class="sec">营业时间</div>
+    <div class="card">
+      <div class="field">
+        <div class="label"><span>营业日</span></div>
+        <input type="text" value="周一至周日">
+      </div>
+      <div class="field">
+        <div class="label"><span>时段（可增减，支持分时段）</span></div>
+        <div class="slotrow">
+          <input type="text" value="咖啡">
+          <input type="text" value="10:00 – 18:00">
+          <button class="del" onclick="tip('已删除该时段（示意）')">×</button>
+        </div>
+        <div class="slotrow">
+          <input type="text" value="清酒">
+          <input type="text" value="18:00 – 24:00">
+          <button class="del" onclick="tip('已删除该时段（示意）')">×</button>
+        </div>
+        <div class="addrow" onclick="tip('新增一行时段（示意）')">＋ 添加时段</div>
+        <div class="auto">也可只填一行，如「10:00 – 22:00」；时段名称留空则顾客端只显示时间。</div>
+      </div>
+      <div class="field">
+        <div class="label"><span>时间备注</span><span class="cnt">18 / 60</span></div>
+        <input type="text" value="24:00 为最后点单，24:30 打烊">
+      </div>
+    </div>
+
+    <div class="sec">地址与联系</div>
+    <div class="card">
+      <div class="field">
+        <div class="label"><span>详细地址</span></div>
+        <input type="text" value="广州市越秀区二曜路8号">
+      </div>
+      <div class="field">
+        <div class="label"><span>地图定位（用于「导航到店」）</span></div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <input type="text" value="23.1291, 113.2644" readonly>
+          <button class="btn ghost sm" onclick="tip('打开地图选点（示意）')">选点</button>
+        </div>
+        <div class="auto">在地图上点选门店位置即可，顾客端「导航到店」会直达这里。未设置时按钮自动隐藏。</div>
+      </div>
+      <div class="field">
+        <div class="label"><span>附近地标 / 交通提示</span><span class="cnt">21 / 60</span></div>
+        <input type="text" value="地铁 1 号线出口步行 6 分钟">
+      </div>
+      <div class="field">
+        <div class="label"><span>停车提示</span><span class="cnt">34 / 100</span></div>
+        <textarea rows="2">门前无车位，可停斜对面商场地下车库（首 2 小时 10 元）。</textarea>
+      </div>
+      <div class="field">
+        <div class="label"><span>联系电话（顾客端可一键拨打）</span></div>
+        <input type="text" value="020-8888 8888">
+      </div>
+      <div class="field">
+        <div class="label"><span>WiFi 名称 / 密码</span></div>
+        <input type="text" value="Eryao8-Guest" placeholder="WiFi 名称" style="margin-bottom:8px">
+        <input type="text" value="eryao8888" placeholder="WiFi 密码">
+        <div class="auto">两项都留空则顾客端不显示这一行。</div>
+      </div>
+    </div>
+
+    <div class="sec">到店须知</div>
+    <div class="card">
+      <div class="field">
+        <div class="label"><span>须知条目（每行一条，最多 6 条）</span><span class="cnt">3 / 6</span></div>
+        <textarea rows="5">预约制小店，请按预约时段到店，迟到 15 分钟场次自动释放。
+店内禁烟；可带宠物（请自备牵引）。
+可开具电子发票，结账时告知店员即可。</textarea>
+      </div>
+    </div>
+
+    <div class="hintbar" style="margin-top:14px; margin-bottom:6px">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5 20 6.5v6c0 4.4-3.2 7.3-8 8.6-4.8-1.3-8-4.2-8-8.6v-6l8-3Z"/></svg>
+      <span>店铺主图与介绍在「封面设置」里改，本页负责文字类到店信息；两页保存即同步顾客端。</span>
+    </div>
+  </div>
+  <div class="savebar">
+    <button class="btn block" onclick="tip('已保存 · 顾客端立即生效')">保存</button>
+  </div>
+</div>
+
+<!-- ==================== 说明区 ==================== -->
+<div class="doc">
+  <h2>这套设计的三个落点</h2>
+  <div style="margin-top:8px">
+    <span class="pill brand">① 首页卡片</span>
+    <span class="pill brand">② 到店信息详情页</span>
+    <span class="pill brand">③ 后台可编辑</span>
+    <span class="pill">无需重新发版</span>
+  </div>
+
+  <h3>展示位置</h3>
+  <p style="margin:0">
+    首页「店铺菜单」下方新增一张<b>到店信息卡</b>（营业时间 / 地址 / 电话三行摘要 + 「查看全部」），点进独立详情页看完整信息。
+    这样首页保持简洁，信息量又不被压缩；如果你觉得首页就想看全，删掉详情页、把卡片展开即可。
+  </p>
+
+  <h3>字段与落地位置</h3>
+  <table>
+    <tr><th style="width:26%">后台字段</th><th style="width:30%">顾客端展示</th><th>存储 / 说明</th></tr>
+    <tr><td><b>店铺名称 / 标语</b></td><td>首页 Hero、详情页头图</td><td>复用现有 <code>config_homepage</code> 的 logo / tag</td></tr>
+    <tr><td><b>店铺介绍</b></td><td>首页 Hero、详情页头图下方</td><td>复用现有 <code>intro</code>（≤300 字）</td></tr>
+    <tr><td><b>营业日 + 时段</b></td><td>首页卡片第二行、详情页「营业时间」</td><td>新增 <code>shop.hours</code>：营业日文本 + 时段数组（名称/开始/结束）</td></tr>
+    <tr><td><b>时间备注</b></td><td>详情页营业时间底部小字</td><td>新增 <code>shop.hoursNote</code>（≤60 字）</td></tr>
+    <tr><td><b>详细地址 / 地标</b></td><td>首页卡片第三行、详情页地址区</td><td>新增 <code>shop.address</code> / <code>shop.landmark</code></td></tr>
+    <tr><td><b>地图定位</b></td><td>详情页「导航到店」按钮</td><td>新增 <code>shop.geo</code>（经纬度）；未设则按钮隐藏，走 <code>wx.openLocation</code></td></tr>
+    <tr><td><b>停车提示</b></td><td>详情页地址区下方</td><td>新增 <code>shop.parking</code>（≤100 字）</td></tr>
+    <tr><td><b>联系电话</b></td><td>首页卡片第四行、详情页「拨打」</td><td>新增 <code>shop.phone</code>；前端 <code>wx.makePhoneCall</code></td></tr>
+    <tr><td><b>WiFi</b></td><td>详情页「联系与网络」</td><td>新增 <code>shop.wifi</code>（一行文字）</td></tr>
+    <tr><td><b>到店须知</b></td><td>详情页「到店须知」列表</td><td>新增 <code>shop.notes</code>（数组，最多 6 条）</td></tr>
+  </table>
+  <p class="auto" style="margin-top:10px">
+    全部并入现有 <code>config_homepage</code> 集合的 <code>homepage</code> 文档（新增 <code>shop</code> 子对象），<b>不新建集合、不迁移数据</b>；
+    读取走现有 <code>getHomepage</code>，写入走现有 <code>updateHomepage</code>（仅 owner），管理端只加一个页面。
+  </p>
+
+  <h3>你要能改 —— 怎么改</h3>
+  <p style="margin:0">
+    管理台新增入口「店铺信息」，和「封面设置」并列。你在小程序里直接改文字、点保存，顾客端拉到的就是新内容，<b>不用我改代码、不用重新上传版本</b>。
+    营业时段是可增减的行；留空的字段顾客端不显示，也不会露出空白标题。
+  </p>
+
+  <h3>可选增强（需要你点头才做）</h3>
+  <p style="margin:0">
+    <span class="pill">营业中 / 已打烊 状态</span>按营业时段自动判断，首页卡片动态显示「营业中 · 至 18:00」，用文字标签表达、不引入颜色。<br>
+    <span class="pill">AI 助理答疑</span>把这份文字一并喂给 AI 预约助理，让它能回答「你们几点营业」「怎么走」这类问题。<br>
+    <span class="pill">到店引导</span>现有 AI 快捷短语里已有「到店引导」，可让它直接指向这个页面。
+  </p>
+
+  <h3>你只需要给我这些内容</h3>
+  <p style="margin:0">
+    直接贴文字就行，缺的写「无」，我就按上面结构录进去（或你自己在管理端填）：
+  </p>
+  <table style="margin-top:8px">
+    <tr><th style="width:34%">项目</th><th>示例</th></tr>
+    <tr><td>店铺名称</td><td>二曜路8号咖啡和清酒</td></tr>
+    <tr><td>一句话标语</td><td>SLOW COFFEE · 预约制</td></tr>
+    <tr><td>店铺介绍（≤300 字）</td><td>法兰绒手冲与清酒的小小空间……</td></tr>
+    <tr><td>营业日 / 时段</td><td>周一至周日；咖啡 10:00–18:00、清酒 18:00–24:00；最后点单 24:00</td></tr>
+    <tr><td>详细地址 + 地标</td><td>广州市越秀区二曜路8号（地铁 1 号线出口步行 6 分钟）</td></tr>
+    <tr><td>地图定位</td><td>微信里发一个门店位置给我，或给经纬度</td></tr>
+    <tr><td>停车 / 交通提示</td><td>门前无车位，可停斜对面商场地下车库</td></tr>
+    <tr><td>联系电话</td><td>020-8888 8888</td></tr>
+    <tr><td>WiFi 名称 / 密码</td><td>Eryao8-Guest / eryao8888</td></tr>
+    <tr><td>到店须知（≤6 条）</td><td>迟到 15 分钟场次自动释放；店内禁烟……</td></tr>
+    <tr><td>暂不做的</td><td><span class="pill no">外卖</span><span class="pill no">在线支付</span><span class="pill no">会员积分</span></td></tr>
+  </table>
+  <p class="auto" style="margin-top:12px">
+    原型里的文案均为<b>示例占位</b>，用来演示版式。确认版式后你再给真实内容。
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  var tmr;
+  function tip(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(tmr); tmr = setTimeout(function(){ t.classList.remove('show'); }, 1600);
+  }
+  function flash(id){
+    var f = document.getElementById(id);
+    f.classList.add('flash');
+    setTimeout(function(){ f.classList.remove('flash'); }, 1200);
+  }
+  function showDetail(){
+    flash('f2');
+    document.getElementById('f2').scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+  }
+</script>
+</body>
+</html>
