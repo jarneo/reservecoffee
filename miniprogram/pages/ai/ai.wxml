@@ -1,7 +1,7 @@
 <view class="page chat">
   <scroll-view scroll-y class="msgs" scroll-into-view="{{scrollTo}}" scroll-with-animation>
     <view wx:for="{{messages}}" wx:key="id" id="m{{item.id}}" class="msg {{item.role}}">
-      <view class="bubble">{{item.content}}</view>
+      <view class="bubble {{item.notice?'notice':''}}">{{item.content}}</view>
     </view>
 
     <!-- 确认卡（复用已授权资料，不展示可编辑表单） -->

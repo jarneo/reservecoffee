@@ -310,13 +310,16 @@ Page({
       this.scrollBottom()
       return
     }
-    const reply = res.reply || (res.intent === 'ask' ? '请补充一下信息～' : '好的～')
-    this.setData({
-      messages: this.data.messages.concat([{ id: mkId(), role: 'assistant', content: reply }]),
-      intent: ''
-    })
-    this.scrollBottom()
-  },
+  const reply = res.reply || (res.intent === 'ask' ? '请补充一下信息～' : '好的～')
+  const adds = []
+  if (res.notice) adds.push({ id: mkId(), role: 'assistant', content: res.notice, notice: true })
+  adds.push({ id: mkId(), role: 'assistant', content: reply })
+  this.setData({
+    messages: this.data.messages.concat(adds),
+    intent: ''
+  })
+  this.scrollBottom()
+},
 
   cancelConfirm() {
     this.setData({ intent: '', confirmation: null })

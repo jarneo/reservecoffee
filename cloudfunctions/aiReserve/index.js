@@ -203,6 +203,21 @@ function parseTime(str) {
   return null
 }
 
+// 查某项目在 fromDate 之后（含 +30 天窗口）第一个仍有可约场次(未开场/未满)的日期，
+// 用于「指定日期无场次」时给「最近可约」建议
+async function nearestOpenDays(projectId, fromDateStr) {
+  try {
+    const sch = await db.collection(COL.schedules).where({ projectId, deleted: _.neq(true) }).orderBy('date', 'asc').limit(200).get()
+    const maxWin = addDaysBj(30)
+    for (const s of (sch.data || [])) {
+      if (s.date <= fromDateStr || s.date > maxWin || s.closed) continue
+      const sess = (s.sessions || []).filter(x => !x.paused && (x.capacity - (x.booked || 0)) > 0 && !(bjTs(s.date, x.start) < Date.now()))
+      if (sess.length) return { date: s.date, times: sess.map(x => `${x.start}-${x.end}`).join('、') }
+    }
+  } catch (e) { /* ignore */ }
+  return null
+}
+
 // ===== 5) 预约解析（真实校验，仅抽取 + 判定，不写库）=====
 async function resolveBooking(slots, ctxProjectId) {
   const projects = await db.collection(COL.projects).where({ published: true, deleted: _.neq(true) }).get()
@@ -239,7 +254,11 @@ async function resolveBooking(slots, ctxProjectId) {
   // —— 时间 / 时段间隙 ——
   const parsed = parseTime(slots.time)
   if (!parsed) {
-    if (!openSessions.length) return { ok: false, message: `「${project.name}」在 ${date} 的可约场次都已结束或暂不可约，换一天试试？可约日期见下方「当前可约情况」。` }
+    if (!openSessions.length) {
+      const near = await nearestOpenDays(project._id, date)
+      if (near) return { ok: false, notice: `您要求的「${project.name}」在 ${date} 没有可约场次。`, message: `小曜已为您查询到最近可约场次：${near.date}（${near.times}）。您想约哪个时间？` }
+      return { ok: false, notice: `您要求的「${project.name}」在 ${date} 没有可约场次，且近期也暂无可约。`, message: `可以看看其他项目哦～` }
+    }
     return { ok: false, message: `您希望 ${date} 几点到店呢？该日可选场次：${openSessions.map(x => `${x.start}-${x.end}`).join('、')}` }
   }
 
@@ -258,7 +277,7 @@ async function resolveBooking(slots, ctxProjectId) {
       note = `已将您说的 ${parsed.hm} 调整到最近场次 ${sess.start}`
     } else {
       const opts = openSessions.map(x => `${x.start}-${x.end}`).join('、')
-      return { ok: false, message: `${date} ${parsed.hm} 没有对应场次哦。最近的可用时段：${opts || '（当天已无可约）'}。您选哪个？` }
+      return { ok: false, notice: `您要求的「${project.name}」在 ${date} ${parsed.hm} 没有对应场次。`, message: `最近的可用时段：${opts || '（当天已无可约）'}。您选哪个？` }
     }
   }
 
@@ -371,7 +390,7 @@ exports.main = async (event) => {
       if (userTurns > MAX_ASK_ROUNDS) {
         out = { intent: 'chat', reply: '看来我还没完全帮您约上～您可以直接用「常规预约」点选日期与场次，更快更准哦。' }
       } else {
-        out = { intent: 'ask', reply: res.message }
+        out = { intent: 'ask', reply: res.message, notice: res.notice }
       }
     } else {
       const profile = await loadProfile(OPENID)

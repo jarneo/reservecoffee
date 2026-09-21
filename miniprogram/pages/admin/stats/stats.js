@@ -82,8 +82,24 @@ function buildView(d) {
   const crossCombos = barsOf(cx.combos, Math.max(...cx.combos.map(x => x.uv), 1))
   const crossPairs = barsOf(cx.pairs, Math.max(...cx.pairs.map(x => x.uv), 1))
 
+  // ===== 板块 AI 预约对话 =====
+  const a = d.ai || {}
+  const ai = {
+    turns: a.turns || 0,
+    users: a.users || 0,
+    perCap: a.perCap || 0,
+    chat: a.chat || 0,
+    ask: a.ask || 0,
+    confirm: a.confirm || 0,
+    confirmRate: a.confirmRate || 0,
+    tokens: a.tokens || 0,
+    cost: a.cost != null ? a.cost : 0,
+    latencyMs: a.latencyMs || 0
+  }
+
   return {
     kpis, funnel, funnelRate: d.funnelRate, tiers, byProject,
+    ai,
     hasTrend: trend.length > 0, trendBars,
     submitHourBars, submitPeak,
     leadBars,

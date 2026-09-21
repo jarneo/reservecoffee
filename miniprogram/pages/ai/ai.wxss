@@ -14,6 +14,8 @@
 }
 .msg.user .bubble { background:var(--ink); color:#fff; border-bottom-right-radius:6rpx; }
 .msg.assistant .bubble { background:#fff; border:1rpx solid var(--line); border-bottom-left-radius:6rpx; }
+/* AI 业务提示（如「指定日期无场次」）：红色加粗，与普通回答区分 */
+.bubble.notice { background:#fdecea; border:1rpx solid #f5b7b1; color:#c0392b; font-weight:600; }
 
 .confirm { background:#fff; }
 .confirm .sec { font-size:28rpx; font-weight:600; margin-bottom:14rpx; }

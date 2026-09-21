@@ -46,7 +46,9 @@ exports.main = async (event) => {
   const period = (event && event.period) || '30'
   const periodDays = period === '7' ? 7 : period === '30' ? 30 : 0
   const to = Date.now()
-  const from = periodDays ? to - periodDays * 86400000 : 0
+  // 数据地板：2026-09-20 及之前为内测/脏数据，统一屏蔽（含 period='all' 也生效）
+  const DATA_FLOOR = Date.parse('2026-09-20T23:59:59+08:00')
+  const from = Math.max(periodDays ? to - periodDays * 86400000 : 0, DATA_FLOOR)
 
   // ===== 取数：reservations（取全量：周期过滤 + 首单时间都要用） =====
   const rows = []
@@ -260,6 +262,46 @@ exports.main = async (event) => {
   }
   pairs.sort((a, b) => b.uv - a.uv)
 
+  // ===== AI 预约对话聚合（aiLogs 集合；首次对话前集合可能不存在，失败按全 0 处理，不影响其余分析）=====
+  let ai = { turns: 0, users: 0, perCap: 0, chat: 0, ask: 0, confirm: 0, confirmRate: 0, tokens: 0, cost: 0, latencyMs: 0 }
+  try {
+    const aiRows = []
+    let askip = 0
+    for (let i = 0; i < 50; i++) {
+      const res = await db.collection('aiLogs').orderBy('createdAt', 'desc').skip(askip).limit(100).get()
+      const batch = res.data || []
+      aiRows.push(...batch)
+      if (batch.length < 100) break
+      askip += 100
+      if (aiRows.length > 5000) break
+    }
+    const uSet = new Set()
+    let turns = 0, chat = 0, ask = 0, confirm = 0, tok = 0, cost = 0, lat = 0
+    for (const r of aiRows) {
+      const t = r.createdAt || 0
+      if (t < from || t > to) continue
+      turns++
+      if (r.openid) uSet.add(r.openid)
+      const it = r.intent || 'chat'
+      if (it === 'chat') chat++
+      else if (it === 'ask') ask++
+      else if (it === 'confirm') confirm++
+      if (r.tokens != null) tok += r.tokens
+      if (r.cost != null) cost += r.cost
+      if (r.latencyMs != null) lat += r.latencyMs
+    }
+    ai = {
+      turns,
+      users: uSet.size,
+      perCap: uSet.size ? +(turns / uSet.size).toFixed(2) : 0,
+      chat, ask, confirm,
+      confirmRate: turns ? +((confirm / turns) * 100).toFixed(1) : 0,
+      tokens: tok,
+      cost: +cost.toFixed(2),
+      latencyMs: turns ? Math.round(lat / turns) : 0
+    }
+  } catch (e) { /* aiLogs 集合未建或查询失败，按全 0 处理 */ }
+
   return ok({
     scope: { period, from, to, total: rows.length, used: list.length, events: evRows.length },
     kpi: {
@@ -285,6 +327,7 @@ exports.main = async (event) => {
     cross: {
       reach, combos, pairs,
       multi: { uv: multiUsers, pct: uv ? +(multiUsers / uv * 100).toFixed(1) : 0 }
-    }
+    },
+    ai
   })
 }
