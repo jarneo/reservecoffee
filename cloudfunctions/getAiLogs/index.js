@@ -13,8 +13,12 @@ exports.main = async (event) => {
 
   const ands = []
   // 意图筛选：all / chat(问答) / ask(追问) / confirm(确认预约)
+  //            booked(预约成功) —— 不是独立意图，而是该确认轮被 createReservation 回写 booked=true
   const intent = event && event.intent
-  if (intent && intent !== 'all') ands.push({ intent })
+  if (intent && intent !== 'all') {
+    if (intent === 'booked') ands.push({ booked: true })
+    else ands.push({ intent })
+  }
 
   // 日期区间（按 createdAt，北京时间）
   const from = event && event.from
@@ -43,6 +47,8 @@ exports.main = async (event) => {
     input: r.input || '',
     output: r.output || '',
     intent: r.intent || 'chat',
+    booked: r.booked === true,
+    reservationId: r.reservationId || '',
     slots: r.slots || null,
     model: r.model || '',
     tokens: r.tokens != null ? r.tokens : null,

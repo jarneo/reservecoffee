@@ -5,6 +5,7 @@
       <view class="seg-i {{intent==='chat'?'on':''}}" bindtap="setIntent" data-v="chat">问答</view>
       <view class="seg-i {{intent==='ask'?'on':''}}" bindtap="setIntent" data-v="ask">追问</view>
       <view class="seg-i {{intent==='confirm'?'on':''}}" bindtap="setIntent" data-v="confirm">确认</view>
+      <view class="seg-i {{intent==='booked'?'on':''}}" bindtap="setIntent" data-v="booked">预约成功</view>
     </view>
     <view class="row">
       <picker mode="date" value="{{from}}" bindchange="onFrom"><view class="date">{{from||'起始日'}}</view></picker>
@@ -24,13 +25,14 @@
     <view wx:for="{{list}}" wx:key="_id" class="card" bindtap="toggleExpand" data-id="{{item._id}}">
       <view class="top">
         <view class="who">{{item.nickname || '匿名'}}</view>
-        <view class="tag {{item.intent}}">{{item.intent==='chat'?'问答':(item.intent==='ask'?'追问':'确认')}}</view>
+        <view class="tag {{item.booked?'booked':item.intent}}">{{item.booked?'预约成功':(item.intent==='chat'?'问答':(item.intent==='ask'?'追问':'确认'))}}</view>
         <view class="time">{{item.timeText}}</view>
       </view>
       <view class="q">问：{{item.input}}</view>
       <view wx:if="{{expandedId===item._id}}" class="detail">
         <view class="a">小曜：{{item.output}}</view>
         <view wx:if="{{item.slotsText}}" class="slots">抽取：{{item.slotsText}}</view>
+        <view wx:if="{{item.booked}}" class="meta">✅ 该轮对话已转成正式预约单</view>
         <view wx:if="{{item.model}}" class="meta">{{item.model}} · tokens {{item.tokens}} · {{item.cost}}元 · {{item.latencyMs}}ms</view>
       </view>
       <view wx:else class="a ellipsis">小曜：{{item.output}}</view>

@@ -293,6 +293,8 @@ Page({
 
   handleResult(res) {
     if (!res) return
+    // 记住本轮 AI 对话的日志 id：用户若点了「确认预约」，createReservation 会据此把该轮标记为「预约成功」
+    if (res.logId) this._aiLogId = res.logId
     if (res.intent === 'confirm') {
       const assistantMsg = { id: mkId(), role: 'assistant', content: res.reply }
       this.setData({
@@ -351,7 +353,11 @@ Page({
     }
     // 2) 提交预约（携带订阅快照，云端按二选一规则发通知）
     try {
-      const payload = { projectId: c.projectId, date: c.date, sessionId: c.sessionId, name: this.data.profile.name, partySize: c.partySize }
+      // source='ai' 标记 AI 来源，aiLogId 用于闭环回写「预约成功」（供沟通→确认→预约成功漏斗统计）
+      const payload = {
+        projectId: c.projectId, date: c.date, sessionId: c.sessionId, name: this.data.profile.name, partySize: c.partySize,
+        source: 'ai', aiLogId: this._aiLogId || ''
+      }
       if (this.data.profile.phone) payload.phone = this.data.profile.phone
       const r = await call('createReservation', { ...payload, subscribed: subs })
       wx.hideLoading()

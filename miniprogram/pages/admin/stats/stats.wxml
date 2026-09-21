@@ -29,10 +29,22 @@
       <view class="kpi"><view class="label">对话次数</view><view class="num">{{view.ai.turns}}</view></view>
       <view class="kpi"><view class="label">对话人数</view><view class="num">{{view.ai.users}}</view></view>
       <view class="kpi"><view class="label">人均对话次数</view><view class="num">{{view.ai.perCap}}</view></view>
-      <view class="kpi"><view class="label">预约确认次数</view><view class="num">{{view.ai.confirm}}</view></view>
+      <view class="kpi"><view class="label">预约成功单数</view><view class="num">{{view.ai.booked}}</view></view>
+    </view>
+
+    <view class="sub"><text>AI 预约漏斗（人数口径）</text></view>
+    <view class="fn" wx:for="{{view.ai.funnel}}" wx:key="key">
+      <view class="fn-row"><text>{{item.label}}</text><text>{{item.uv}} 人</text></view>
+      <view class="bar" style="width:{{item.pct}}%">{{item.uv}}</view>
     </view>
     <view class="mini">
-      <view class="m"><view class="l">确认率(确认÷对话)</view><view class="n brand">{{view.ai.confirmRate}}%</view></view>
+      <view class="m"><view class="l">沟通→确认</view><view class="n">{{view.ai.rate.talkToConfirm}}%</view></view>
+      <view class="m"><view class="l">确认→预约成功</view><view class="n brand">{{view.ai.rate.confirmToBooked}}%</view></view>
+      <view class="m"><view class="l">沟通→成功</view><view class="n">{{view.ai.rate.overall}}%</view></view>
+    </view>
+
+    <view class="mini">
+      <view class="m"><view class="l">确认轮次(给出确认卡)</view><view class="n">{{view.ai.confirm}}</view></view>
       <view class="m"><view class="l">问答轮次</view><view class="n">{{view.ai.chat}}</view></view>
       <view class="m"><view class="l">追问轮次</view><view class="n">{{view.ai.ask}}</view></view>
     </view>
@@ -41,7 +53,7 @@
       <view class="m"><view class="l">成本(元)</view><view class="n">{{view.ai.cost}}</view></view>
       <view class="m"><view class="l">平均延迟(ms)</view><view class="n">{{view.ai.latencyMs}}</view></view>
     </view>
-    <view class="note">对话次数=AI 对话总轮次；对话人数=去重用户；人均=对话次数÷人数；确认率=预约确认轮次÷对话总轮次（不含用户最终是否真的提交预约单）。数据来自 aiLogs。</view>
+    <view class="note">沟通=与小曜对话过的去重用户；确认=小曜已给出可约确认卡（用户未必点提交）；预约成功=用户真的提交了预约单（用户点确认后由 createReservation 单向回写 booked 标记）。三者为包含关系，故可构成漏斗。数据来自 aiLogs。</view>
   </view>
 
   <!-- 板块2 转化漏斗（埋点后 4 层均为真实数据） -->

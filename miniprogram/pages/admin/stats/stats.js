@@ -82,7 +82,7 @@ function buildView(d) {
   const crossCombos = barsOf(cx.combos, Math.max(...cx.combos.map(x => x.uv), 1))
   const crossPairs = barsOf(cx.pairs, Math.max(...cx.pairs.map(x => x.uv), 1))
 
-  // ===== 板块 AI 预约对话 =====
+  // ===== 板块 AI 预约对话（含三层漏斗：沟通 → 确认 → 预约成功） =====
   const a = d.ai || {}
   const ai = {
     turns: a.turns || 0,
@@ -91,10 +91,15 @@ function buildView(d) {
     chat: a.chat || 0,
     ask: a.ask || 0,
     confirm: a.confirm || 0,
+    booked: a.booked || 0,
     confirmRate: a.confirmRate || 0,
+    bookedRate: a.bookedRate || 0,
     tokens: a.tokens || 0,
     cost: a.cost != null ? a.cost : 0,
-    latencyMs: a.latencyMs || 0
+    latencyMs: a.latencyMs || 0,
+    // 漏斗三层（人数口径，宽度已按首层归一）+ 两级转化率
+    funnel: (a.funnel || []).map(f => ({ key: f.key, label: f.label, uv: f.uv, pct: f.pct })),
+    rate: a.rate || { talkToConfirm: 0, confirmToBooked: 0, overall: 0 }
   }
 
   return {

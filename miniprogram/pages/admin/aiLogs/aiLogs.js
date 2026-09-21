@@ -21,7 +21,7 @@ Page({
     page: 1,
     hasMore: false,
     loading: false,
-    intent: 'all',     // all / chat / ask / confirm
+    intent: 'all',     // all / chat(问答) / ask(追问) / confirm(确认) / booked(预约成功)
     keyword: '',
     from: '',
     to: '',

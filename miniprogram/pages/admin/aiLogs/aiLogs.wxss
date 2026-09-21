@@ -26,6 +26,8 @@
 .tag.chat { background: #4A4A4A; }
 .tag.ask { background: #B07B3E; }
 .tag.confirm { background: #7A5230; }
+/* 预约成功：完成态，用纯黑区分于其它中间态标签 */
+.tag.booked { background: #1A1A1A; }
 .time { margin-left: auto; font-size: 22rpx; color: #999; }
 .q { font-size: 27rpx; color: #333; margin-top: 14rpx; line-height: 1.5; }
 .a { font-size: 27rpx; color: #555; margin-top: 10rpx; line-height: 1.6; }

@@ -263,7 +263,16 @@ exports.main = async (event) => {
   pairs.sort((a, b) => b.uv - a.uv)
 
   // ===== AI 预约对话聚合（aiLogs 集合；首次对话前集合可能不存在，失败按全 0 处理，不影响其余分析）=====
-  let ai = { turns: 0, users: 0, perCap: 0, chat: 0, ask: 0, confirm: 0, confirmRate: 0, tokens: 0, cost: 0, latencyMs: 0 }
+  // 「预约成功」不是第四种对话，而是**回写到确认轮**（该轮 booked=true + reservationId），
+  // 故三层天然嵌套：沟通(talk) ⊇ 确认(confirm) ⊇ 预约成功(booked)，可直接做漏斗。
+  //   talk    沟通：所有 AI 对话轮次 / 去重用户
+  //   confirm 确认：AI 已给出可约时段确认卡（用户未必点确认）
+  //   booked  预约成功：用户真的提交了预约单（createReservation 回写，见 createReservation.markAiBooked）
+  let ai = {
+    turns: 0, users: 0, perCap: 0, chat: 0, ask: 0, confirm: 0, booked: 0,
+    confirmRate: 0, bookedRate: 0, tokens: 0, cost: 0, latencyMs: 0,
+    funnel: [], rate: { talkToConfirm: 0, confirmToBooked: 0, overall: 0 }
+  }
   try {
     const aiRows = []
     let askip = 0
@@ -275,8 +284,10 @@ exports.main = async (event) => {
       askip += 100
       if (aiRows.length > 5000) break
     }
-    const uSet = new Set()
-    let turns = 0, chat = 0, ask = 0, confirm = 0, tok = 0, cost = 0, lat = 0
+    const uSet = new Set()        // 沟通人数
+    const confirmU = new Set()    // 触达确认人数
+    const bookedU = new Set()     // 预约成功人数
+    let turns = 0, chat = 0, ask = 0, confirm = 0, booked = 0, tok = 0, cost = 0, lat = 0
     for (const r of aiRows) {
       const t = r.createdAt || 0
       if (t < from || t > to) continue
@@ -285,20 +296,39 @@ exports.main = async (event) => {
       const it = r.intent || 'chat'
       if (it === 'chat') chat++
       else if (it === 'ask') ask++
-      else if (it === 'confirm') confirm++
+      else if (it === 'confirm') {
+        confirm++
+        if (r.openid) confirmU.add(r.openid)
+        if (r.booked === true) { booked++; if (r.openid) bookedU.add(r.openid) }
+      }
       if (r.tokens != null) tok += r.tokens
       if (r.cost != null) cost += r.cost
       if (r.latencyMs != null) lat += r.latencyMs
     }
+    const talkU = uSet.size, cU = confirmU.size, bU = bookedU.size
+    const fTop = Math.max(talkU, cU, bU, 1)
+    const mkf = (key, label, n) => ({ key, label, uv: n, pct: Math.round(n / fTop * 100) })
+    const pctOf = (a, b) => (a ? +(b / a * 100).toFixed(1) : 0)
     ai = {
       turns,
-      users: uSet.size,
-      perCap: uSet.size ? +(turns / uSet.size).toFixed(2) : 0,
-      chat, ask, confirm,
+      users: talkU,
+      perCap: talkU ? +(turns / talkU).toFixed(2) : 0,
+      chat, ask, confirm, booked,
       confirmRate: turns ? +((confirm / turns) * 100).toFixed(1) : 0,
+      bookedRate: confirm ? +((booked / confirm) * 100).toFixed(1) : 0,
       tokens: tok,
       cost: +cost.toFixed(2),
-      latencyMs: turns ? Math.round(lat / turns) : 0
+      latencyMs: turns ? Math.round(lat / turns) : 0,
+      funnel: [
+        mkf('talk', 'AI 沟通人数', talkU),
+        mkf('confirm', '小曜给出可约确认', cU),
+        mkf('booked', '预约成功', bU)
+      ],
+      rate: {
+        talkToConfirm: pctOf(talkU, cU),
+        confirmToBooked: pctOf(cU, bU),
+        overall: pctOf(talkU, bU)
+      }
     }
   } catch (e) { /* aiLogs 集合未建或查询失败，按全 0 处理 */ }
 

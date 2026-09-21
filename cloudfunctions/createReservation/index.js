@@ -2,6 +2,32 @@
 const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms, normalizeSubs, subbedOf, notifyWindowCfg, notifyPlan, plannedOf } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
+// AI 预约闭环：用户最终真的提交预约单 → 回写对应 AI 对话日志为「预约成功」。
+// 精确优先：前端透传 logId（该轮 confirm 的 aiLogs _id）；
+// 缺失时兜底：回写该用户 30 分钟内、尚未标记的最新一条 confirm 轮（覆盖端侧取不到 logId 的场景）。
+// 失败静默——回写只用于统计分析，绝不阻断预约主流程。
+function tsOf(v) {
+  if (!v) return 0
+  const ms = (v instanceof Date) ? v.getTime() : Date.parse(v)
+  return isNaN(ms) ? 0 : ms
+}
+async function markAiBooked(db, openid, logId, reservationId) {
+  try {
+    const patch = { booked: true, reservationId: reservationId || '', bookedAt: Date.now() }
+    if (logId) {
+      await db.collection('aiLogs').doc(logId).update({ data: patch })
+      return
+    }
+    const q = await db.collection('aiLogs').where({ openid, intent: 'confirm' })
+      .orderBy('createdAt', 'desc').limit(5).get().catch(() => ({ data: [] }))
+    const since = Date.now() - 30 * 60000
+    const hit = (q.data || []).find(r => !r.booked && tsOf(r.createdAt) >= since)
+    if (hit) await db.collection('aiLogs').doc(hit._id).update({ data: patch })
+  } catch (e) {
+    console.warn('[createReservation] markAiBooked failed (ignored):', e && e.message)
+  }
+}
+
 // 场次是否已过预约截止（与顾客端 isSessionExpired 同源规则）
 // cutoff: { mode:'before'|'after', minutes }；未配置 / 非法 则不限制
 function parseHm(t) {
@@ -34,7 +60,7 @@ exports.main = async (event) => {
     }
   } catch (e) { /* 查询失败不阻断主流程 */ }
 
-  const { projectId, date, sessionId, name, phone, partySize, note, wechat, gender, age, subscribed } = event
+  const { projectId, date, sessionId, name, phone, partySize, note, wechat, gender, age, subscribed, source, aiLogId } = event
   // 顾客侧统一订阅记录（users.subscriptions）：提交时按用户在确认页勾选结果保存。
   // 缺省（subscribed 未传/非对象）视为全部订阅；最终落库前规整为 5 键布尔。
   // ⚠️ 必须在上面解构之后声明：subscribed 由该 const 解构产生，提前引用会撞 TDZ（ReferenceError）。
@@ -128,7 +154,9 @@ exports.main = async (event) => {
       // 提交时用户勾选的订阅快照（统一记录）：缺省全部订阅
       subscribed: (subscribed && typeof subscribed === 'object') ? normalizeSubs(subscribed) : normalizeSubs({}),
       // 本次预约启用的时间轴通知（4 键布尔，恒含全部键）
-      notifyPlan: plan
+      notifyPlan: plan,
+      // 来源标记：'ai' = 由 AI 助理对话产生的预约单（用于区分常规下单，便于统计 AI 贡献）
+      source: source === 'ai' ? 'ai' : ''
     }
     const add = await transaction.collection(COL.reservations).add({ data: reservation })
     await transaction.commit()
@@ -239,6 +267,9 @@ exports.main = async (event) => {
       if (adminNotify) patch.adminNotify = adminNotify
       try { await db.collection(COL.reservations).doc(add._id).update({ data: patch }) } catch (e) {}
     }
+
+    // AI 预约闭环：预约单已落库 → 把对应的 AI 对话日志标记为「预约成功」
+    if (source === 'ai' || aiLogId) await markAiBooked(db, OPENID, aiLogId, add._id)
 
     return ok({ id: add._id, status: reservation.status, review: reservation.review })
   } catch (e) {

@@ -63,6 +63,8 @@ async function exportAi(event) {
     nick: r.nickname || '',
     openid: r.openid || '',
     intent: r.intent || 'chat',
+    // 预约成功：该轮对话最终是否真的转成预约单（confirm 轮被 createReservation 回写 booked=true）
+    booked: r.booked === true ? '是' : '否',
     input: (r.input || '').replace(/[\r\n]+/g, ' '),
     output: (r.output || '').replace(/[\r\n]+/g, ' '),
     model: r.model || '',
@@ -70,7 +72,7 @@ async function exportAi(event) {
     cost: r.cost != null ? r.cost : '',
     ms: r.latencyMs != null ? r.latencyMs : ''
   }))
-  const header = '时间,昵称,openid,意图,用户提问,小曜回答,模型,tokens,成本(元),耗时(ms)'
-  const csv = [header].concat(rows.map(r => [r.t, r.nick, r.openid, r.intent, r.input, r.output, r.model, r.tokens, r.cost, r.ms].map(escCell).join(','))).join('\n')
+  const header = '时间,昵称,openid,意图,是否预约成功,用户提问,小曜回答,模型,tokens,成本(元),耗时(ms)'
+  const csv = [header].concat(rows.map(r => [r.t, r.nick, r.openid, r.intent, r.booked, r.input, r.output, r.model, r.tokens, r.cost, r.ms].map(escCell).join(','))).join('\n')
   return ok({ csv, count: rows.length })
 }
