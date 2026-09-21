@@ -6,6 +6,7 @@ const { db, ok, fail, wxCtx, getRole } = require('./lib')
 const MAX_QUICK = 6
 const MAX_LABEL = 8     // 按钮文字上限（按钮宽度有限）
 const MAX_TEXT = 60     // 发送话术上限
+const MAX_GREETING = 200 // 开场白上限
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -23,9 +24,16 @@ exports.main = async (event) => {
       .map(x => ({ label: x.label.trim().slice(0, MAX_LABEL), text: x.text.trim().slice(0, MAX_TEXT) }))
   }
 
+  // 开场白：非空则存储；为空字符串则清掉该字段，让顾客端回落到内置默认
+  if (event.greeting !== undefined) {
+    if (typeof event.greeting !== 'string') return fail('参数错误：greeting 必须为字符串')
+    const g = event.greeting.trim().slice(0, MAX_GREETING)
+    data.greeting = g
+  }
+
   const col = db.collection('config')
   const ex = await col.doc('ai').get().catch(() => ({ data: null }))
   if (ex.data) await col.doc('ai').update({ data })
   else await col.doc('ai').set({ data })
-  return ok({ saved: true, enabled: data.enabled, quickReplies: data.quickReplies || [] })
+  return ok({ saved: true, enabled: data.enabled, quickReplies: data.quickReplies || [], greeting: data.greeting || '' })
 }

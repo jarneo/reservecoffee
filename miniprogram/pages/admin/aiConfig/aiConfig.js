@@ -75,7 +75,8 @@ Page({
     wx.showLoading({ title: '保存中' })
     call('saveAiConfig', {
       enabled: this.data.enabled,
-      quickReplies: q.map(x => ({ label: (x.label || '').trim(), text: (x.text || '').trim() }))
+      quickReplies: q.map(x => ({ label: (x.label || '').trim(), text: (x.text || '').trim() })),
+      greeting: (this.data.greeting || '').trim()
     })
       .then(() => { wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }); this.data.saving = false })
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '保存失败', icon: 'none' }); this.data.saving = false })

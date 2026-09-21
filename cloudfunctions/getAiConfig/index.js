@@ -10,6 +10,9 @@ const DEFAULT_QUICK = [
   { label: '到店引导', text: '你们家怎么走？营业到几点？' }
 ]
 
+// 内置默认开场白：后台未配置时使用（与前端 ai.js 的 DEFAULT_GREETING 保持一致）
+const DEFAULT_GREETING = '我是二曜路8号咖啡清酒的AI预约助理小曜。任何关于店铺预约、菜单、价格等问题都可以直接问我哦。如果您要预约，试着说"明天两点，2位，深烘法兰绒咖啡"；如果您要咨询店铺的其他问题，也可以直接问我哦。'
+
 exports.main = async () => {
   const r = await db.collection('config').doc('ai').get().catch(() => ({ data: null }))
   const d = r.data || {}
@@ -19,5 +22,6 @@ exports.main = async () => {
     .slice(0, 6)
     .map(x => ({ label: x.label.trim(), text: x.text.trim() }))
   // 后台未配置（或全是空项）时回落到内置默认，保证「不配置也和以前一样」
-  return ok({ enabled: d.enabled !== false, quickReplies: quick.length ? quick : DEFAULT_QUICK })
+  const greeting = (typeof d.greeting === 'string' && d.greeting.trim()) ? d.greeting.trim() : DEFAULT_GREETING
+  return ok({ enabled: d.enabled !== false, quickReplies: quick.length ? quick : DEFAULT_QUICK, greeting })
 }

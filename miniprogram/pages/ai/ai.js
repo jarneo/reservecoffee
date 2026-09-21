@@ -46,20 +46,24 @@ Page({
   onLoad(q) {
     const pid = (q && q.projectId) || ''
     this.projectId = pid
-    const welcome = pid
-      ? '我是 AI 预约助理，可以帮你完成预约或解答疑问～想约哪个时段直接说就行。'
-      : '我是 AI 预约助理，可以帮你预约或解答疑问。试着说「明天两点，两人，法兰绒深烘」？'
-    this.setData({ messages: [{ id: mkId(), role: 'assistant', content: welcome }] })
-    this.loadQuick()
+    // 开场白：先用内置默认（与云端 getAiConfig 的 DEFAULT_GREETING 一致），配置加载后若后台有值则替换
+    this.setData({ messages: [{ id: mkId(), role: 'assistant', content: DEFAULT_GREETING }] })
+    this.loadConfig()
     this.initVoice()
   },
 
-  // 拉取后台配置的快捷短语；失败/未配置时静默沿用内置默认，不打断进入 AI 页
-  loadQuick() {
+  // 拉取后台配置：快捷短语 + 开场白；失败/未配置时静默沿用内置默认，不打断进入 AI 页
+  loadConfig() {
     call('getAiConfig').then(d => {
       const list = (d && d.quickReplies) || []
-      if (!list.length) return
-      this.setData({ quickReplies: list.map((x, i) => ({ _i: i, label: x.label, text: x.text })) })
+      if (list.length) this.setData({ quickReplies: list.map((x, i) => ({ _i: i, label: x.label, text: x.text })) })
+      // 开场白：仅当页面仍是首条欢迎语时替换（避免覆盖已开始的对话）
+      const g = d && d.greeting
+      const msgs = this.data.messages
+      if (g && msgs.length === 1 && msgs[0].role === 'assistant') {
+        msgs[0] = { ...msgs[0], content: g }
+        this.setData({ messages: msgs })
+      }
     }).catch(() => {})
   },
 

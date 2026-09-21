@@ -49,7 +49,7 @@
     <!-- 左侧：语音 / 键盘 切换（微信聊天样式，插件不可用时自动隐藏） -->
     <view wx:if="{{pluginOk}}" class="icon-btn {{voiceMode ? 'kbd' : 'mic'}}" bindtap="toggleMode"></view>
 
-    <input wx:if="{{!voiceMode}}" class="inp" value="{{draft}}" bindinput="onDraft" placeholder="明天 13点 2人法兰绒咖啡" confirm-type="send" bindconfirm="send"/>
+    <input wx:if="{{!voiceMode}}" class="inp" value="{{draft}}" bindinput="onDraft" placeholder="说点什么，例如：明天 13点 2人法兰绒咖啡" confirm-type="send" bindconfirm="send"/>
     <view wx:else class="voice-btn {{recording ? 'on' : ''}}"
           bindtouchstart="onVoiceStart" bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceEnd">
       {{recording ? '松开 发送' : '按住 说话'}}

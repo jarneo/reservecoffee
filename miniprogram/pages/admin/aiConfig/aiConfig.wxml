@@ -13,6 +13,12 @@
   </view>
 
   <view class="card">
+    <view class="sec">开场白</view>
+    <view class="muted xs" style="line-height:1.6">顾客进入 AI 预约页时，AI 发出的第一条消息。留空则使用内置默认（"我是二曜路8号咖啡清酒的AI预约助理小曜……"）。建议包含店铺名、能问什么、怎么开口预约。</view>
+    <textarea class="qta" value="{{greeting}}" placeholder="AI 开场白（留空用默认）" placeholder-class="qta-placeholder" maxlength="200" auto-height cursor-spacing="24" bindinput="onGreeting" style="margin-top:12rpx"/>
+  </view>
+
+  <view class="card">
     <view class="sec">快捷短语</view>
     <view class="muted xs" style="line-height:1.6">顾客进入 AI 预约页时，输入框上方会显示这排按钮；点一下就直接发送对应的话术，用来引导顾客怎么开口。</view>
 
