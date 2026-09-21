@@ -1,5 +1,6 @@
 const { call } = require('../../utils/cloud')
-const { requestSubscribe, tmplIdsOfPlan, notifyPlanOf, normalizeSubs } = require('../../utils/subscribe')
+const { requestSubscribe } = require('../../utils/util')
+const { tmplIdsOfPlan, notifyPlanOf, CUSTOMER_SUBS } = require('../../utils/subscribe')
 
 // 微信同声传译插件（WechatSI）：端侧 ASR，不上云、不出网，规避 CloudBase 出网白名单 412 坑。
 // 插件未在本小程序后台启用时 requirePlugin 会抛错 → 降级隐藏麦克风入口，不影响文字预约。
@@ -28,6 +29,8 @@ Page({
     success: false,
     successInfo: null,
     sending: false,
+    subs: {},            // 订阅授权快照（确认时回写，随 createReservation 落库）
+    notifyCfg: null,     // 项目通知配置（确认卡出现时预取，供计算授权模板）
     // 语音输入
     voiceMode: false,      // false=键盘态 true=语音态
     recording: false,
@@ -276,6 +279,12 @@ Page({
         confirmation: res.confirmation,
         profile: res.profile || { name: '', phone: '' }
       })
+      // 预取项目通知配置，供「确认预约」时同步计算授权模板（异步，不阻塞对话）
+      if (res.confirmation && res.confirmation.projectId) {
+        call('getProject', { projectId: res.confirmation.projectId }).then(d => {
+          if (d && d.notifyCfg) this.setData({ notifyCfg: d.notifyCfg })
+        }).catch(() => {})
+      }
       this.scrollBottom()
       return
     }
@@ -297,24 +306,29 @@ Page({
     const c = this.data.confirmation
     if (!c) return
     wx.showLoading({ title: '提交中' })
+    // 1) 同步拉起微信订阅弹窗（必须在 tap 手势上下文内调用，不能放在任何 await 之后，否则微信不弹窗）
+    const plan = notifyPlanOf({ date: c.date, sessionStart: c.sessionStart, sessionEnd: c.sessionEnd }, this.data.notifyCfg)
+    const ids = tmplIdsOfPlan(plan, null)
+    const subs = { ...this.data.subs }
+    if (ids.length) {
+      try {
+        const r = await requestSubscribe(ids)
+        // 回写授权结果（与常规预约 confirm 页一致）：接受→true / 拒绝→false，仅限本次申请的模板
+        const keyOf = id => { const s = CUSTOMER_SUBS.find(x => x.tmplId === id); return s ? s.key : null }
+        ;(r.accepted || []).forEach(id => { const k = keyOf(id); if (k) subs[k] = true })
+        ;(r.rejected || []).forEach(id => { const k = keyOf(id); if (k) subs[k] = false })
+        this.setData({ subs })
+        if (!(r.accepted && r.accepted.length)) {
+          // 用户未在弹窗里授权 → 后续走短信兜底（与常规预约一致，给出明确提示）
+          wx.showToast({ title: '未开启微信通知，将改用短信通知', icon: 'none', duration: 2200 })
+        }
+      } catch (e) { /* 订阅失败不阻断 */ }
+    }
+    // 2) 提交预约（携带订阅快照，云端按二选一规则发通知）
     try {
-      const d = await call('getProject', { projectId: c.projectId })
-      const plan = notifyPlanOf({ date: c.date, sessionStart: c.sessionStart, sessionEnd: c.sessionEnd }, d.notifyCfg)
-      const ids = tmplIdsOfPlan(plan, null)
-      if (ids.length) {
-        try {
-          const r = await requestSubscribe(ids)
-          // 回写授权结果（与常规预约 confirm 页一致）：接受→true / 拒绝→false，仅限本次申请的模板
-          const subs = { ...this.data.subs }
-          const keyOf = id => { const s = CUSTOMER_SUBS.find(x => x.tmplId === id); return s ? s.key : null }
-          ;(r.accepted || []).forEach(id => { const k = keyOf(id); if (k) subs[k] = true })
-          ;(r.rejected || []).forEach(id => { const k = keyOf(id); if (k) subs[k] = false })
-          this.setData({ subs })
-        } catch (e) { /* 订阅失败不阻断 */ }
-      }
       const payload = { projectId: c.projectId, date: c.date, sessionId: c.sessionId, name: this.data.profile.name, partySize: c.partySize }
       if (this.data.profile.phone) payload.phone = this.data.profile.phone
-      const r = await call('createReservation', { ...payload, subscribed: this.data.subs })
+      const r = await call('createReservation', { ...payload, subscribed: subs })
       wx.hideLoading()
       const needReview = r && r.review === 'pending'
       this.setData({
