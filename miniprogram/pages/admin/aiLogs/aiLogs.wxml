@@ -1,0 +1,54 @@
+<view class="page">
+  <view class="filters">
+    <view class="seg">
+      <view class="seg-i {{intent==='all'?'on':''}}" bindtap="setIntent" data-v="all">全部</view>
+      <view class="seg-i {{intent==='chat'?'on':''}}" bindtap="setIntent" data-v="chat">问答</view>
+      <view class="seg-i {{intent==='ask'?'on':''}}" bindtap="setIntent" data-v="ask">追问</view>
+      <view class="seg-i {{intent==='confirm'?'on':''}}" bindtap="setIntent" data-v="confirm">确认</view>
+    </view>
+    <view class="row">
+      <picker mode="date" value="{{from}}" bindchange="onFrom"><view class="date">{{from||'起始日'}}</view></picker>
+      <text class="tilde">~</text>
+      <picker mode="date" value="{{to}}" bindchange="onTo"><view class="date">{{to||'结束日'}}</view></picker>
+      <view wx:if="{{role==='owner'}}" class="btn sm" bindtap="doExport">导出CSV</view>
+    </view>
+    <view class="search">
+      <input class="sinp" placeholder="搜索昵称 / 提问 / 回答" value="{{keyword}}" bindinput="onKeyword" bindconfirm="search" confirm-type="search"/>
+      <view class="btn sm ghost" bindtap="search">搜索</view>
+      <view class="btn sm ghost" wx:if="{{keyword}}" bindtap="clearKw">清空</view>
+    </view>
+  </view>
+
+  <view class="list">
+    <view wx:if="{{!list.length && !loading}}" class="empty">暂无对话记录</view>
+    <view wx:for="{{list}}" wx:key="_id" class="card" bindtap="toggleExpand" data-id="{{item._id}}">
+      <view class="top">
+        <view class="who">{{item.nickname || '匿名'}}</view>
+        <view class="tag {{item.intent}}">{{item.intent==='chat'?'问答':(item.intent==='ask'?'追问':'确认')}}</view>
+        <view class="time">{{item.timeText}}</view>
+      </view>
+      <view class="q">问：{{item.input}}</view>
+      <view wx:if="{{expandedId===item._id}}" class="detail">
+        <view class="a">小曜：{{item.output}}</view>
+        <view wx:if="{{item.slotsText}}" class="slots">抽取：{{item.slotsText}}</view>
+        <view wx:if="{{item.model}}" class="meta">{{item.model}} · tokens {{item.tokens}} · {{item.cost}}元 · {{item.latencyMs}}ms</view>
+      </view>
+      <view wx:else class="a ellipsis">小曜：{{item.output}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中…</view>
+  <view wx:if="{{!hasMore && list.length}}" class="loading">— 没有更多了 —</view>
+
+  <view wx:if="{{showExport}}" class="mask" bindtap="closeExport">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-hd">
+        <view class="bold">导出预览（{{exportCount}} 条）</view>
+        <view class="btn sm" bindtap="copyCsv">复制全部</view>
+        <view class="btn sm ghost" bindtap="closeExport">关闭</view>
+      </view>
+      <view class="hint">复制后可直接粘贴到 Excel / 腾讯文档表格分析。</view>
+      <scroll-view scroll-y class="csv"><text>{{exportCsv}}</text></scroll-view>
+    </view>
+  </view>
+</view>

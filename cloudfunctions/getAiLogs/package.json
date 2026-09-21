@@ -1,0 +1,9 @@
+{
+  "name": "getAiLogs",
+  "version": "1.0.0",
+  "description": "reservecoffee 读取 AI 对话记录（aiLogs 集合）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3"
+  }
+}

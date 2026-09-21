@@ -21,6 +21,7 @@
     "pages/admin/smsConfig/smsConfig",
     "pages/admin/notifyConfig/notifyConfig",
     "pages/admin/aiConfig/aiConfig",
+    "pages/admin/aiLogs/aiLogs",
     "pages/admin/mpAuthWeb/mpAuthWeb",
     "pages/admin/templates/templates",
     "pages/admin/customers/customers",

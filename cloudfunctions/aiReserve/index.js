@@ -131,7 +131,9 @@ async function callAI(messages) {
   const text = (resp && (resp.text || (resp.data && resp.data.text))) ||
     (resp && resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || ''
   if (!text) throw new Error('AI 返回为空')
-  return text
+  // 用量（混元 generateText 一般挂在 resp.usage；不同版本可能嵌套在 resp.data.usage）
+  const usage = (resp && resp.usage) || (resp && resp.data && resp.data.usage) || null
+  return { text, usage }
 }
 
 // 容错解析模型输出的 JSON（可能夹带多余文字）
@@ -296,8 +298,40 @@ async function loadProfile(openid) {
   } catch (e) { return { name: '', phone: '' } }
 }
 
-// ===== 6) 主入口 =====
+// ===== 6) 对话日志落库（aiLogs，供店主复盘 / 完善知识库，详见 ai-reserve-spec.md §日志落盘）=====
+// 注意：aiReserve 仍【不写 reservations】——预约落库由前端确认后调 createReservation 完成；
+// 此处仅向独立日志集合追加一条，异步、失败静默，绝不阻塞用户对话返回。
+async function logTurn({ openid, nickname, input, intent, reply, slots, model, usage, ms }) {
+  try {
+    const u = usage || {}
+    const pt = (u.prompt_tokens != null) ? u.prompt_tokens : (u.promptTokens != null ? u.promptTokens : null)
+    const ct = (u.completion_tokens != null) ? u.completion_tokens : (u.completionTokens != null ? u.completionTokens : null)
+    const tokens = (pt != null && ct != null) ? (pt + ct)
+      : (u.total_tokens != null ? u.total_tokens : (u.totalTokens != null ? u.totalTokens : null))
+    // 成本粗估（元，仅量级参考）：混元输入 0.8/千tokens、输出 2/千tokens
+    let cost = null
+    if (pt != null && ct != null) cost = +(pt / 1000 * 0.8 + ct / 1000 * 2).toFixed(4)
+    await db.collection('aiLogs').add({
+      data: {
+        openid: openid || '',
+        nickname: nickname || '',
+        input: input || '',
+        output: reply || '',
+        intent: intent || 'chat',
+        slots: slots || null,
+        model: model || '',
+        tokens: tokens,
+        cost: cost,
+        latencyMs: ms || null,
+        createdAt: db.serverDate()
+      }
+    })
+  } catch (e) { /* 日志写失败不阻断对话 */ }
+}
+
+// ===== 7) 主入口 =====
 exports.main = async (event) => {
+  const t0 = Date.now()
   const { OPENID } = wxCtx()
   if (!OPENID) return fail('无法识别用户身份')
 
@@ -305,40 +339,54 @@ exports.main = async (event) => {
     .filter(m => m && m.role && typeof m.content === 'string')
     .slice(-20) : []
   const ctxProjectId = event.projectId || ''
+  const lastUser = [...messages].reverse().find(m => m.role === 'user')
+  const input = lastUser ? lastUser.content : ''
+  const model = (process.env.AI_PROVIDER || 'hunyuan-exp') + '/' + (process.env.AI_MODEL || 'hunyuan-turbos-latest')
 
   const availability = await loadAvailability().catch(() => '(可用性获取失败)')
   const sys = buildSystemPrompt(availability)
   const full = [{ role: 'system', content: sys }, ...messages]
 
-  let text
+  let aiRes
   try {
-    text = await callAI(full)
+    aiRes = await callAI(full)
   } catch (e) {
     return fail('AI 服务暂不可用：' + (e && e.message ? e.message : '未知错误'))
   }
+  const text = aiRes.text
+  const usage = aiRes.usage
 
   const parsed = parseModel(text)
+  let out
   if (!parsed || typeof parsed.intent !== 'string') {
-    return ok({ intent: 'chat', reply: (text || '').slice(0, 500) || '抱歉，我没能理解，请再说一遍～' })
-  }
-
-  if (parsed.intent !== 'book') {
-    return ok({ intent: 'chat', reply: parsed.reply || (text || '').slice(0, 500) || '好的～' })
-  }
-
-  const res = await resolveBooking(parsed.slots || {}, ctxProjectId)
-  if (!res.ok) {
-    // 多轮澄清防循环：缺要素追问上限（默认 5 轮，可用环境变量 AI_MAX_ASK_ROUNDS 覆盖），超出则优雅引导走常规预约
-    const MAX_ASK_ROUNDS = Number(process.env.AI_MAX_ASK_ROUNDS) || 5
-    const userTurns = messages.filter(m => m.role === 'user').length
-    if (userTurns > MAX_ASK_ROUNDS) {
-      return ok({ intent: 'chat', reply: '看来我还没完全帮您约上～您可以直接用「常规预约」点选日期与场次，更快更准哦。' })
+    out = { intent: 'chat', reply: (text || '').slice(0, 500) || '抱歉，我没能理解，请再说一遍～' }
+  } else if (parsed.intent !== 'book') {
+    out = { intent: 'chat', reply: parsed.reply || (text || '').slice(0, 500) || '好的～' }
+  } else {
+    const res = await resolveBooking(parsed.slots || {}, ctxProjectId)
+    if (!res.ok) {
+      // 多轮澄清防循环：缺要素追问上限（默认 5 轮，可用环境变量 AI_MAX_ASK_ROUNDS 覆盖），超出则优雅引导走常规预约
+      const MAX_ASK_ROUNDS = Number(process.env.AI_MAX_ASK_ROUNDS) || 5
+      const userTurns = messages.filter(m => m.role === 'user').length
+      if (userTurns > MAX_ASK_ROUNDS) {
+        out = { intent: 'chat', reply: '看来我还没完全帮您约上～您可以直接用「常规预约」点选日期与场次，更快更准哦。' }
+      } else {
+        out = { intent: 'ask', reply: res.message }
+      }
+    } else {
+      const profile = await loadProfile(OPENID)
+      const c = res.confirmation
+      const reply = `已为您查到可约时段：「${c.projectName}」${c.date} ${c.sessionStart}-${c.sessionEnd}，${c.partySize} 人位。${c.note ? c.note + '。' : ''}请确认预约信息～`
+      out = { intent: 'confirm', reply, confirmation: c, profile }
     }
-    return ok({ intent: 'ask', reply: res.message })
   }
 
-  const profile = await loadProfile(OPENID)
-  const c = res.confirmation
-  const reply = `已为您查到可约时段：「${c.projectName}」${c.date} ${c.sessionStart}-${c.sessionEnd}，${c.partySize} 人位。${c.note ? c.note + '。' : ''}请确认预约信息～`
-  return ok({ intent: 'confirm', reply, confirmation: c, profile })
+  // 落库（异步 fire-and-forget，失败不影响返回）
+  logTurn({
+    openid: OPENID, nickname: event.nickname, input,
+    intent: out.intent, reply: out.reply,
+    slots: parsed && parsed.slots, model, usage, ms: Date.now() - t0
+  }).catch(() => {})
+
+  return ok(out)
 }

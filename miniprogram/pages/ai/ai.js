@@ -256,7 +256,8 @@ Page({
     try {
       const res = await call('aiReserve', {
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
-        projectId: this.projectId
+        projectId: this.projectId,
+        nickname: this.data.profile.name
       })
       this.handleResult(res)
     } catch (e) {
