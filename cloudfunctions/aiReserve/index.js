@@ -74,6 +74,7 @@ function buildSystemPrompt(availability) {
     '5. 不可约时表达共情，再给 2–3 个最近可约选项。',
     '6. 营业时间类问题（"几点开门 / 营业到几点 / 今天几点能来 / 几点关门 / 营业时间"）不要给固定营业时间，直接读取下方「当前可约情况」中对应项目的可约日期与时段来回答（例："今天 X 项目 12:00-15:00 可预约，即营业至 15:00"）；若当天已无可约，说明已结束并给最近可约日期。',
     '7. 用户若提到某个具体场次但它在「当前可约情况」里查不到（已开场/过期/满员/未开放），明确告知「该场次已过期，无法预约」，并给出最近可约日期或时段，不要含糊说"暂未开放"。',
+    '8. 顾客指定了日期但该日期在「当前可约情况」里查不到（未排班 / 已约满 / 已过期）时，回复必须先说清「您要求的「项目名」在 YYYY-MM-DD 没有可约场次」，再给最近可约日期；绝不可以在不说明的情况下默默推荐其他日期，那会让顾客以为自己要的那天还能约。',
     '',
     '【当前时间（北京时间，以此为准）】',
     `今天是 ${ymdBj()} 星期${WD_CN[bjNow().getUTCDay()]}，现在是 ${String(bjNow().getUTCHours()).padStart(2, '0')}:${String(bjNow().getUTCMinutes()).padStart(2, '0')}。`,
@@ -242,10 +243,20 @@ async function resolveBooking(slots, ctxProjectId) {
 
   const sch = await db.collection(COL.schedules).where({ projectId: project._id, date }).get()
   const sched = (sch.data || [])[0]
-  if (!sched || sched.closed) return { ok: false, message: `「${project.name}」在 ${date} 这天暂不开放预约，换一天试试？` }
-
-  const allSessions = (sched.sessions || []).filter(x => !x.paused)
-  if (!allSessions.length) return { ok: false, message: `「${project.name}」在 ${date} 这天没有可约场次。` }
+  const allSessions = (sched && !sched.closed) ? (sched.sessions || []).filter(x => !x.paused) : []
+  // 三种情况合并为同一个「您要求的日期没有可约场次」：当天未排班 / 当天已关闭 / 排了班但无未暂停场次。
+  // ⚠️ 必须带 notice（前端渲染为红色加粗提示）+ 最近可约日期，不能只说"换一天试试"——
+  //    否则顾客看到小曜默默推荐了别的日期，却不知道自己要的那天其实约不上（店主实测反馈）。
+  if (!allSessions.length) {
+    const near = await nearestOpenDays(project._id, date)
+    return {
+      ok: false,
+      notice: `您要求的「${project.name}」在 ${date} 没有可约场次。`,
+      message: near
+        ? `小曜已为您查询到最近可约场次：${near.date}（${near.times}）。您想约哪个时间？`
+        : `小曜查了未来 30 天，该项目暂无可约场次。您可以看看其他项目，或稍后再来～`
+    }
+  }
 
   const nowTs = Date.now()
   // 仍可预约的场次（未开场）；已开场/过期的不再作为可选项
@@ -319,7 +330,9 @@ async function loadProfile(openid) {
 
 // ===== 6) 对话日志落库（aiLogs，供店主复盘 / 完善知识库，详见 ai-reserve-spec.md §日志落盘）=====
 // 注意：aiReserve 仍【不写 reservations】——预约落库由前端确认后调 createReservation 完成；
-// 此处仅向独立日志集合追加一条，异步、失败静默，绝不阻塞用户对话返回。
+// 此处仅向独立日志集合追加一条，失败静默，绝不阻塞用户对话返回。
+// ⚠️ 返回值：成功返回日志 _id（透传给前端，用户真的提交预约单后由 updateAiLog 回写
+//    booked=true + reservationId，供「沟通→确认→预约成功」漏斗统计）；失败返回 ''。
 async function logTurn({ openid, nickname, input, intent, reply, slots, model, usage, ms }) {
   try {
     const u = usage || {}
@@ -330,7 +343,7 @@ async function logTurn({ openid, nickname, input, intent, reply, slots, model, u
     // 成本粗估（元，仅量级参考）：混元输入 0.8/千tokens、输出 2/千tokens
     let cost = null
     if (pt != null && ct != null) cost = +(pt / 1000 * 0.8 + ct / 1000 * 2).toFixed(4)
-    await db.collection('aiLogs').add({
+    const r = await db.collection('aiLogs').add({
       data: {
         openid: openid || '',
         nickname: nickname || '',
@@ -342,10 +355,19 @@ async function logTurn({ openid, nickname, input, intent, reply, slots, model, u
         tokens: tokens,
         cost: cost,
         latencyMs: ms || null,
+        booked: false,          // 用户最终是否真的提交预约单（由 updateAiLog 回写 true）
+        reservationId: '',      // 对应的预约单 _id
         createdAt: db.serverDate()
       }
     })
-  } catch (e) { /* 日志写失败不阻断对话 */ }
+    return (r && r._id) || ''
+  } catch (e) {
+    // ⚠️ 不要静默吞掉！CloudBase 不会自动创建集合——aiLogs 集合不存在时 add 会直接失败，
+    // 曾因此导致「AI 对话记录」长期空白却无任何报错（2026-09-21 排查）。
+    // 保留 warn，便于在云函数日志里一眼定位「对话没落库」。
+    console.warn('[aiReserve] logTurn failed (ignored):', e && (e.message || e.errMsg || e))
+    return ''
+  }
 }
 
 // ===== 7) 主入口 =====
@@ -400,12 +422,14 @@ exports.main = async (event) => {
     }
   }
 
-  // 落库（异步 fire-and-forget，失败不影响返回）
-  logTurn({
+  // 落库：需拿到 logId 回传前端（成功后回写 booked），故此处 await；写失败不影响返回。
+  // 单条 add 开销 ~10-40ms，相对一次 AI 调用（数百 ms~数 s）可忽略。
+  const logId = await logTurn({
     openid: OPENID, nickname: event.nickname, input,
     intent: out.intent, reply: out.reply,
     slots: parsed && parsed.slots, model, usage, ms: Date.now() - t0
-  }).catch(() => {})
+  }).catch(() => '')
+  if (logId) out.logId = logId
 
   return ok(out)
 }

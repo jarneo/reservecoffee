@@ -39,7 +39,9 @@ exports.main = async (event) => {
 
   const where = ands.length ? (ands.length === 1 ? ands[0] : _.and(ands)) : {}
 
-  const res = await db.collection('aiLogs').where(where).orderBy('createdAt', 'desc').skip(skip).limit(size).get().catch(() => ({ data: [] }))
+  // 集合不存在（尚未产生对话 / 未创建）时返回空列表，但打日志便于区分「没数据」还是「查失败」
+  const res = await db.collection('aiLogs').where(where).orderBy('createdAt', 'desc').skip(skip).limit(size).get()
+    .catch(e => { console.warn('[getAiLogs] query failed:', e && (e.message || e.errMsg || e)); return { data: [] } })
   const rows = (res.data || []).map(r => ({
     _id: r._id,
     openid: r.openid || '',
