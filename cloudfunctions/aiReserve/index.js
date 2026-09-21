@@ -62,7 +62,7 @@ function buildSystemPrompt(availability) {
     '',
     '【JSON 契约】',
     '{"intent":"chat","reply":"<对顾客的友好回答，纯中文>"}',
-    '{"intent":"book","reply":"<确认/追问用语>","slots":{"projectId":"<从可约情况取项目ID，不知道则留空>","projectName":"<项目名，不知道则留空>","date":"<YYYY-MM-DD 或 今天/明天/周六 等，不知道则留空>","time":"<HH:mm 或 下午两点 等，不知道则留空>","partySize":<人数数字，不知道则留空>}}',
+    '{"intent":"book","reply":"<确认/追问用语>","slots":{"projectId":"<从可约情况取项目ID，不知道则留空>","projectName":"<项目名，不知道则留空>","date":"<YYYY-MM-DD，或 今天/当天/明日/周六 等相对表达，不知道则留空>","time":"<HH:mm 或 下午两点 等，不知道则留空>","partySize":<人数数字，不知道则留空>}}',
     '— 当顾客在预约 / 提供预约信息 / 问"能不能约"时，intent 用 "book" 并尽量填满 slots。',
     '— 当顾客只是聊天、问店铺/菜单/政策时，intent 用 "chat"。',
     '— 信息不全时，intent 仍用 "book"，reply 写明还缺什么（如"请问几位？""想约哪一天？"）。',
@@ -128,7 +128,9 @@ function parseDate(str) {
   if (!str) return null
   const t = String(str).trim()
   const today = new Date()
-  if (/^今\s*天$/.test(t)) return ymd(today)
+  // 当天同义词：今天 / 今日 / 当天 / 今儿 / 现在 / 这会儿 / 此刻（口语化，避免模型写「当天」时识别失败）
+  if (/^(今\s*天|今\s*日|当\s*天|今\s*儿|现\s*在|这\s*会\s*儿|此\s*刻)$/.test(t)) return ymd(today)
+  if (/今\s*[天日儿]|当\s*天/.test(t)) return ymd(today)
   if (/^明\s*天$/.test(t)) return addDays(1)
   if (/^后\s*天$/.test(t)) return addDays(2)
   if (/^大\s*后\s*天$/.test(t)) return addDays(3)
@@ -290,7 +292,15 @@ exports.main = async (event) => {
   }
 
   const res = await resolveBooking(parsed.slots || {}, ctxProjectId)
-  if (!res.ok) return ok({ intent: 'ask', reply: res.message })
+  if (!res.ok) {
+    // 多轮澄清防循环：缺要素追问上限（默认 5 轮，可用环境变量 AI_MAX_ASK_ROUNDS 覆盖），超出则优雅引导走常规预约
+    const MAX_ASK_ROUNDS = Number(process.env.AI_MAX_ASK_ROUNDS) || 5
+    const userTurns = messages.filter(m => m.role === 'user').length
+    if (userTurns > MAX_ASK_ROUNDS) {
+      return ok({ intent: 'chat', reply: '看来我还没完全帮您约上～您可以直接用「常规预约」点选日期与场次，更快更准哦。' })
+    }
+    return ok({ intent: 'ask', reply: res.message })
+  }
 
   const profile = await loadProfile(OPENID)
   const c = res.confirmation

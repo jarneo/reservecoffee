@@ -322,6 +322,12 @@ Page({
   closeSuccess() { wx.reLaunch({ url: '/pages/index/index' }) },
   goBooking() {
     const pid = this.projectId || ''
-    wx.navigateTo({ url: '/pages/booking/booking' + (pid ? ('?projectId=' + pid) : '') })
+    // AI 不可用降级时：有项目上下文则跳对应项目预约页；无 projectId（从首页进入）直接回首页，
+    // 避免 navigateTo 到 booking 缺 projectId 报「没有项目 id」的错误。
+    if (pid) {
+      wx.navigateTo({ url: '/pages/booking/booking?projectId=' + pid })
+    } else {
+      wx.reLaunch({ url: '/pages/index/index' })
+    }
   }
 })
