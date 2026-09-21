@@ -301,10 +301,20 @@ Page({
       const d = await call('getProject', { projectId: c.projectId })
       const plan = notifyPlanOf({ date: c.date, sessionStart: c.sessionStart, sessionEnd: c.sessionEnd }, d.notifyCfg)
       const ids = tmplIdsOfPlan(plan, null)
-      if (ids.length) { try { await requestSubscribe(ids) } catch (e) { /* 订阅失败不阻断 */ } }
+      if (ids.length) {
+        try {
+          const r = await requestSubscribe(ids)
+          // 回写授权结果（与常规预约 confirm 页一致）：接受→true / 拒绝→false，仅限本次申请的模板
+          const subs = { ...this.data.subs }
+          const keyOf = id => { const s = CUSTOMER_SUBS.find(x => x.tmplId === id); return s ? s.key : null }
+          ;(r.accepted || []).forEach(id => { const k = keyOf(id); if (k) subs[k] = true })
+          ;(r.rejected || []).forEach(id => { const k = keyOf(id); if (k) subs[k] = false })
+          this.setData({ subs })
+        } catch (e) { /* 订阅失败不阻断 */ }
+      }
       const payload = { projectId: c.projectId, date: c.date, sessionId: c.sessionId, name: this.data.profile.name, partySize: c.partySize }
       if (this.data.profile.phone) payload.phone = this.data.profile.phone
-      const r = await call('createReservation', { ...payload, subscribed: normalizeSubs({}) })
+      const r = await call('createReservation', { ...payload, subscribed: this.data.subs })
       wx.hideLoading()
       const needReview = r && r.review === 'pending'
       this.setData({

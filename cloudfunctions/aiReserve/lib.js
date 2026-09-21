@@ -284,12 +284,12 @@ async function loadAiSwitch(db) {
   } catch (e) { return true }
 }
 
-// 【微信优先降级】是否跳过短信：
-//   开关 skipSmsIfWxOk 为 true 且同一事件的微信订阅消息确已投递（ok:true = errcode 0，微信服务端已受理）
-//   → 该用户已在微信「服务通知」收到卡片，不再补发短信，避免重复打扰。
+// 【微信优先降级】是否跳过短信（默认开启，符合「微信送达就不发短信」设计）：
+//   skipSmsIfWxOk 非显式 false 即视为开启 → 同一事件微信订阅已投递（ok:true = errcode 0）则不再补发短信，避免重复打扰。
+//   若需「微信 + 短信双通道都发」，在 config.smsnotify 文档显式置 skipSmsIfWxOk:false 即可回退。
 // 注意：ok:false（43101 未授权 / 47003 字段非法 / -501001 凭证异常）一律视为「微信没送到」，短信照发兜底。
 function shouldSkipSms(smsSw, wxRes) {
-  return !!(smsSw && smsSw.skipSmsIfWxOk === true && wxRes && wxRes.ok === true && !wxRes.skipped)
+  return !!(smsSw && smsSw.skipSmsIfWxOk !== false && wxRes && wxRes.ok === true && !wxRes.skipped)
 }
 
 // 判定一条订阅发送结果是否「确实送达微信侧」（供落库排查用）
