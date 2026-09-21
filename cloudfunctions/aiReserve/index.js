@@ -18,10 +18,20 @@ const KB = require('./kb')
 // 注：成长计划「一期模型下线、自动切 hy3」等说法存疑，最终以控制台「生文模型」实际启用的模型名为准；
 // 启用后在云函数环境变量设 AI_MODEL / AI_PROVIDER 即可，无需改代码。
 
+// ===== 0) 北京时间工具（云函数容器时区是 UTC：直接 new Date() 取年月日/星期，
+//      在北京时间 0–8 点会错一天。统一 +8h 偏移后用 UTC 取值，即得北京时间）=====
+function bjNow() { return new Date(Date.now() + 8 * 3600 * 1000) }
+function ymdBj(d) {
+  const t = d || bjNow()
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`
+}
+function addDaysBj(n) { const t = bjNow(); t.setUTCDate(t.getUTCDate() + n); return ymdBj(t) }
+const WD_CN = ['日', '一', '二', '三', '四', '五', '六']
+
 // ===== 1) 真实可用性摘要（注入 system prompt，避免模型臆造场次）=====
 async function loadAvailability() {
-  const today = ymd(new Date())
-  const maxWin = addDays(30)
+  const today = ymdBj()
+  const maxWin = addDaysBj(30)
   let proj
   try {
     proj = await db.collection(COL.projects).where({ published: true, deleted: _.neq(true) }).orderBy('createdAt', 'asc').get()
@@ -37,7 +47,10 @@ async function loadAvailability() {
     const open = (sch.data || []).filter(s => s.date >= today && s.date <= maxWin && !s.closed)
     const days = []
     for (const s of open) {
-      const sess = (s.sessions || []).filter(x => !x.paused && (x.capacity - (x.booked || 0)) > 0)
+      // 已开场/已结束的场次视为过期，不再呈现为可约（否则模型会把上午的场次当作"今天可约"）
+      const sess = (s.sessions || []).filter(x => !x.paused
+        && (x.capacity - (x.booked || 0)) > 0
+        && !(bjTs(s.date, x.start) < Date.now()))
       if (sess.length) days.push({ date: s.date, times: sess.map(x => `${x.start}-${x.end}`).join('、') })
     }
     if (!days.length) { lines.push(`- ${p.name}：近期暂无可约场次`); continue }
@@ -59,6 +72,11 @@ function buildSystemPrompt(availability) {
     '3. 先确认、后下单：你只负责抽取信息并确认，真正下单由系统完成，你不要假装已经预约成功。',
     '4. 每次回复必须是【单个 JSON 对象】，不要加 markdown 代码块、不要多余解释。',
     '5. 不可约时表达共情，再给 2–3 个最近可约选项。',
+    '',
+    '【当前时间（北京时间，以此为准）】',
+    `今天是 ${ymdBj()} 星期${WD_CN[bjNow().getUTCDay()]}，现在是 ${String(bjNow().getUTCHours()).padStart(2, '0')}:${String(bjNow().getUTCMinutes()).padStart(2, '0')}。`,
+    `— 用户说的「今天/今日/当天」就是 ${ymdBj()}，「明天」就是 ${addDaysBj(1)}；回复中请直接使用具体日期，不要说"今天暂未开放"却列出今天的场次。`,
+    '— 开场时间已过的场次已过期、不可再约（下方可约数据已过滤掉过期场次）。',
     '',
     '【JSON 契约】',
     '{"intent":"chat","reply":"<对顾客的友好回答，纯中文>"}',
@@ -127,29 +145,29 @@ const WD = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 
 function parseDate(str) {
   if (!str) return null
   const t = String(str).trim()
-  const today = new Date()
+  const today = bjNow() // 北京时间的「今天」（UTC 容器直接 new Date() 在北京时间 0–8 点会错一天）
   // 当天同义词：今天 / 今日 / 当天 / 今儿 / 现在 / 这会儿 / 此刻（口语化，避免模型写「当天」时识别失败）
-  if (/^(今\s*天|今\s*日|当\s*天|今\s*儿|现\s*在|这\s*会\s*儿|此\s*刻)$/.test(t)) return ymd(today)
-  if (/今\s*[天日儿]|当\s*天/.test(t)) return ymd(today)
-  if (/^明\s*天$/.test(t)) return addDays(1)
-  if (/^后\s*天$/.test(t)) return addDays(2)
-  if (/^大\s*后\s*天$/.test(t)) return addDays(3)
+  if (/^(今\s*天|今\s*日|当\s*天|今\s*儿|现\s*在|这\s*会\s*儿|此\s*刻)$/.test(t)) return ymdBj(today)
+  if (/今\s*[天日儿]|当\s*天/.test(t)) return ymdBj(today)
+  if (/^明\s*天$/.test(t)) return addDaysBj(1)
+  if (/^后\s*天$/.test(t)) return addDaysBj(2)
+  if (/^大\s*后\s*天$/.test(t)) return addDaysBj(3)
   let m = t.match(/(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})/)
   if (m) return `${m[1]}-${String(+m[2]).padStart(2, '0')}-${String(+m[3]).padStart(2, '0')}`
   m = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/)
-  if (m) { const y = today.getFullYear(); return `${y}-${String(+m[1]).padStart(2, '0')}-${String(+m[2]).padStart(2, '0')}` }
+  if (m) { const y = today.getUTCFullYear(); return `${y}-${String(+m[1]).padStart(2, '0')}-${String(+m[2]).padStart(2, '0')}` }
   m = t.match(/(周|星期)\s*([一二三四五六日天])/)
   if (m) {
     const target = WD[m[2]]
     if (target != null) {
-      let diff = (target - today.getDay() + 7) % 7
+      let diff = (target - today.getUTCDay() + 7) % 7
       if (diff === 0) diff = 7
-      const d = new Date(); d.setDate(d.getDate() + diff)
-      return ymd(d)
+      const d = bjNow(); d.setUTCDate(d.getUTCDate() + diff)
+      return ymdBj(d)
     }
   }
   m = t.match(/(\d+)\s*天\s*[后以]?/)
-  if (m) return addDays(+m[1])
+  if (m) return addDaysBj(+m[1])
   return null
 }
 

@@ -1,6 +1,8 @@
 // aiFab — 可拖动「AI预约」浮窗（首页 / 项目详情页常驻）
 // 显隐由 aiEnabled 控制（来自 getHomepage / getProject 的 aiEnabled，全站不直读 config 集合）。
 // 点击（非拖动）进入独立路由页 pages/ai（可带 projectId，便于从详情页预选项目）。
+// 拖拽边界按【实测浮球宽高】收口（此前右界用固定 160 估算，浮球实际仅 ~85px 宽，
+// 导致永远拖不到屏幕右缘）。
 Component({
   properties: {
     aiEnabled: { type: Boolean, value: true },
@@ -15,14 +17,27 @@ Component({
   },
   lifetimes: {
     attached() {
+      // 实测前先给个接近真实的估宽（padding+图标+文字 ≈ 85px），ready() 里再校准
+      this._fabW = 85
+      this._fabH = 44
       this.setData({ visible: this.properties.aiEnabled })
       try {
         const info = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync())
         const w = info.windowWidth || 375
         const h = info.windowHeight || 667
         // 初始位置：右下角（避开 tabBar 与底部安全区）
-        this.setData({ sysW: w, sysH: h, left: w - 160, top: h - 190 })
+        this.setData({ sysW: w, sysH: h, left: w - this._fabW - 12, top: h - 190 })
       } catch (e) { /* ignore */ }
+    },
+    ready() {
+      // 渲染完成后实测浮球尺寸：拖拽右界 / 下界按真实宽高收口，并贴齐右缘
+      this.createSelectorQuery().select('.fab').boundingClientRect(rect => {
+        if (rect && rect.width) {
+          this._fabW = rect.width
+          this._fabH = rect.height
+          this.setData({ left: Math.max(8, this.data.sysW - rect.width - 12) })
+        }
+      }).exec()
     }
   },
   observers: {
@@ -44,8 +59,8 @@ Component({
       if (Math.abs(dx) + Math.abs(dy) > 6) this._moved = true
       let nl = this._bl + dx
       let nt = this._bt + dy
-      nl = Math.max(8, Math.min(this.data.sysW - 160, nl))
-      nt = Math.max(8, Math.min(this.data.sysH - 90, nt))
+      nl = Math.max(8, Math.min(this.data.sysW - this._fabW - 8, nl))
+      nt = Math.max(8, Math.min(this.data.sysH - this._fabH - 8, nt))
       this.setData({ left: nl, top: nt })
     },
     onEnd() {

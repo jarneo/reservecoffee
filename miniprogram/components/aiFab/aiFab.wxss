@@ -3,14 +3,31 @@
   z-index: 999;
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 8rpx;
   background: var(--ink);
   color: #fff;
   border-radius: 999rpx;
-  padding: 14rpx 24rpx;
+  padding: 18rpx 30rpx;
   box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, .20);
-  font-size: 24rpx;
+  font-size: 28rpx;
+  animation: fabBreath 2.6s ease-in-out infinite;
 }
-.fab-ico { font-size: 26rpx; line-height: 1; }
+.fab-ico {
+  display: inline-block;
+  font-size: 34rpx;
+  line-height: 1;
+  animation: fabIco 1.8s ease-in-out infinite;
+}
 .fab-txt { font-weight: 600; letter-spacing: 1rpx; }
-.fab:active { opacity: .85; }
+.fab:active { opacity: .85; animation: none; }
+
+/* 呼吸：阴影带品牌色 #7A5230 的柔光，随节律放大收小 */
+@keyframes fabBreath {
+  0%, 100% { box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, .20); }
+  50% { box-shadow: 0 10rpx 34rpx rgba(122, 82, 48, .38); }
+}
+/* 星标：轻微放大旋转的"闪烁"感 */
+@keyframes fabIco {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.28) rotate(18deg); opacity: .78; }
+}
