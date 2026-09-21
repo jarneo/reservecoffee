@@ -159,10 +159,14 @@ Page({
   async toggleMode() {
     if (this.data.recording) return
     const toVoice = !this.data.voiceMode
-    // 切入语音态前先过隐私授权，避免「按住才发现没权限」的挫败感
+    // 切入语音态前一次性完成「隐私授权 + 麦克风权限」索取。
+    // 关键修复：不要等到按住时才去弹隐私窗/申请权限——按住时弹窗会让手指松开触发 touchend，
+    // 导致 onStart 永远不执行（表现即「按住说话按不下去」）。切模式在 tap 手势上下文内完成授权最稳。
     if (toVoice) {
       const agreed = await this.ensurePrivacy()
       if (!agreed) return
+      const ok = await this.ensureRecordAuth()
+      if (!ok) return
     }
     this.setData({ voiceMode: toVoice, liveText: '' })
   },
@@ -218,17 +222,30 @@ Page({
     }
   },
 
-  async onVoiceStart() {
-    if (this.data.recording || !this._rec) return
-    // 顺序很关键：先同步隐私授权，再申请系统录音权限，最后才开始录音
-    const agreed = await this.ensurePrivacy()
-    if (!agreed) return
-    const ok = await this.ensureRecordAuth()
-    if (!ok) return
+  onVoiceStart() {
+    if (this.data.recording) return
+    // 授权已在 toggleMode（切到语音模式时）一次性完成，这里直接 start。
+    // 防御：若切模式后插件 manager 意外丢失，尝试重建，避免「按不下去」却无任何提示。
+    if (!this._rec) {
+      try { this.initVoice() } catch (e) {}
+    }
+    if (!this._rec) {
+      wx.showToast({ title: '语音组件未就绪，请改用文字输入', icon: 'none' })
+      return
+    }
     try {
       this._rec.start({ lang: 'zh_CN', duration: 60000 })
     } catch (e) {
-      wx.showToast({ title: '无法开始录音', icon: 'none' })
+      const m = String((e && e.errMsg) || (e && e.msg) || '')
+      if (m.indexOf('privacy') >= 0 || m.indexOf('ban') >= 0) {
+        wx.showModal({
+          title: '录音接口被禁用',
+          content: '多为 mp 后台《用户隐私保护指引》未声明「访问你的麦克风」或提审时勾选「未采集隐私」所致。请到 mp 后台补充声明并发布后重试。',
+          showCancel: false
+        })
+      } else {
+        wx.showToast({ title: '无法开始录音，请重试', icon: 'none' })
+      }
     }
   },
 
