@@ -100,6 +100,9 @@ function buildSystemPrompt(availability) {
     '【项目与菜单】',
     KB.menu || '(菜单知识未配置)',
     '',
+    '【品牌故事】',
+    KB.story || '(品牌故事未配置)',
+    '',
     '【当前可约情况（实时，以此为准）】',
     availability || '(暂无可用性数据)'
   ].join('\n')
