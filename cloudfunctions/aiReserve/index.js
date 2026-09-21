@@ -72,6 +72,8 @@ function buildSystemPrompt(availability) {
     '3. 先确认、后下单：你只负责抽取信息并确认，真正下单由系统完成，你不要假装已经预约成功。',
     '4. 每次回复必须是【单个 JSON 对象】，不要加 markdown 代码块、不要多余解释。',
     '5. 不可约时表达共情，再给 2–3 个最近可约选项。',
+    '6. 营业时间类问题（"几点开门 / 营业到几点 / 今天几点能来 / 几点关门 / 营业时间"）不要给固定营业时间，直接读取下方「当前可约情况」中对应项目的可约日期与时段来回答（例："今天 X 项目 12:00-15:00 可预约，即营业至 15:00"）；若当天已无可约，说明已结束并给最近可约日期。',
+    '7. 用户若提到某个具体场次但它在「当前可约情况」里查不到（已开场/过期/满员/未开放），明确告知「该场次已过期，无法预约」，并给出最近可约日期或时段，不要含糊说"暂未开放"。',
     '',
     '【当前时间（北京时间，以此为准）】',
     `今天是 ${ymdBj()} 星期${WD_CN[bjNow().getUTCDay()]}，现在是 ${String(bjNow().getUTCHours()).padStart(2, '0')}:${String(bjNow().getUTCMinutes()).padStart(2, '0')}。`,
@@ -222,18 +224,26 @@ async function resolveBooking(slots, ctxProjectId) {
   const sched = (sch.data || [])[0]
   if (!sched || sched.closed) return { ok: false, message: `「${project.name}」在 ${date} 这天暂不开放预约，换一天试试？` }
 
-  const sessions = (sched.sessions || []).filter(x => !x.paused)
-  if (!sessions.length) return { ok: false, message: `「${project.name}」在 ${date} 这天没有可约场次。` }
+  const allSessions = (sched.sessions || []).filter(x => !x.paused)
+  if (!allSessions.length) return { ok: false, message: `「${project.name}」在 ${date} 这天没有可约场次。` }
+
+  const nowTs = Date.now()
+  // 仍可预约的场次（未开场）；已开场/过期的不再作为可选项
+  const openSessions = allSessions.filter(x => isNaN(bjTs(date, x.start)) || bjTs(date, x.start) >= nowTs)
 
   // —— 时间 / 时段间隙 ——
   const parsed = parseTime(slots.time)
-  if (!parsed) return { ok: false, message: `您希望 ${date} 几点到店呢？该日可选场次：${sessions.map(x => x.start).join('、')}` }
+  if (!parsed) {
+    if (!openSessions.length) return { ok: false, message: `「${project.name}」在 ${date} 的可约场次都已结束或暂不可约，换一天试试？可约日期见下方「当前可约情况」。` }
+    return { ok: false, message: `您希望 ${date} 几点到店呢？该日可选场次：${openSessions.map(x => `${x.start}-${x.end}`).join('、')}` }
+  }
 
-  let sess = sessions.find(x => x.start === parsed.hm)
+  let sess = allSessions.find(x => x.start === parsed.hm)
   let note = ''
   if (!sess) {
+    // 间隙吸附（只在「未过期」的场次里吸附，避免吸到已结束的场）
     let best = null, bestDiff = 1e9
-    for (const x of sessions) {
+    for (const x of openSessions) {
       const [hh, mm] = x.start.split(':').map(Number)
       const diff = Math.abs(hh * 60 + mm - parsed.min)
       if (diff < bestDiff) { bestDiff = diff; best = x }
@@ -242,18 +252,22 @@ async function resolveBooking(slots, ctxProjectId) {
       sess = best
       note = `已将您说的 ${parsed.hm} 调整到最近场次 ${sess.start}`
     } else {
-      const opts = sessions.map(x => `${x.start}-${x.end}`).join('、')
-      return { ok: false, message: `${date} ${parsed.hm} 没有对应场次哦。最近的可用时段：${opts}。您选哪个？` }
+      const opts = openSessions.map(x => `${x.start}-${x.end}`).join('、')
+      return { ok: false, message: `${date} ${parsed.hm} 没有对应场次哦。最近的可用时段：${opts || '（当天已无可约）'}。您选哪个？` }
     }
   }
 
-  // 已过期（开场时间已过）→ 不呈现为可约
-  if (!isNaN(bjTs(date, sess.start)) && bjTs(date, sess.start) < Date.now()) {
-    return { ok: false, message: `${date} ${sess.start}-${sess.end} 这场已经过去了，换一场吧？可选：${sessions.map(x => x.start).join('、')}` }
+  // 用户指定的场次已开场/过期 → 明确告知「已过期，无法预约」
+  if (sess && !isNaN(bjTs(date, sess.start)) && bjTs(date, sess.start) < nowTs) {
+    const alt = openSessions.map(x => x.start).join('、')
+    return { ok: false, message: `${date} ${sess.start}-${sess.end} 这场已过期，无法预约。${alt ? `您可以选其他时段：${alt}` : '当天已无可约时段，换一天试试？'}` }
   }
   // 满员
   const remaining = (sess.capacity || 0) - (sess.booked || 0)
-  if (remaining <= 0) return { ok: false, message: `${date} ${sess.start}-${sess.end} 这场已约满，换一场试试？可选：${sessions.map(x => x.start).join('、')}` }
+  if (remaining <= 0) {
+    const alt = openSessions.map(x => x.start).join('、')
+    return { ok: false, message: `${date} ${sess.start}-${sess.end} 这场已约满，换一场试试？${alt ? `可选：${alt}` : ''}` }
+  }
 
   let party = Number(slots.partySize) || 1
   const maxP = project.maxParty || 2

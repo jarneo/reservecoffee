@@ -68,18 +68,24 @@ async function ensureOwner(openid) {
   return 'owner'
 }
 
-// 当前日期 YYYY-MM-DD（Asia/Shanghai）
-function ymd(d) {
-  const t = d || new Date()
-  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+// 北京时间的日历日期（YYYY-MM-DD）。
+// ⚠️ 云函数容器时区是 UTC，而系统所有日期均为「北京时间」字符串；
+//    用本地年月日方法（getFullYear/getMonth/getDate）在 UTC 容器下，北京时间 0–8 点会取到前一天。
+//    统一做法：把真实时刻 +8h 后「按 UTC 取出年月日」即等于北京时间日历（与 bjTs 同一套时区约定）。
+function bjYmd(d) {
+  const t = (d instanceof Date) ? d : new Date()
+  const u = new Date(t.getTime() + 8 * 3600 * 1000)
+  return `${u.getUTCFullYear()}-${String(u.getUTCMonth() + 1).padStart(2, '0')}-${String(u.getUTCDate()).padStart(2, '0')}`
+}
+// 北京时间今天 + n 天（n 可为负）：在「真实时刻 +n 天」上取北京日历，避免本地时区错天。
+function bjAddDays(n) {
+  return bjYmd(new Date(Date.now() + (Number(n) || 0) * 86400000))
 }
 
-// 今天 + n 天
-function addDays(n) {
-  const t = new Date()
-  t.setDate(t.getDate() + n)
-  return ymd(t)
-}
+// 当前日期 YYYY-MM-DD（Asia/Shanghai）—— 直接委托 bjYmd，确保 UTC 容器下也不会错天
+function ymd(d) { return bjYmd(d) }
+// 今天 + n 天 —— 委托 bjAddDays
+function addDays(n) { return bjAddDays(n) }
 
 // 北京时间 'YYYY-MM-DD' + 'HH:mm' → 真实时间戳（毫秒）。
 // ⚠️ 云函数容器时区是 **UTC**，而库里 date / sessionStart / sessionEnd 存的是**北京时间**字符串。
@@ -426,7 +432,7 @@ function customerTags(profile, agg) {
 
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
-  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
+  ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjYmd, bjAddDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
   sendSubscribe, listAdminOpenids, notifyAdmins,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
   srcLabel, customerTags, loadSubscribeSwitch, subOn,
