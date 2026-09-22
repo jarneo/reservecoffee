@@ -39,10 +39,10 @@
     </view>
   </view>
 
-  <!-- 录音中：实时识别浮层 -->
-  <view wx:if="{{recording}}" class="live">
+  <!-- 录音中：实时识别浮层（上滑到取消区时切换为「松开手指，取消发送」） -->
+  <view wx:if="{{recording}}" class="live {{voiceCancel ? 'cancel' : ''}}">
     <view class="live-dot"></view>
-    <view class="live-txt">{{liveText || '正在聆听…'}}</view>
+    <view class="live-txt">{{voiceCancel ? '松开手指，取消发送' : (liveText || '正在聆听…')}}</view>
   </view>
 
   <view class="inputbar">
@@ -50,11 +50,13 @@
     <view wx:if="{{pluginOk}}" class="icon-btn {{voiceMode ? 'kbd' : 'mic'}}" bindtap="toggleMode"></view>
 
     <input wx:if="{{!voiceMode}}" class="inp" value="{{draft}}" bindinput="onDraft" placeholder="说点什么，例如：明天 13点 2人法兰绒咖啡" confirm-type="send" bindconfirm="send"/>
-    <view wx:else class="voice-btn {{recording ? 'on' : ''}}"
-          bindtouchstart="onVoiceStart" bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceEnd">
-      {{recording ? '松开 发送' : '按住 说话'}}
+    <view wx:else class="voice-btn {{recording ? 'on' : ''}} {{voiceCancel ? 'cancel' : ''}}"
+          bindtouchstart="onVoiceStart" bindtouchmove="onVoiceMove" bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceEnd">
+      {{recording ? (voiceCancel ? '松开 取消' : '松开 发送') : '按住 说话'}}
     </view>
 
+    <!-- 语音识别结果落回输入框后，提供「撤销」清除本次识别文本（微信语音转文字式复查） -->
+    <button wx:if="{{!voiceMode && voicePending}}" class="btn undo" bindtap="undoVoice">撤销</button>
     <button wx:if="{{!voiceMode}}" class="btn send" bindtap="send">发送</button>
   </view>
 

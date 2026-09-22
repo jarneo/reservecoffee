@@ -35,6 +35,8 @@ Page({
     voiceMode: false,      // false=键盘态 true=语音态
     recording: false,
     liveText: '',          // 录音过程中的实时识别结果
+    voiceCancel: false,    // 录音中上滑到取消区（松开即放弃本次语音）
+    voicePending: false,   // 语音识别结果已落回输入框、待用户复查/撤销后再发送
     pluginOk: !!plugin,    // WechatSI 不可用时自动隐藏麦克风图标
     // 隐私授权（录音属隐私接口，须先让用户同意《用户隐私保护指引》）
     showPrivacy: false,
@@ -78,10 +80,20 @@ Page({
         if (t) this.setData({ liveText: t })
       }
       m.onStop = (res) => {
+        const cancelled = this.data.voiceCancel
         const final = (((res && res.result) || '') || this.data.liveText || '').trim()
-        this.setData({ recording: false, liveText: '' })
-        if (final) this.setData({ draft: final }, () => this.send())
-        else wx.showToast({ title: '没听清，请再说一次', icon: 'none' })
+        this.setData({ recording: false, liveText: '', voiceCancel: false })
+        if (cancelled) {
+          // 录音中上滑到取消区后松手：放弃本次语音，不写入输入框
+          wx.showToast({ title: '已取消', icon: 'none' })
+          return
+        }
+        if (final) {
+          // 微信语音转文字式：识别结果落回输入框，供用户复查 / 编辑 / 撤销后再发送，不再自动发送
+          this.setData({ draft: final, voiceMode: false, voicePending: true })
+        } else {
+          wx.showToast({ title: '没听清，请再说一次', icon: 'none' })
+        }
       }
       m.onError = (res) => {
         this.setData({ recording: false, liveText: '' })
@@ -167,8 +179,11 @@ Page({
       if (!agreed) return
       const ok = await this.ensureRecordAuth()
       if (!ok) return
+      // 进入语音态时清空上一次识别文本与撤销态，避免与新录音叠加
+      this.setData({ voiceMode: true, liveText: '', voiceCancel: false, draft: '', voicePending: false })
+    } else {
+      this.setData({ voiceMode: false, liveText: '' })
     }
-    this.setData({ voiceMode: toVoice, liveText: '' })
   },
 
   ensureRecordAuth() {
@@ -222,8 +237,10 @@ Page({
     }
   },
 
-  onVoiceStart() {
+  onVoiceStart(e) {
     if (this.data.recording) return
+    // 记录手指起始 Y，供 onVoiceMove 判断「上滑取消」
+    if (e && e.touches && e.touches[0]) this._voiceStartY = e.touches[0].clientY
     // 授权已在 toggleMode（切到语音模式时）一次性完成，这里直接 start。
     // 防御：若切模式后插件 manager 意外丢失，尝试重建，避免「按不下去」却无任何提示。
     if (!this._rec) {
@@ -234,6 +251,7 @@ Page({
       return
     }
     try {
+      this.setData({ voiceCancel: false })
       this._rec.start({ lang: 'zh_CN', duration: 60000 })
     } catch (e) {
       const m = String((e && e.errMsg) || (e && e.msg) || '')
@@ -249,9 +267,23 @@ Page({
     }
   },
 
+  // 录音中手指上滑：超过阈值即进入「取消区」，松开放弃本次语音（微信语音输入同款）
+  onVoiceMove(e) {
+    if (!this.data.recording) return
+    const ty = e.touches && e.touches[0] && e.touches[0].clientY
+    if (typeof ty !== 'number') return
+    const cancel = (this._voiceStartY - ty) > 60
+    if (cancel !== this.data.voiceCancel) this.setData({ voiceCancel: cancel })
+  },
+
   onVoiceEnd() {
     if (!this.data.recording || !this._rec) return
-    try { this._rec.stop() } catch (e) { this.setData({ recording: false, liveText: '' }) }
+    try { this._rec.stop() } catch (e) { this.setData({ recording: false, liveText: '', voiceCancel: false }) }
+  },
+
+  // 撤销本次语音识别结果（清空已落回输入框的文本，可重新按住说话）
+  undoVoice() {
+    this.setData({ draft: '', voicePending: false })
   },
 
   onUnload() { this.onVoiceEnd() },
@@ -268,7 +300,7 @@ Page({
     if (!text || this.data.sending) return
     const userMsg = { id: mkId(), role: 'user', content: text }
     const msgs = this.data.messages.concat(userMsg)
-    this.setData({ messages: msgs, draft: '', sending: true })
+    this.setData({ messages: msgs, draft: '', sending: true, voicePending: false })
     this.scrollBottom()
     try {
       const res = await call('aiReserve', {

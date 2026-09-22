@@ -45,6 +45,8 @@
   padding:0 22rpx; font-size:28rpx;
 }
 .btn.send { background:var(--ink); color:#fff; padding:0 30rpx; height:72rpx; line-height:72rpx; border-radius:12rpx; font-size:28rpx; }
+.btn.undo { background:#fff; color:var(--ink-2); border:1rpx solid var(--line); padding:0 26rpx; height:72rpx; line-height:72rpx; border-radius:12rpx; font-size:28rpx; }
+.btn.undo:active { background:var(--fill); }
 
 /* ===== 语音输入（对齐微信聊天输入栏：左侧线性图标 + 按住说话） ===== */
 /* 图标用内联 SVG data URI，无外部图片依赖；插件不可用时整体隐藏，不影响文字输入 */
@@ -65,6 +67,7 @@
   font-size:28rpx; color:var(--ink);
 }
 .voice-btn.on { background:#ececec; color:var(--ink-3); }
+.voice-btn.cancel { background:#fdecea; border-color:#f5b7b1; color:#c0392b; }
 
 /* 录音中实时识别浮层 */
 .live {
@@ -72,6 +75,8 @@
   margin:0 24rpx 12rpx; padding:16rpx 22rpx;
   background:#fff; border:1rpx solid var(--line); border-radius:14rpx;
 }
+.live.cancel { background:#fdecea; border-color:#f5b7b1; }
+.live.cancel .live-txt { color:#c0392b; font-weight:600; }
 .live-txt { flex:1; font-size:26rpx; line-height:1.5; color:var(--ink-3); word-break:break-all; }
 .live-dot { flex:none; width:16rpx; height:16rpx; border-radius:50%; background:#e64340; animation:micpulse 1s infinite; }
 @keyframes micpulse { 0%,100% { opacity:1 } 50% { opacity:.22 } }

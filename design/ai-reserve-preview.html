@@ -97,6 +97,15 @@
   .composer{display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid var(--line);align-items:flex-end;flex:0 0 auto;}
   .composer textarea{flex:1;height:40px;max-height:90px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;resize:none;font-family:inherit;}
   .composer .send{width:42px;height:42px;border-radius:10px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;border:none;cursor:pointer;}
+  .composer .mic-btn{flex:0 0 auto;width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .composer .mic-btn.on{background:var(--ink);}
+  .composer .undo-btn{flex:0 0 auto;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink-2);font-size:13px;cursor:pointer;}
+  .composer .undo-btn.hide,.rec-overlay.hide{display:none;}
+  .rec-overlay{display:flex;align-items:center;gap:10px;margin:0 12px 10px;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:12px;}
+  .rec-overlay.cancel{background:#fdecea;border-color:#f5b7b1;}
+  .rec-overlay.cancel .rec-txt{color:#c0392b;font-weight:600;}
+  .rec-dot{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:#e64340;animation:micpulse 1s infinite;}
+  @keyframes micpulse{0%,100%{opacity:1}50%{opacity:.2}}
 
   /* ===== 首页（新增） ===== */
   .home-scroll{flex:1;overflow-y:auto;padding:14px;background:var(--fill-2);}
@@ -234,8 +243,16 @@
   </div>
 
   <div class="composer">
-    <textarea placeholder="说点什么，比如「后天上午10点研习社三人」"></textarea>
-    <button class="send" onclick="run('full')">发送</button>
+    <button class="mic-btn" id="micBtn" title="语音输入" onclick="toggleVoice()">🎤</button>
+    <textarea id="aiInput" placeholder="说点什么，比如「后天上午10点研习社三人」"></textarea>
+    <button class="undo-btn hide" id="undoBtn" onclick="undoVoice()">撤销</button>
+    <button class="send" onclick="sendDraft()">发送</button>
+  </div>
+
+  <!-- 录音中浮层（上滑可取消，参考微信语音转文字） -->
+  <div class="rec-overlay hide" id="recOverlay" onclick="toggleCancelVoice()">
+    <div class="rec-dot"></div>
+    <div class="rec-txt" id="recTxt">正在聆听…（点击浮层=上滑取消）</div>
   </div>
 
   <!-- 成功覆盖层 -->
@@ -483,6 +500,58 @@ function run(scene){
       chat.appendChild(d); scrollBottom();
     }, 700);
   }
+}
+
+/* ===== 语音输入（微信语音转文字式：识别后落回输入框，可撤销/重说） ===== */
+let _recTimer = null, _recCancelled = false;
+function toggleVoice(){
+  const mic = document.getElementById('micBtn');
+  const overlay = document.getElementById('recOverlay');
+  const txt = document.getElementById('recTxt');
+  const input = document.getElementById('aiInput');
+  const undo = document.getElementById('undoBtn');
+  if(mic.classList.contains('on')){ stopVoice(); return; }
+  mic.classList.add('on');
+  overlay.classList.remove('hide','cancel');
+  _recCancelled = false;
+  txt.textContent = '正在聆听…（点击浮层=上滑取消）';
+  clearTimeout(_recTimer);
+  _recTimer = setTimeout(()=>{
+    if(_recCancelled){ resetVoice(); return; }
+    input.value = '明天下午3点法兰绒深烘两人位';   // 模拟识别结果落回输入框
+    input.focus();
+    undo.classList.remove('hide');
+    resetVoice();
+  }, 1400);
+}
+function toggleCancelVoice(){
+  const overlay = document.getElementById('recOverlay');
+  const txt = document.getElementById('recTxt');
+  if(overlay.classList.contains('hide')) return;
+  _recCancelled = !_recCancelled;
+  overlay.classList.toggle('cancel', _recCancelled);
+  txt.textContent = _recCancelled ? '松开手指，取消发送' : '正在聆听…（点击浮层=上滑取消）';
+}
+function stopVoice(){ clearTimeout(_recTimer); resetVoice(); }
+function resetVoice(){
+  document.getElementById('micBtn').classList.remove('on');
+  const overlay = document.getElementById('recOverlay');
+  overlay.classList.add('hide'); overlay.classList.remove('cancel');
+}
+function undoVoice(){
+  const input = document.getElementById('aiInput');
+  input.value = '';
+  document.getElementById('undoBtn').classList.add('hide');
+}
+function sendDraft(){
+  const input = document.getElementById('aiInput');
+  const txt = (input.value||'').trim();
+  if(!txt) return;
+  bubble('user', txt.replace(/</g,'&lt;'));
+  input.value='';
+  document.getElementById('undoBtn').classList.add('hide');
+  const t = typing();
+  setTimeout(()=>{ t.remove(); bubble('ai','收到～ 我来帮你安排。'); }, 700);
 }
 </script>
 </body>
