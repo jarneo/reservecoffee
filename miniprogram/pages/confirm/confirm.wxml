@@ -5,20 +5,36 @@
     <view class="bl-text">您的账号当前无法在线预约<text wx:if="{{blockReason}}">（{{blockReason}}）</text>。如有疑问，请直接联系店家沟通。</view>
   </view>
 
-  <view class="card">
+  <!-- 场次失效阻断：URL Link 落地时可能场次已被约满/下架，避免展示一个提交必失败的空表单 -->
+  <view wx:if="{{unavailable}}" class="bl-block">
+    <view class="bl-title">⚠ 这个场次约不上了</view>
+    <view class="bl-text">{{unavailable}}</view>
+  </view>
+
+  <!-- 场次信息卡：项目 / 日期 / 时段 / 余位 -->
+  <view wx:if="{{!unavailable}}" class="card">
     <view class="bold">{{projectName}}</view>
     <view class="sm muted" style="margin-top:8rpx">{{date}} · {{session.start}} – {{session.end}}</view>
     <view class="sm muted">可约剩 {{session.remaining}} / {{session.capacity}}</view>
   </view>
 
-  <view class="card">
-    <view class="field"><view class="label">称呼</view><input type="nickname" placeholder="如何称呼您（可一键填入微信昵称）" value="{{name}}" bindinput="onName"/></view>
+  <!-- 资料引导条：称呼/手机号缺任一项时显示。
+       微信的昵称一键填入（input type="nickname" 聚焦时提示）与手机号授权
+       （button open-type="getPhoneNumber"）都必须在用户手势内触发，程序无法代用户授权 ——
+       所以这里用一条显眼的引导把顾客引到「获取手机号」按钮与「称呼」输入框。 -->
+  <view wx:if="{{needFill && !unavailable && !blocked}}" class="need-fill">
+    <view class="nf-title">还差一步就能确认</view>
+    <view class="nf-text">称呼和手机号都是预约的必填项，缺一项无法提交。称呼聚焦后可直接使用微信昵称；手机号点「获取手机号」一键填入，也可以手工输入。手机号只会用于本次预约的通知。</view>
+  </view>
+
+  <view wx:if="{{!unavailable}}" class="card">
+    <view class="field"><view class="label">称呼（必填）</view><input type="nickname" placeholder="如何称呼您（可一键填入微信昵称）" value="{{name}}" bindinput="onName"/></view>
 
     <view class="field" wx:if="{{showPhone}}">
-      <view class="label">手机号</view>
+      <view class="label">手机号（必填）</view>
       <view class="phone-row">
-        <input class="phone-input" type="number" placeholder="用于通知与到店核验" value="{{phone}}" bindinput="onPhone"/>
-        <button class="btn ghost sm get-phone" open-type="getPhoneNumber" bindgetphonenumber="onGetPhone">获取手机号</button>
+        <input class="phone-input" type="number" placeholder="仅用于本次预约的通知" value="{{phone}}" bindinput="onPhone"/>
+        <button class="btn sm get-phone {{needFill ? '' : 'ghost'}}" open-type="getPhoneNumber" bindgetphonenumber="onGetPhone">获取手机号</button>
       </view>
     </view>
 
@@ -36,11 +52,16 @@
       <view class="stepper"><button bindtap="step" data-d="-1">−</button><view class="v">{{partySize}}</view><button bindtap="step" data-d="1">+</button></view>
       <view class="sm muted" style="margin-top:6rpx">单次最多 {{maxParty}} 人</view>
     </view>
+    <!-- 人数超上限：说明已按上限安排 + 给人工出口（不提拆单、不推回常规预约） -->
+    <view wx:if="{{partyCapped}}" class="cap-note">
+      您选择的人数超过了单次上限，已按上限 {{partySize}} 位为您安排。如需更多位，请直接联系我们：vx / 电话 19292757851。
+    </view>
 
     <view class="field" wx:if="{{showNote}}"><view class="label">备注（选填）</view><textarea placeholder="如有特殊需求请告知店家" value="{{note}}" bindinput="onNote"/></view>
   </view>
 
-  <button wx:if="{{blocked}}" class="btn block blk-disabled" disabled>无法预约</button>
+  <button wx:if="{{unavailable}}" class="btn block blk-disabled" disabled>场次已失效</button>
+  <button wx:elif="{{blocked}}" class="btn block blk-disabled" disabled>无法预约</button>
   <button wx:else class="btn block" bindtap="submit">提交预约</button>
 
   <!-- 提示：点「提交预约」后会由微信原生弹窗询问通知授权（只带本次预约会真正触发的通知类型，≤3 项）。

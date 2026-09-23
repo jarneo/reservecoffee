@@ -3,6 +3,8 @@
 const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
+const { logNotify } = require('./notifyLog')   // 通知流水打点（数据分析「订阅通知」数量统计的数据源）
+
 const db = cloud.database()
 const _ = db.command
 const $ = db.command.aggregate
@@ -134,8 +136,13 @@ async function getStoreName(db) {
 }
 
 // 发送订阅消息；返回结构化结果（不再静默吞，便于排查 43101/47003/47004）
-async function sendSubscribe({ openid, templateId, data, page }) {
+async function sendSubscribe(o) {
+  const { openid, templateId, data, page } = o || {}
+  // 场景 / 归口可由调用方显式传入；没传就按模板 ID 反查（TPL 里已登记全部小程序订阅模板）
+  const scene = (o && o.scene) || sceneOfTemplate(templateId)
+  const meta = { channel: 'wx', scene, audience: (o && o.audience) || '', templateId, openid, reservationId: (o && o.reservationId) || '' }
   if (!openid || !templateId || templateId.indexOf('TPL_ID_') === 0) {
+    // 未真正发送（模板未配置）⇒ 不写流水：统计口径只认「实际触达尝试」
     return { ok: false, skipped: true, reason: 'template not configured', openid, templateId }
   }
   try {
@@ -145,14 +152,23 @@ async function sendSubscribe({ openid, templateId, data, page }) {
       data,
       page: page || 'pages/index/index'
     })
+    await logNotify(db, { ...meta, ok: true })
     return { ok: true, openid, templateId }
   } catch (e) {
     // 关键错误码：43101=用户未授权订阅模板；47003=字段值/关键字非法；47004=模板不存在
     const errCode = e && (e.errCode !== undefined ? e.errCode : e.code)
     const errMsg = (e && e.message) ? e.message : String(e)
     console.warn('[subscribe] send failed:', errCode, errMsg, 'tmpl=', templateId)
+    await logNotify(db, { ...meta, ok: false, errCode, errMsg })
     return { ok: false, openid, templateId, errCode, errMsg }
   }
+}
+
+// 模板 ID → 场景键（供通知流水归类；反查不到就留空，不影响发送）
+function sceneOfTemplate(templateId) {
+  if (!templateId) return ''
+  for (const k of Object.keys(TPL)) if (TPL[k] === templateId) return k
+  return ''
 }
 
 // 读取「订阅消息开关」配置（config.subscribe 文档）。缺省视为全部开启。
@@ -369,6 +385,210 @@ async function notifyAdminsMp() {
   return
 }
 
+// ===== AI 对话配额（单用户每日轮次上限，后台可配）=====
+// 配置项位于 config.ai 文档（管理台「AI 预约」页可改）：
+//   dailyTurnLimit    每个用户每天允许的 AI 对话轮次数；默认 30；填 0（或负数）= 不限制
+//   oaDailyTurnLimit  公众号渠道单独上限（可选）；未设置时沿用 dailyTurnLimit
+//   limitReply        超出上限时的回复话术（可选）
+// 计数落在独立集合 aiQuota：_id = `ai_${channel}_${openid}_${ymd}`，每天自动换键，无需清理。
+// ⚠️ aiQuota 集合必须事先创建（CloudBase 文档库不会自动建集合，向不存在集合写会直接失败）：
+//    用 CloudBase MCP writeNoSqlDatabaseStructure action=createCollection 建 aiQuota。
+//    集合缺失时 aiQuotaUsed 恒返回 0（不阻断对话，只是限流失效），并打 warn 便于定位。
+const AI_DEFAULT_TURN_LIMIT = 30
+const AI_DEFAULT_LIMIT_REPLY = '今天的 AI 对话次数已用完啦～您可以点击公众号菜单进入小程序预约，或明天再来找我哦。'
+
+function normalizeAiLimits(d) {
+  const s = d || {}
+  const num = (v, def) => (typeof v === 'number' && isFinite(v) && v >= 0) ? Math.floor(v) : def
+  const base = num(s.dailyTurnLimit, AI_DEFAULT_TURN_LIMIT)
+  const oa = (typeof s.oaDailyTurnLimit === 'number' && isFinite(s.oaDailyTurnLimit) && s.oaDailyTurnLimit >= 0)
+    ? Math.floor(s.oaDailyTurnLimit) : base
+  return {
+    dailyTurnLimit: base,
+    oaDailyTurnLimit: oa,
+    limitReply: (typeof s.limitReply === 'string' && s.limitReply.trim())
+      ? s.limitReply.trim().slice(0, 200) : AI_DEFAULT_LIMIT_REPLY
+  }
+}
+
+// 读取 AI 配额配置（config.ai）；读取失败回落到默认值，绝不阻断对话
+async function loadAiLimits() {
+  try {
+    const r = await db.collection('config').doc('ai').get()
+    return normalizeAiLimits(r && r.data)
+  } catch (e) { return normalizeAiLimits({}) }
+}
+
+// 取某渠道的每日上限（0 = 不限）
+function limitOfChannel(limits, channel) {
+  const l = limits || normalizeAiLimits({})
+  return channel === 'oa' ? l.oaDailyTurnLimit : l.dailyTurnLimit
+}
+
+function quotaId(openid, channel) { return `ai_${channel || 'mp'}_${openid}_${bjYmd()}` }
+
+// 当日已用轮次；集合/文档不存在 → 0
+async function aiQuotaUsed(openid, channel) {
+  if (!openid) return 0
+  try {
+    const r = await db.collection('aiQuota').doc(quotaId(openid, channel)).get()
+    return Number((r && r.data && r.data.count) || 0)
+  } catch (e) { return 0 }
+}
+
+// 计数 +1（文档不存在则创建）。失败只 warn：限流是成本保护，不应阻断用户对话。
+async function incrAiQuota(openid, channel) {
+  if (!openid) return
+  const id = quotaId(openid, channel)
+  const ch = channel || 'mp'
+  try {
+    await db.collection('aiQuota').doc(id).update({ data: { count: _.inc(1), updatedAt: Date.now() } })
+  } catch (e) {
+    try {
+      await db.collection('aiQuota').doc(id).set({
+        data: { openid, channel: ch, ymd: bjYmd(), count: 1, createdAt: Date.now(), updatedAt: Date.now() }
+      })
+    } catch (e2) {
+      console.warn('[aiQuota] incr failed (ignored):', e2 && (e2.message || e2.errMsg || e2))
+    }
+  }
+}
+
+// 统一的「是否还能对话」判定：返回 { allowed, used, limit }
+// limit<=0 视为不限；used >= limit 则拒绝本轮。
+async function checkAiQuota(limits, openid, channel) {
+  const limit = limitOfChannel(limits, channel)
+  if (!limit) return { allowed: true, used: 0, limit: 0 }
+  const used = await aiQuotaUsed(openid, channel)
+  return { allowed: used < limit, used, limit }
+}
+
+// ===== 公众号客服消息（message/custom/send）=====
+// ⚠️ 出网依赖：客服消息必须直连 api.weixin.qq.com。若云环境限制了公网出站（曾出现 412），
+//    本调用会失败——调用方必须 catch 并给出兜底（例如引导用户点菜单进小程序），不能静默。
+//    排查：云开发控制台 → 环境 → 网络配置，放行公网访问 / 把 api.weixin.qq.com 加入白名单。
+const https = require('https')
+
+function httpsJson(url, opts) {
+  const o = opts || {}
+  return new Promise((resolve, reject) => {
+    let u
+    try { u = new URL(url) } catch (e) { return reject(new Error('URL 非法: ' + url)) }
+    const payload = o.body ? Buffer.from(o.body, 'utf8') : null
+    const req = https.request({
+      hostname: u.hostname,
+      path: u.pathname + (u.search || ''),
+      method: o.method || 'GET',
+      timeout: o.timeout || 8000,
+      headers: payload
+        ? { 'Content-Type': 'application/json', 'Content-Length': payload.length }
+        : { 'Content-Type': 'application/json' }
+    }, res => {
+      let buf = ''
+      res.setEncoding('utf8')
+      res.on('data', c => { buf += c })
+      res.on('end', () => {
+        try { resolve(JSON.parse(buf)) } catch (e) { reject(new Error('响应非 JSON: ' + String(buf).slice(0, 200))) }
+      })
+    })
+    req.on('timeout', () => req.destroy(new Error('请求超时')))
+    req.on('error', reject)
+    if (payload) req.write(payload)
+    req.end()
+  })
+}
+
+// 二进制版：微信的「生成小程序码」接口成功时直接回图片字节流，失败才回 JSON，
+// 所以必须拿原始 Buffer 而不能走 httpsJson（那个强制 utf8 解析）。
+function httpsBuffer(url, opts) {
+  const o = opts || {}
+  return new Promise((resolve, reject) => {
+    let u
+    try { u = new URL(url) } catch (e) { return reject(new Error('URL 非法: ' + url)) }
+    const payload = o.body ? Buffer.from(o.body, 'utf8') : null
+    const req = https.request({
+      hostname: u.hostname,
+      path: u.pathname + (u.search || ''),
+      method: o.method || 'GET',
+      timeout: o.timeout || 8000,
+      headers: payload
+        ? { 'Content-Type': 'application/json', 'Content-Length': payload.length }
+        : { 'Content-Type': 'application/json' }
+    }, res => {
+      const chunks = []
+      res.on('data', c => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)))
+      res.on('end', () => resolve({ buf: Buffer.concat(chunks), headers: res.headers || {}, status: res.statusCode }))
+    })
+    req.on('timeout', () => req.destroy(new Error('请求超时')))
+    req.on('error', reject)
+    if (payload) req.write(payload)
+    req.end()
+  })
+}
+
+// 公众号基础 access_token（与 mpAuth 的「网页授权 OAuth token」是两套，不可混用）。
+// 缓存在 config 集合 mpToken 文档，到期前 5 分钟提前续期，避免频繁拉取触发微信频率限制。
+async function getMpAccessToken(force) {
+  const now = Date.now()
+  if (!force) {
+    try {
+      const r = await db.collection('config').doc('mpToken').get()
+      const d = r && r.data
+      if (d && d.token && d.expiresAt && (d.expiresAt - now) > 5 * 60 * 1000) return d.token
+    } catch (e) { /* 文档不存在 → 走网络获取 */ }
+  }
+  const appId = process.env.MP_APP_ID || ''
+  const secret = process.env.MP_APP_SECRET || ''
+  if (!appId || !secret) throw new Error('未配置 MP_APP_ID / MP_APP_SECRET 环境变量')
+  const j = await httpsJson(`https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(secret)}`)
+  if (!j || !j.access_token) {
+    throw new Error('获取 access_token 失败：' + JSON.stringify(j).slice(0, 200))
+  }
+  try {
+    await db.collection('config').doc('mpToken').set({
+      data: { token: j.access_token, expiresAt: now + (Number(j.expires_in) || 7200) * 1000, updatedAt: now }
+    })
+  } catch (e) { console.warn('[mpToken] 缓存写入失败（忽略）：', e && (e.message || e.errMsg || e)) }
+  return j.access_token
+}
+
+// 发送客服消息。msg 形态：
+//   { type:'text', content }
+//   { type:'miniprogrampage', title, appid, pagepath, thumbMediaId }
+// isAi=true 时附带 aimsgcontext.is_ai_msg=1（微信 2025-11-26 起支持，消息下方展示「内容由第三方AI生成」）
+async function sendMpCustom({ openid, msg, isAi }) {
+  if (!openid) throw new Error('缺少公众号 openid')
+  const m = msg || {}
+  const body = { touser: openid, msgtype: m.type }
+  if (m.type === 'text') {
+    body.text = { content: String(m.content || '').slice(0, 2048) }
+  } else if (m.type === 'miniprogrampage') {
+    // 四个字段官方均为必填，缺一会报参数错误
+    if (!m.title || !m.appid || !m.pagepath || !m.thumbMediaId) {
+      throw new Error('miniprogrampage 缺少必填字段（title/appid/pagepath/thumbMediaId）')
+    }
+    body.miniprogrampage = { title: m.title, appid: m.appid, pagepath: m.pagepath, thumb_media_id: m.thumbMediaId }
+  } else {
+    throw new Error('不支持的客服消息类型：' + m.type)
+  }
+  if (isAi) body.aimsgcontext = { is_ai_msg: 1 }
+
+  const post = (token) => httpsJson(
+    'https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=' + encodeURIComponent(token),
+    { method: 'POST', body: JSON.stringify(body) }
+  )
+  let token = await getMpAccessToken()
+  let j = await post(token)
+  // 42001/40001：token 过期或失效 → 强制刷新一次再试
+  const code = j && j.errcode
+  if (code === 42001 || code === 40001 || code === 40014) {
+    token = await getMpAccessToken(true)
+    j = await post(token)
+  }
+  if (j && j.errcode) throw new Error(`客服消息发送失败 ${j.errcode}：${j.errmsg || ''}`)
+  return j || {}
+}
+
 // ===== 顾客自动标签规则引擎 =====
 
 // scene → 来源标签（仅三类有业务语义；其他返回 '' 不展示）
@@ -430,6 +650,164 @@ function customerTags(profile, agg) {
   return tags
 }
 
+// ===== 小程序 access_token + URL Link（公众号「一键跳小程序」的唯一免费通路）=====
+// ⚠️ 与上面 getMpAccessToken 是两套完全独立的凭证，绝不可混用：
+//   · 服务号 token：能发客服消息/取素材，但受「服务号 IP 白名单」约束；云函数出口 IP 每次漂移 ⇒ 恒 40164，死路。
+//   · 小程序 token：**不受 IP 白名单约束**（2026-09-23 实测：真实 AppID + 错 secret → 40125「invalid appsecret」，
+//     而不是 40164 ⇒ 请求已越过 IP 校验）。因此可以在云函数里直接取，用来生成 URL Link。
+//   判据教训：只有 40164 才代表 IP 被拦；40001/40125 都说明通路是好的（详见项目 MEMORY）。
+const WXA_APPID_FALLBACK = 'wxb97578ed89c6e2c7'
+let _wxaTokMem = { at: 0, v: '' }
+
+async function getWxaAccessToken(force) {
+  const now = Date.now()
+  if (!force && _wxaTokMem.v && (now - _wxaTokMem.at) < 60000) return _wxaTokMem.v
+  if (!force) {
+    try {
+      const r = await db.collection('config').doc('wxaToken').get()
+      const d = r && r.data
+      if (d && d.token && d.expiresAt && (d.expiresAt - now) > 5 * 60 * 1000) {
+        _wxaTokMem = { at: now, v: d.token }
+        return d.token
+      }
+    } catch (e) { /* 文档不存在 → 走网络获取 */ }
+  }
+  const appId = process.env.WXA_APP_ID || WXA_APPID_FALLBACK
+  let secret = process.env.WXA_APP_SECRET || ''
+  if (!secret) {
+    try {
+      const r = await db.collection('config').doc('wxa').get()
+      secret = (r && r.data && r.data.appSecret) || ''
+    } catch (e) { /* ignore */ }
+  }
+  // 兜底兼容「历史落点」：config/wxAppSecret.value
+  // 2026-08-17 做 getPhoneNumber 时由一次性临时函数 tmpSetSecret 写入（当时 getPhoneNumber 需要 secret）；
+  // 后改走云调用，该文档沉睡至今。留着这条兜底，免得「密钥明明在库里却读不到」。
+  // 注：若读到的是已重置的旧值，微信会回 40125（invalid appsecret），报错信息里可识别。
+  if (!secret) {
+    try {
+      const r2 = await db.collection('config').doc('wxAppSecret').get()
+      secret = (r2 && r2.data && (r2.data.value || r2.data.appSecret)) || ''
+    } catch (e) { /* ignore */ }
+  }
+  if (!secret) throw new Error('未配置小程序 AppSecret（环境变量 WXA_APP_SECRET，或 config 文档 wxa.appSecret / wxAppSecret.value）')
+  const j = await httpsJson(`https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(secret)}`)
+  if (!j || !j.access_token) throw new Error('小程序 access_token 获取失败：' + JSON.stringify(j).slice(0, 200))
+  try {
+    await db.collection('config').doc('wxaToken').set({
+      data: { token: j.access_token, expiresAt: now + (Number(j.expires_in) || 7200) * 1000, updatedAt: now }
+    })
+  } catch (e) { console.warn('[wxaToken] 缓存写入失败（忽略）：', e && (e.message || e.errMsg || e)) }
+  _wxaTokMem = { at: now, v: j.access_token }
+  return j.access_token
+}
+
+// 生成「微信内直达小程序」的 URL Link（形如 https://wxaurl.cn/xxxx）。
+// 用户在微信里点一下即唤起小程序；path/query 可带参 ⇒ 能把确认信息与 log（漏斗回写）一起带过去。
+// 注意：小程序须为「非个人主体」且已发布；每日生成上限 100 万次。
+// 小程序版本环境（release=线上正式版 / trial=体验版 / develop=开发版）。
+// 为什么需要可配：URL Link 与小程序码都会把用户送到**指定版本**。
+//   若线上正式版还没有本次新加的能力（例如「点卡片直达小程序确认页」），生成的链接就会落到旧版页面，
+//   表现像"功能没生效"（真机复现）。此时把 WXA_ENV_VERSION 设为 trial，配合「体验版」即可先行验证，
+//   等正式版审核通过再切回 release。默认 release —— 对真实顾客这是唯一正确值。
+function wxaEnvVersion() {
+  const v = String(process.env.WXA_ENV_VERSION || 'release').toLowerCase()
+  return (v === 'trial' || v === 'develop') ? v : 'release'
+}
+
+async function generateUrlLink({ path, query, envVersion }) {
+  if (!path) throw new Error('generateUrlLink 缺少 path')
+  // ⚠️ 实测（2026-09-23）：只有 is_expire:false（永久链接）稳过。
+  //   · is_expire:true + expire_type:1 + expire_time  → 85401「time limit between 1min and 30days」
+  //     （即便 expire_time 落在 1min~30days 区间内也照样报，微信对时间戳模式校验异常）
+  //   · is_expire:true + expire_type:0 + expire_interval:29 → 可用，但链接 29 天后失效
+  // ⇒ 固定用永久链接，卡片文案里的链接永远不会过期。返回域名可能是 wxaurl.cn 或 wxmpurl.cn（都合法）。
+  const body = {
+    path: String(path),
+    query: query ? String(query) : '',
+    env_version: envVersion || wxaEnvVersion(),
+    is_expire: false
+  }
+  const call = (token) => httpsJson(
+    'https://api.weixin.qq.com/wxa/generate_urllink?access_token=' + encodeURIComponent(token),
+    { method: 'POST', body: JSON.stringify(body) }
+  )
+  let token = await getWxaAccessToken()
+  let j = await call(token)
+  const code = j && j.errcode
+  // 42001/40001/40014：token 过期或失效 → 强制刷新一次再试
+  if (code === 42001 || code === 40001 || code === 40014) {
+    token = await getWxaAccessToken(true)
+    j = await call(token)
+  }
+  if (j && j.errcode) throw new Error(`generate_urllink 失败 ${j.errcode}：${j.errmsg || ''}`)
+  const link = (j && (j.url_link || j.urlLink)) || ''
+  if (!link) throw new Error('generate_urllink 未返回 url_link')
+  return link
+}
+
+// 带容器内缓存的 URL Link：同一 path+query 在容器寿命内只生成一次（省一次公网往返，被动回复 5s 预算很紧）。
+const _linkMem = new Map()
+async function generateUrlLinkCached(path, query, envVersion) {
+  const ev = envVersion || wxaEnvVersion()
+  const key = ev + '|' + path + '?' + (query || '')
+  const hit = _linkMem.get(key)
+  if (hit && hit.exp > Date.now()) return hit.link
+  const link = await generateUrlLink({ path, query, envVersion: ev })
+  if (_linkMem.size > 200) _linkMem.clear()
+  // 链接是永久的，缓存只是为了省一次公网往返（被动回复 5s 预算很紧）。
+  _linkMem.set(key, { link, exp: Date.now() + 6 * 60 * 60 * 1000 })
+  return link
+}
+
+// 生成「小程序码」图片（返回 PNG Buffer）。
+// 为什么需要它：公众号被动回复发不了 image 消息（要素材 MediaId，而素材接口需要服务号 token，
+// 被 IP 白名单拦死）；但图文消息(news)的 PicUrl 接受**任意公网图片链接**。
+// ⇒ 把小程序码上传到云存储/静态托管后填进 PicUrl，就是免费方案下「带二维码的卡片」。
+// scene：扫码进入后小程序 onLoad 的 options.scene（≤32 字符）；page 必须是小程序**已发布**的页面。
+async function getWxaQrCode(page, scene, width) {
+  const body = {
+    scene: String(scene == null || scene === '' ? 'oa' : scene).slice(0, 32),
+    page: String(page || 'pages/ai/ai'),
+    check_path: false,          // false 才允许 env_version 生效（true 会校验页面是否已发布）
+    env_version: wxaEnvVersion(),
+    width: Math.max(280, Math.min(1280, Number(width) || 430)),
+    auto_color: false,
+    is_hyaline: false
+  }
+  const call = (token) => httpsBuffer(
+    'https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=' + encodeURIComponent(token),
+    { method: 'POST', body: JSON.stringify(body) }
+  )
+  const parseErr = (r) => {
+    let j = {}
+    try { j = JSON.parse(r.buf.toString('utf8')) } catch (e) { return '未知响应：' + r.buf.toString('utf8').slice(0, 200) }
+    return `getwxacodeunlimit 失败 ${j.errcode}：${j.errmsg || ''}`
+  }
+
+  let token = await getWxaAccessToken()
+  let r = await call(token)
+  if (isJsonResp(r)) {
+    let j = {}
+    try { j = JSON.parse(r.buf.toString('utf8')) } catch (e) { throw new Error(parseErr(r)) }
+    // token 过期 → 强刷一次再试
+    if (j.errcode === 42001 || j.errcode === 40001 || j.errcode === 40014) {
+      token = await getWxaAccessToken(true)
+      r = await call(token)
+      if (!isJsonResp(r)) return r.buf
+    }
+    throw new Error(parseErr(r))
+  }
+  return r.buf
+}
+
+// 微信接口失败时回 JSON（以 { 开头），成功时回二进制图片 → 靠首字节判别最可靠
+function isJsonResp(r) {
+  const ct = String((r.headers && r.headers['content-type']) || '')
+  if (ct.indexOf('json') >= 0) return true
+  return !!(r.buf && r.buf.length && r.buf[0] === 0x7b)
+}
+
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
   ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjYmd, bjAddDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
@@ -438,5 +816,12 @@ module.exports = {
   srcLabel, customerTags, loadSubscribeSwitch, subOn,
   loadSmsSwitch, shouldSkipSms, wxDelivered, loadAiSwitch,
   SUB_KEYS, normalizeSubs, subbedOf, loadUserSubs,
-  shiftDate, notifyWindowCfg, notifyPlan, plannedOf, NOTIFY_PRIORITY
+  shiftDate, notifyWindowCfg, notifyPlan, plannedOf, NOTIFY_PRIORITY,
+  // AI 配额（每日轮次上限，后台可配）
+  AI_DEFAULT_TURN_LIMIT, AI_DEFAULT_LIMIT_REPLY, normalizeAiLimits, loadAiLimits,
+  limitOfChannel, aiQuotaUsed, incrAiQuota, checkAiQuota,
+  // 公众号客服消息
+  httpsJson, getMpAccessToken, sendMpCustom,
+  // 小程序 access_token / URL Link / 小程序码（公众号跳小程序的免费通路）
+  getWxaAccessToken, generateUrlLink, generateUrlLinkCached, getWxaQrCode, wxaEnvVersion
 }

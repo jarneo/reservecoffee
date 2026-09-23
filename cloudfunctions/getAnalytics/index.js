@@ -268,10 +268,19 @@ exports.main = async (event) => {
   //   talk    沟通：所有 AI 对话轮次 / 去重用户
   //   confirm 确认：AI 已给出可约时段确认卡（用户未必点确认）
   //   booked  预约成功：用户真的提交了预约单（createReservation 回写，见 createReservation.markAiBooked）
+  // 渠道空壳：mp=小程序端 AI，oa=公众号端 AI
+  const mkChan = () => ({ turns: 0, users: 0, confirm: 0, booked: 0 })
   let ai = {
     turns: 0, users: 0, perCap: 0, chat: 0, ask: 0, confirm: 0, booked: 0,
     confirmRate: 0, bookedRate: 0, tokens: 0, cost: 0, latencyMs: 0,
-    funnel: [], rate: { talkToConfirm: 0, confirmToBooked: 0, overall: 0 }
+    funnel: [], rate: { talkToConfirm: 0, confirmToBooked: 0, overall: 0 },
+    // 渠道拆分 + 占比（历史数据无 channel 字段 → 统一归 mp）
+    byChannel: {
+      mp: mkChan(), oa: mkChan(),
+      pct: { mpTurns: 0, oaTurns: 0, mpUsers: 0, oaUsers: 0 }
+    },
+    // AI 带来的预约单（reservations.source）：区分小程序端 AI / 公众号端 AI
+    orders: { ai: 0, oa: 0, total: 0 }
   }
   try {
     const aiRows = []
@@ -284,22 +293,30 @@ exports.main = async (event) => {
       askip += 100
       if (aiRows.length > 5000) break
     }
-    const uSet = new Set()        // 沟通人数
+    const uSet = new Set()        // 沟通人数（跨端去重：优先 unionid，避免同一人双端使用被算两次）
     const confirmU = new Set()    // 触达确认人数
     const bookedU = new Set()     // 预约成功人数
+    // 分渠道计数：渠道内按 openid 去重（小程序 openid 与公众号 openid 本就不同，无法跨端合并）
+    const chan = { mp: { turns: 0, users: new Set(), confirm: 0, booked: 0 }, oa: { turns: 0, users: new Set(), confirm: 0, booked: 0 } }
     let turns = 0, chat = 0, ask = 0, confirm = 0, booked = 0, tok = 0, cost = 0, lat = 0
     for (const r of aiRows) {
       const t = r.createdAt || 0
       if (t < from || t > to) continue
       turns++
-      if (r.openid) uSet.add(r.openid)
+      // ⚠️ 总人数用「unionid 优先」去重：同一顾客既用小程序又用公众号，只算 1 人，避免总数虚高
+      if (r.unionid) uSet.add('u:' + r.unionid)
+      else if (r.openid) uSet.add('o:' + r.openid)
+      const ch = (r.channel === 'oa') ? 'oa' : 'mp'
+      chan[ch].turns++
+      if (r.openid) chan[ch].users.add(r.openid)
       const it = r.intent || 'chat'
       if (it === 'chat') chat++
       else if (it === 'ask') ask++
       else if (it === 'confirm') {
         confirm++
         if (r.openid) confirmU.add(r.openid)
-        if (r.booked === true) { booked++; if (r.openid) bookedU.add(r.openid) }
+        chan[ch].confirm++
+        if (r.booked === true) { booked++; chan[ch].booked++; if (r.openid) bookedU.add(r.openid) }
       }
       if (r.tokens != null) tok += r.tokens
       if (r.cost != null) cost += r.cost
@@ -309,6 +326,18 @@ exports.main = async (event) => {
     const fTop = Math.max(talkU, cU, bU, 1)
     const mkf = (key, label, n) => ({ key, label, uv: n, pct: Math.round(n / fTop * 100) })
     const pctOf = (a, b) => (a ? +(b / a * 100).toFixed(1) : 0)
+
+    // AI 带来的预约单：按来源拆（source='ai' 小程序端 / 'oa' 公众号端）
+    const aiOrders = { ai: 0, oa: 0, total: 0 }
+    for (const r of list) {
+      if (isValid(r) && (r.source === 'ai' || r.source === 'oa')) { aiOrders[r.source]++; aiOrders.total++ }
+    }
+
+    // 渠道占比：轮次占比以总轮次为分母；人数占比以「两渠道人数之和」为分母
+    // （跨端同一人在两渠道各计一次，故两渠道人数之和 ≥ 总人数，属正常现象）
+    const mpU = chan.mp.users.size, oaU = chan.oa.users.size
+    const uSum = mpU + oaU
+
     ai = {
       turns,
       users: talkU,
@@ -328,9 +357,66 @@ exports.main = async (event) => {
         talkToConfirm: pctOf(talkU, cU),
         confirmToBooked: pctOf(cU, bU),
         overall: pctOf(talkU, bU)
-      }
+      },
+      byChannel: {
+        mp: { turns: chan.mp.turns, users: mpU, confirm: chan.mp.confirm, booked: chan.mp.booked },
+        oa: { turns: chan.oa.turns, users: oaU, confirm: chan.oa.confirm, booked: chan.oa.booked },
+        pct: {
+          mpTurns: turns ? +(chan.mp.turns / turns * 100).toFixed(1) : 0,
+          oaTurns: turns ? +(chan.oa.turns / turns * 100).toFixed(1) : 0,
+          mpUsers: uSum ? +(mpU / uSum * 100).toFixed(1) : 0,
+          oaUsers: uSum ? +(oaU / uSum * 100).toFixed(1) : 0
+        }
+      },
+      orders: aiOrders
     }
   } catch (e) { /* aiLogs 集合未建或查询失败，按全 0 处理 */ }
+
+  // ===== 通知触达统计（订阅通知 / 短信通知）=====
+  // 数据源：notifyLogs（由 _lib/notifyLog.js 在「真正尝试发送」后写入一条流水）。
+  //   · 模板未配置 / 无手机号 / 未开通短信 这类「压根没发」不计入（见 logNotify 调用点）；
+  //   · 发送被平台拒收（43101 未授权、短信日上限、模板未审批等）**计入总数且计入失败**；
+  //   · 时间与房源口径与其它板块完全一致（同一 from/to，含 2026-09-20 数据地板）。
+  const SCENE_CN = {
+    reserveSuccess: '预约成功', reserveCancel: '预约取消',
+    reminder: '开场前提醒', reminderEnd: '结束提醒', dayBefore: '前一天提醒',
+    adminNew: '管理员·新预约', adminCancel: '管理员·取消', adminReview: '管理员·待审核',
+    success: '短信·预约成功', approaching: '短信·临近', expired: '短信·过期', cancel: '短信·取消'
+  }
+  const notify = { wx: 0, sms: 0, wxOk: 0, smsOk: 0, total: 0, ok: 0, scenes: [] }
+  try {
+    const nRows = []
+    let nskip = 0
+    for (let i = 0; i < 50; i++) {
+      const res = await db.collection('notifyLogs')
+        .orderBy('ts', 'desc').skip(nskip).limit(100).get()
+        .catch(() => ({ data: [] }))
+      const b = res.data || []
+      nRows.push(...b)
+      if (b.length < 100) break
+      nskip += 100
+      if (nRows.length > 5000) break
+    }
+    const acc = {}
+    for (const r of nRows) {
+      const t = r.ts || r.createdAt || 0
+      if (t < from || t > to) continue
+      const ch = (r.channel === 'sms') ? 'sms' : 'wx'
+      notify[ch]++
+      notify.total++
+      const okKey = ch === 'sms' ? 'smsOk' : 'wxOk'
+      if (r.ok) { notify.ok++; notify[okKey]++ }
+      const key = r.scene || 'other'
+      if (!acc[key]) acc[key] = { wx: 0, sms: 0, ok: 0, n: 0 }
+      acc[key].n++
+      acc[key][ch]++
+      if (r.ok) acc[key].ok++
+    }
+    const nMax = Object.values(acc).reduce((m, x) => Math.max(m, x.n), 1)
+    notify.scenes = Object.keys(acc)
+      .map(k => ({ key: k, label: SCENE_CN[k] || k, wx: acc[k].wx, sms: acc[k].sms, ok: acc[k].ok, n: acc[k].n, pct: Math.round(acc[k].n / nMax * 100) }))
+      .sort((a, b) => b.n - a.n)
+  } catch (e) { /* notifyLogs 未建或查询失败：按全 0 处理，不影响其它板块 */ }
 
   return ok({
     scope: { period, from, to, total: rows.length, used: list.length, events: evRows.length },
@@ -358,6 +444,7 @@ exports.main = async (event) => {
       reach, combos, pairs,
       multi: { uv: multiUsers, pct: uv ? +(multiUsers / uv * 100).toFixed(1) : 0 }
     },
-    ai
+    ai,
+    notify
   })
 }

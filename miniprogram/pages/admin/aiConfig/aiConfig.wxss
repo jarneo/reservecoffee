@@ -24,6 +24,12 @@
   border:1rpx solid var(--line); border-radius:10rpx;
   padding:0 16rpx; font-size:28rpx; line-height:44rpx; height:80rpx; margin-bottom:12rpx;
 }
+/* ===== 数值输入行（轮次上限）===== */
+.fld { margin-top:18rpx; }
+.lb { display:block; font-size:26rpx; color:var(--ink); margin-bottom:10rpx; }
+/* 单行数字输入：小程序 input 自带默认高度，只给 padding 会裁切 → 必须显式 height + line-height */
+.inp.num { height:76rpx; line-height:44rpx; margin-bottom:0; }
+
 /* 多行输入（发送话术，≤60字）：auto-height 随内容增高，中文不会被截 */
 .qta {
   width:100%; box-sizing:border-box; background:#fff; color:var(--ink);

@@ -48,12 +48,52 @@
       <view class="m"><view class="l">问答轮次</view><view class="n">{{view.ai.chat}}</view></view>
       <view class="m"><view class="l">追问轮次</view><view class="n">{{view.ai.ask}}</view></view>
     </view>
+    <view class="sub"><text>来源渠道占比（小程序 AI / 公众号 AI）</text></view>
+    <view class="fn">
+      <view class="fn-row"><text>小程序 AI</text><text>{{view.ai.byChannel.mp.turns}} 轮 · {{view.ai.byChannel.pct.mpTurns}}%</text></view>
+      <view class="bar" style="width:{{view.ai.byChannel.pct.mpTurns}}%">{{view.ai.byChannel.mp.turns}}</view>
+    </view>
+    <view class="fn">
+      <view class="fn-row"><text>公众号 AI</text><text>{{view.ai.byChannel.oa.turns}} 轮 · {{view.ai.byChannel.pct.oaTurns}}%</text></view>
+      <view class="bar" style="width:{{view.ai.byChannel.pct.oaTurns}}%">{{view.ai.byChannel.oa.turns}}</view>
+    </view>
+    <view class="mini">
+      <view class="m"><view class="l">小程序 对话人数</view><view class="n">{{view.ai.byChannel.mp.users}}（{{view.ai.byChannel.pct.mpUsers}}%）</view></view>
+      <view class="m"><view class="l">公众号 对话人数</view><view class="n">{{view.ai.byChannel.oa.users}}（{{view.ai.byChannel.pct.oaUsers}}%）</view></view>
+    </view>
+    <view class="mini">
+      <view class="m"><view class="l">AI 成单 · 小程序</view><view class="n">{{view.ai.orders.ai}} 单</view></view>
+      <view class="m"><view class="l">AI 成单 · 公众号</view><view class="n">{{view.ai.orders.oa}} 单</view></view>
+    </view>
+
     <view class="mini">
       <view class="m"><view class="l">总 Token</view><view class="n">{{view.ai.tokens}}</view></view>
       <view class="m"><view class="l">成本(元)</view><view class="n">{{view.ai.cost}}</view></view>
       <view class="m"><view class="l">平均延迟(ms)</view><view class="n">{{view.ai.latencyMs}}</view></view>
     </view>
-    <view class="note">沟通=与小曜对话过的去重用户；确认=小曜已给出可约确认卡（用户未必点提交）；预约成功=用户真的提交了预约单（用户点确认后由 createReservation 单向回写 booked 标记）。三者为包含关系，故可构成漏斗。数据来自 aiLogs。</view>
+    <view class="note">沟通=与小曜对话过的去重用户；确认=小曜已给出可约确认卡（用户未必点提交）；预约成功=用户真的提交了预约单（用户点确认后由 createReservation 单向回写 booked 标记）。三者为包含关系，故可构成漏斗。数据来自 aiLogs。渠道占比按轮次与人数分别统计：总人数按 unionid 跨端去重（同一人既用小程序又用公众号只算 1 人），故两渠道人数之和可能大于总人数。</view>
+  </view>
+
+  <!-- 板块1.6 通知触达 -->
+  <view class="sec">
+    <view class="sh">通知触达</view>
+    <view class="kpis">
+      <view class="kpi"><view class="label">订阅通知</view><view class="num">{{view.notify.wx}}</view></view>
+      <view class="kpi"><view class="label">短信通知</view><view class="num">{{view.notify.sms}}</view></view>
+      <view class="kpi"><view class="label">合计发送</view><view class="num">{{view.notify.total}}</view></view>
+      <view class="kpi"><view class="label">失败条数</view><view class="num">{{view.notify.fail}}</view></view>
+    </view>
+    <view class="fn" wx:for="{{view.notify.scenes}}" wx:key="key">
+      <view class="fn-row"><text>{{item.label}}</text><text>{{item.v}} 条 · 成功{{item.ok}}</text></view>
+      <view class="bar" style="width:{{item.pct}}%">{{item.v}}</view>
+    </view>
+    <view wx:if="{{!view.notify.scenes.length}}" class="empty">所选周期暂无通知记录</view>
+    <view class="mini">
+      <view class="m"><view class="l">订阅成功 / 总数</view><view class="n">{{view.notify.wxOk}} / {{view.notify.wx}}</view></view>
+      <view class="m"><view class="l">短信成功 / 总数</view><view class="n">{{view.notify.smsOk}} / {{view.notify.sms}}</view></view>
+      <view class="m"><view class="l">总成功率</view><view class="n brand">{{view.notify.succRate}}%</view></view>
+    </view>
+    <view class="note">数据来自 notifyLogs 流水：仅在「真正尝试发送」后写入一条（模板未配置 / 无手机号 / 未开通短信不计入）；被平台拒收同样计为一条失败（43101 未授权、短信日上限、模板未审批等）。与其它板块共用同一时间范围。</view>
   </view>
 
   <!-- 板块2 转化漏斗（埋点后 4 层均为真实数据） -->

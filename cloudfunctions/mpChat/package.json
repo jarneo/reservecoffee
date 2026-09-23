@@ -1,0 +1,9 @@
+{
+  "name": "mpChat",
+  "version": "1.0.0",
+  "description": "微信公众号 AI 预约助理（客服消息：接收文本 → AI 对话 → 回发文本/小程序卡片）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^4.0.2"
+  }
+}

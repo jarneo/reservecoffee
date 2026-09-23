@@ -5,6 +5,30 @@
 .phone-row .phone-input { flex:1; }
 .phone-row .get-phone { margin:0; flex:none; font-size:24rpx; padding:0 22rpx; height:64rpx; line-height:64rpx; }
 
+/* 资料引导条（称呼/手机号缺任一项时）：暖底描边提示，与页面黑白基调和品牌色一致，
+   不使用红色告警色（这不是错误态，只是还差一步） */
+.need-fill {
+  background: #fff8ec;
+  border: 1rpx solid #f0d9a0;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 20rpx;
+}
+.need-fill .nf-title { font-size: 29rpx; font-weight: 600; color: #8a5a1f; }
+.need-fill .nf-text { margin-top: 8rpx; font-size: 25rpx; line-height: 1.6; color: #8a5a1f; }
+
+/* 人数超单次上限说明（与引导条同一暖色系，属提示而非错误） */
+.cap-note {
+  margin-top: 14rpx;
+  padding: 18rpx 22rpx;
+  background: #fff8ec;
+  border: 1rpx solid #f0d9a0;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #8a5a1f;
+}
+
 /* 黑名单阻断态：顶部警示块 + 禁用提交按钮 */
 .bl-block {
   background: rgba(163, 45, 45, .07);

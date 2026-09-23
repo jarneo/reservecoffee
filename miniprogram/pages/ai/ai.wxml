@@ -4,14 +4,25 @@
       <view class="bubble {{item.notice?'notice':''}}">{{item.content}}</view>
     </view>
 
-    <!-- 确认卡（复用已授权资料，不展示可编辑表单） -->
+    <!-- 确认卡：称呼 / 手机号始终可编辑（不再只读复用资料） -->
+    <!-- 为什么改成可编辑：新顾客走的是微信静默登录，users 里没有任何资料，
+         只读展示会得到「称呼：—」，点确认又被拦「请填写称呼」，而界面上根本没有可填的地方（真机复现）。
+         称呼用 type="nickname"：微信会给出「使用微信昵称」一键填入，无需另外申请头像昵称权限。 -->
     <view wx:if="{{intent==='confirm'}}" class="card confirm">
       <view class="sec">预约确认</view>
       <view class="ci"><text class="ck">项目</text>{{confirmation.projectName}}</view>
       <view class="ci"><text class="ck">日期</text>{{confirmation.date}}</view>
       <view class="ci"><text class="ck">时段</text>{{confirmation.sessionStart}}–{{confirmation.sessionEnd}}</view>
       <view class="ci"><text class="ck">人数</text>{{confirmation.partySize}} 人位</view>
-      <view class="ci muted xs">称呼：{{profile.name||'—'}}　手机：{{profile.phone||'—'}}（已复用您授权资料）</view>
+      <!-- 人数超单次上限时的说明（云端已按上限钳制并写入 note）：
+           明确「上限就是这么多 + 人工出口」，不提拆单、不推回常规预约 -->
+      <view wx:if="{{confirmation.note}}" class="ci-warn">{{confirmation.note}}</view>
+      <input class="ci-inp" type="nickname" value="{{profile.name}}" placeholder="您的称呼（必填，可一键填入微信昵称）" placeholder-class="ci-inp-ph" maxlength="20" bindinput="onName"/>
+      <view class="ci-phone">
+        <input class="ci-inp" value="{{profile.phone}}" type="number" placeholder="手机号（必填，仅用于到店通知）" placeholder-class="ci-inp-ph" maxlength="11" bindinput="onPhone"/>
+        <button class="btn ghost sm get-phone" open-type="getPhoneNumber" bindgetphonenumber="onGetPhone">获取手机号</button>
+      </view>
+      <view class="ci-warn">称呼与手机号是预约的必填项；手机号只会用于本次预约的通知。</view>
       <button class="btn block" bindtap="confirm">确认预约</button>
       <view class="tap muted sm" bindtap="cancelConfirm" style="text-align:center;margin-top:14rpx">重新说 / 取消</view>
     </view>
@@ -29,20 +40,49 @@
     <view wx:for="{{quickReplies}}" wx:key="_i" class="chip" bindtap="quick" data-q="{{item.text}}">{{item.label}}</view>
   </view>
 
+  <!-- ===== 资料补全层 =====
+       进入 AI 页就主动要一次「称呼 + 手机号」；点确认时若仍缺失会再弹一次。
+       为什么必须是「带按钮的层」：昵称一键填入依赖 input type="nickname" 被聚焦，
+       手机号依赖 button open-type="getPhoneNumber" 被点击 —— 都必须在用户手势内触发，
+       程序无法替用户授权。拒绝授权不消失，改由 ci-inp 手工填写。 -->
+  <view wx:if="{{showFill}}" class="pmask">
+    <view class="pcard">
+      <view class="ptitle">预约需留称呼与手机号</view>
+      <view class="pbody">{{fillTip || '这两项是预约的必填项，缺一项就没法提交哦。手机号点「一键获取」即可授权填入，只会用于本次预约的通知。'}}</view>
+      <input class="ci-inp" style="margin-top:0" type="nickname" value="{{profile.name}}" placeholder="您的称呼（必填，可一键填入微信昵称）" placeholder-class="ci-inp-ph" maxlength="20" bindinput="onName"/>
+      <view class="ci-phone">
+        <input class="ci-inp" value="{{profile.phone}}" type="number" placeholder="手机号（必填）" placeholder-class="ci-inp-ph" maxlength="11" bindinput="onPhone"/>
+        <button class="btn ghost sm get-phone" open-type="getPhoneNumber" bindgetphonenumber="onGetPhone">一键获取</button>
+      </view>
+      <button class="btn block" style="margin-top:28rpx" bindtap="saveFill">填好了</button>
+      <view class="tap muted sm" bindtap="closeFill" style="text-align:center;margin-top:18rpx">稍后再填，先聊聊</view>
+    </view>
+  </view>
+
   <!-- 隐私授权弹窗（录音属隐私接口，须先同步用户已同意《用户隐私保护指引》） -->
   <view wx:if="{{showPrivacy}}" class="pmask">
     <view class="pcard">
       <view class="ptitle">用户隐私保护提示</view>
-      <view class="pbody">语音预约需要用到麦克风。使用前请先阅读并同意<text class="plink" bindtap="openPrivacyContract">{{privacyName}}</text>。点击同意后方可开启语音输入。</view>
-      <button id="agree-btn" class="btn block" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacy">同意并开启语音</button>
-      <view class="tap muted sm" bindtap="onDisagreePrivacy" style="text-align:center;margin-top:20rpx">不同意，用文字输入</view>
+      <view class="pbody">预约会用到麦克风（语音输入）与手机号等信息。使用前请先阅读并同意<text class="plink" bindtap="openPrivacyContract">{{privacyName}}</text>。</view>
+      <button id="agree-btn" class="btn block" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacy">同意并继续</button>
+      <view class="tap muted sm" bindtap="onDisagreePrivacy" style="text-align:center;margin-top:20rpx">不同意，改用手工输入</view>
     </view>
   </view>
 
-  <!-- 录音中：实时识别浮层（上滑到取消区时切换为「松开手指，取消发送」） -->
+  <!-- 录音中：实时识别浮层（参考微信语音输入：常驻「上滑取消」提示；进入取消区整体翻红）
+       计时 = 真实录音秒数；音量条 = 由识别回调驱动（WechatSI 不提供实时分贝） -->
   <view wx:if="{{recording}}" class="live {{voiceCancel ? 'cancel' : ''}}">
-    <view class="live-dot"></view>
-    <view class="live-txt">{{voiceCancel ? '松开手指，取消发送' : (liveText || '正在聆听…')}}</view>
+    <view class="live-ico">
+      <text class="live-arrow">↑</text>
+      <view class="live-dot"></view>
+    </view>
+    <view class="live-body">
+      <view class="live-txt">{{voiceCancel ? '松开手指，取消发送' : (liveText || '正在聆听…')}}</view>
+      <view class="live-hint">{{voiceCancel ? '已移到取消区 · 松手即丢弃' : '手指上滑，取消发送'}}</view>
+    </view>
+    <!-- 音量反馈：高度随识别回调起伏，无回调时自然回落到底 -->
+    <view class="live-vol"><view class="live-vol-i" style="height:{{voiceVol}}%"></view></view>
+    <view class="live-sec">{{voiceSec}}s</view>
   </view>
 
   <view class="inputbar">
@@ -50,13 +90,16 @@
     <view wx:if="{{pluginOk}}" class="icon-btn {{voiceMode ? 'kbd' : 'mic'}}" bindtap="toggleMode"></view>
 
     <input wx:if="{{!voiceMode}}" class="inp" value="{{draft}}" bindinput="onDraft" placeholder="说点什么，例如：明天 13点 2人法兰绒咖啡" confirm-type="send" bindconfirm="send"/>
+    <!-- 语音输入是全手势链路：touchstart 起录 / touchmove 判取消区 / touchend 松手即发 /
+         touchcancel 被系统打断按取消处理（否则会卡在「录音中」） -->
     <view wx:else class="voice-btn {{recording ? 'on' : ''}} {{voiceCancel ? 'cancel' : ''}}"
-          bindtouchstart="onVoiceStart" bindtouchmove="onVoiceMove" bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceEnd">
+          bindtouchstart="onVoiceStart" bindtouchmove="onVoiceMove"
+          bindtouchend="onVoiceEnd" bindtouchcancel="onVoiceCancelTouch">
       {{recording ? (voiceCancel ? '松开 取消' : '松开 发送') : '按住 说话'}}
     </view>
 
-    <!-- 语音识别结果落回输入框后，提供「撤销」清除本次识别文本（微信语音转文字式复查） -->
-    <button wx:if="{{!voiceMode && voicePending}}" class="btn undo" bindtap="undoVoice">撤销</button>
+    <!-- 输入框有内容即显示「撤销」（语音识别落回 / 手打均可清除），比仅依赖 voicePending 更稳妥 -->
+    <button wx:if="{{!voiceMode && draft}}" class="btn undo" bindtap="undoVoice">撤销</button>
     <button wx:if="{{!voiceMode}}" class="btn send" bindtap="send">发送</button>
   </view>
 

@@ -9,6 +9,14 @@ Page({
     name: '', phone: '', partySize: 1, note: '', maxParty: 2,
     fields: ['name', 'phone'],
     showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false,
+    // 场次已失效（约满/下架）时的阻断提示：避免链接过期后用户看到一个空白的确认页
+    unavailable: '',
+    // 资料不完整（称呼或手机号缺任一项）时的引导条：建议一键获取手机号 / 一键填昵称。
+    // 公众号卡片链接进来的多是新顾客，资料为空时表单很"冷"，需要一条明确引导；
+    // 而微信的昵称/手机号填充必须在用户手势内触发，不能自动弹，所以只能靠这条提示把人引到按钮上。
+    needFill: false,
+    // 人数超单次上限被自动钳制时的说明（不做拆单、不推回常规预约，只说明上限 + 人工出口）
+    partyCapped: false,
     // 黑名单阻断态：进入页面即检出，禁用提交
     blocked: false, blockReason: '',
     // 用户长期通知偏好（users.subscriptions，缺省全订阅）。
@@ -20,8 +28,20 @@ Page({
     successInfo: null
   },
 
+  // 本页有两个入口：
+  //   A) 小程序内常规预约：booking → confirm，只带 projectId/date/sessionId
+  //   B) 公众号 AI 卡片落地：URL Link → 本页，额外带 from=oa / log / partySize
+  // 为什么公众号卡片落到「本页」而不是 AI 对话页：本页自带完整的资料表单
+  // （称呼 type=nickname / 手机号 + 获取手机号按钮 / 人数步进器 + 单次上限提示），
+  // 顾客点一次卡片即到可提交的表单；AI 对话页没有这些，新顾客会卡在"填不了"。
   onLoad(q) {
-    this.setData({ projectId: q.projectId, date: q.date, sessionId: q.sessionId })
+    this.fromOa = !!(q && q.from === 'oa')
+    // log = aiLogs._id：公众号对话的 openid 与小程序 openid 不同，
+    // 只有靠它才能把「公众号那轮对话」精确回写为 booked（使渠道漏斗第三层不为 0）
+    if (q && q.log) this._aiLogId = q.log
+    // 人数由公众号 AI 谈定后透传；这里做一次夹取，避免异常参数
+    const ps = Number(q && q.partySize) || 1
+    this.setData({ projectId: q.projectId, date: q.date, sessionId: q.sessionId, partySize: Math.max(1, Math.min(20, ps)) })
     this.setData({ subs: normalizeSubs({}) })
     this.load()
   },
@@ -50,11 +70,29 @@ Page({
           showWechat: fields.indexOf('wechat') >= 0,
           showGender: fields.indexOf('gender') >= 0,
           showAge: fields.indexOf('age') >= 0,
-          showNote: fields.indexOf('note') >= 0
+          showNote: fields.indexOf('note') >= 0,
+          // 场次失效兜底：卡片/链接可能是几分钟前生成的，期间场次可能已被约满或下架。
+          // 不做兜底的话，用户看到的是一个没有场次、却仍能点「提交预约」的空表单（提交后才被服务端拒）。
+          unavailable: !sess ? '这个场次已经不存在了，请回小程序重新选一个时间～'
+            : ((sess.capacity - (sess.booked || 0)) <= 0 ? '这个场次刚刚被约满了，请回小程序换一个时间～' : '')
         })
+        // 人数夹取：不能超过「单次上限」与「本场剩余名额」。
+        // 被夹取时置 partyCapped，页面上明确说明「上限就是这么多 + 人工出口」，
+        // 而不是静默改小 —— 顾客看到的人数和自己说的不一致会以为系统出错。
+        const cap = Math.max(1, Math.min(this.data.maxParty, sess ? (sess.capacity - (sess.booked || 0)) : 1))
+        if (this.data.partySize > cap) this.setData({ partySize: cap, partyCapped: true })
         this.prefill()
       })
       .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+  },
+
+  // 资料完整性检查：称呼/手机号缺任一项就亮出引导条。
+  // 注意：微信的昵称一键填入（input type="nickname" 聚焦时提示）和手机号授权
+  // （button open-type="getPhoneNumber"）都必须在用户手势内触发，程序无法代用户授权 ——
+  // 所以这里能做到的最好效果就是「把入口做得显眼、说清为什么需要」。
+  checkNeedFill() {
+    const need = !String(this.data.name || '').trim() || !String(this.data.phone || '').trim()
+    if (need !== this.data.needFill) this.setData({ needFill: need })
   },
 
   // 从 users 集合预填称呼/手机号（仅当本页尚未输入时），实现"下次预约自动带出"
@@ -64,7 +102,7 @@ Page({
     call('getMyProfile')
       .then(d => {
         const profile = d && d.profile
-        if (!profile) return
+        if (!profile) { this.checkNeedFill(); return }
         if (profile.isBlacklisted) {
           this.setData({ blocked: true, blockReason: profile.blacklistReason || '' })
           return
@@ -74,12 +112,14 @@ Page({
         if (profile.phone && !this.data.phone) patch.phone = profile.phone
         if (Object.keys(patch).length) this.setData(patch)
         if (profile.subscriptions) this.setData({ subs: normalizeSubs(profile.subscriptions) })
+        this.checkNeedFill()
       })
-      .catch(() => {})
+      .catch(() => this.checkNeedFill())
   },
 
-  onName(e) { this.setData({ name: e.detail.value }) },
-  onPhone(e) { this.setData({ phone: e.detail.value }) },
+  // 手工输入称呼/手机号后同步收起引导条
+  onName(e) { this.setData({ name: e.detail.value }, () => this.checkNeedFill()) },
+  onPhone(e) { this.setData({ phone: e.detail.value }, () => this.checkNeedFill()) },
   onWechat(e) { this.setData({ wechat: e.detail.value }) },
   onNote(e) { this.setData({ note: e.detail.value }) },
   onGender(e) { this.setData({ gender: e.detail.value }) },
@@ -88,8 +128,17 @@ Page({
   // 微信手机号快捷获取：用户点按钮授权后，用返回的 code 到服务端换取真实手机号
   onGetPhone(e) {
     const { errMsg, code } = e.detail
-    if (errMsg !== 'getPhoneNumber:ok') return
-    if (!code) return wx.showToast({ title: '未能获取授权', icon: 'none' })
+    if (errMsg !== 'getPhoneNumber:ok') {
+      // 拒绝授权不能静默返回 —— 明确告知可手工填写，否则顾客会以为按了没反应
+      const deny = String(errMsg || '').indexOf('deny') >= 0
+      wx.showToast({
+        title: deny ? '已跳过，请手工填写手机号' : '未能获取，请手工填写手机号',
+        icon: 'none',
+        duration: 2500
+      })
+      return
+    }
+    if (!code) return wx.showToast({ title: '未能获取授权，请手工填写手机号', icon: 'none' })
     wx.showLoading({ title: '获取中' })
     call('getPhoneNumber', { code })
       .then(d => {
@@ -109,7 +158,12 @@ Page({
     const d = Number(e.currentTarget.dataset.d)
     const max = Math.min(this.data.session ? this.data.session.remaining : 9, this.data.maxParty || 2)
     const v = Math.max(1, Math.min(max, this.data.partySize + d))
-    this.setData({ partySize: v })
+    if (d > 0 && v === this.data.partySize) {
+      // 已到上限：明确告知「上限就是这么多」并给人工出口，避免 + 号按了没反应
+      wx.showToast({ title: `单次最多 ${this.data.maxParty} 人，更多请致电 19292757851`, icon: 'none', duration: 2600 })
+      return
+    }
+    this.setData({ partySize: v, partyCapped: false })
   },
 
   // 取本次通知计划；若 load() 尚未返回或失败则就地补算，保证永远有值
@@ -165,6 +219,10 @@ Page({
   },
 
   async submit() {
+    // 场次失效兜底：卡片链接可能已生成几分钟，期间该场次可能被约满/下架
+    if (this.data.unavailable) {
+      return wx.showModal({ title: '这个场次约不上了', content: this.data.unavailable, showCancel: false })
+    }
     // 黑名单兜底：profile 尚未返回时用户就点了提交（服务端 createReservation 亦会拦截，此处仅为体验兜底）
     if (this.data.blocked) {
       return wx.showModal({
@@ -174,9 +232,29 @@ Page({
       })
     }
     const { name, phone, partySize, note, wechat, gender, age, fields } = this.data
-    if (!name.trim()) return wx.showToast({ title: '请填写称呼', icon: 'none' })
-    // 手机号非必填：填了才校验格式
-    if (phone && !isPhone(phone)) return wx.showToast({ title: '请填写正确的手机号', icon: 'none' })
+    if (!name.trim()) {
+      // 称呼为必填：用弹窗说清「要么一键获取、要么手工填」，并亮出引导条（不静默 toast 一闪而过）
+      this.setData({ needFill: true })
+      return wx.showModal({
+        title: '请填写称呼',
+        content: '称呼是必填项，可直接在「称呼」处手工输入；手机号可点「获取手机号」一键填入，也可手工输入。',
+        showCancel: false
+      })
+    }
+    // ⭐ 手机号是必填项（2026-09-24 口径，项目若配置的字段里含 phone 就必须填）：
+    //   没手机号的话短信完全发不出去，预约通知形同虚设。
+    //   同样用弹窗说清「为什么必须留 + 只用于本次预约通知」，比一闪而过的 toast 有效得多。
+    if (fields.indexOf('phone') >= 0) {
+      if (!phone.trim()) {
+        this.setData({ needFill: true })
+        return wx.showModal({
+          title: '手机号是必填项',
+          content: '手机号点「获取手机号」即可一键授权填入，也可以手工输入。手机号只会用于本次预约的通知，您不用担心。',
+          showCancel: false
+        })
+      }
+      if (!isPhone(phone)) return wx.showToast({ title: '请填写正确的手机号', icon: 'none' })
+    }
     // 只提交「项目配置勾选」的字段，保证与管理端设置联动
     const payload = { projectId: this.data.projectId, date: this.data.date, sessionId: this.data.sessionId, name, partySize }
     if (fields.indexOf('phone') >= 0) payload.phone = phone || ''
@@ -184,6 +262,12 @@ Page({
     if (fields.indexOf('note') >= 0) payload.note = note || ''
     if (fields.indexOf('gender') >= 0) payload.gender = gender || ''
     if (fields.indexOf('age') >= 0) payload.age = age || ''
+    // 公众号 AI 卡片来源（URL Link 带 from=oa / log）：标记来源并把 aiLogs 的 id 一起提交，
+    // 让「公众号 AI 对话 → 预约成功」的漏斗第三层能被精确回写（两端 openid 不同，只能靠 log id）
+    if (this.fromOa) {
+      payload.source = 'oa'
+      if (this._aiLogId) payload.aiLogId = this._aiLogId
+    }
     // 先同步拉起微信订阅弹窗（必须在手势内）；等用户授权/拒绝结果回写 subs 后再提交预约。
     // 用 Promise.race 加 20s 兜底：万一弹窗异常未回调（如用户强行退出），不至于卡住提交。
     await Promise.race([

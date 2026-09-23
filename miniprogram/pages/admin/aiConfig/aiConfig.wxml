@@ -13,6 +13,37 @@
   </view>
 
   <view class="card">
+    <view class="sec">公众号 AI 助理（客服消息）</view>
+    <view class="muted xs" style="line-height:1.6">顾客在公众号里发消息时，由同一套 AI 助理自动回复；识别到预约意向后，下发【小程序卡片】把顾客导回小程序完成预约（公众号侧拿不到手机号、也弹不了订阅授权，最终下单必须在小程序内完成）。</view>
+    <view class="field row between">
+      <view style="flex:1;padding-right:24rpx">
+        <view class="label">启用公众号自动回复</view>
+        <view class="muted xs" style="margin-top:6rpx;line-height:1.6">需先在云开发「消息推送」把公众号消息指向 mpChat 云函数。</view>
+      </view>
+      <switch checked="{{oaEnabled}}" bindchange="toggleOa"/>
+    </view>
+    <view class="muted xs" style="margin-top:8rpx;line-height:1.6">小程序卡片封面素材 media_id（可选）：在公众号后台上传 520×416 封面图后获取。留空则自动改用「文本 + 小程序文字链」，同样能跳转进小程序。</view>
+    <input class="inp" value="{{cardThumbMediaId}}" placeholder="封面素材 media_id（留空用文字链）" placeholder-class="inp-placeholder" bindinput="onThumb" style="margin-top:12rpx"/>
+  </view>
+
+  <view class="card">
+    <view class="sec">对话轮次上限（成本控制）</view>
+    <view class="muted xs" style="line-height:1.6">限制每个用户每天可用的 AI 对话轮数（一问一答算一轮）。超出后不再调用模型，直接回复下方话术。填 0 表示不限制。</view>
+
+    <view class="fld">
+      <text class="lb">小程序端（每日 / 每人）</text>
+      <input class="inp num" type="number" value="{{dailyTurnLimit}}" placeholder="30" placeholder-class="inp-placeholder" bindinput="onDailyLimit"/>
+    </view>
+    <view class="fld">
+      <text class="lb">公众号端（每日 / 每人）</text>
+      <input class="inp num" type="number" value="{{oaDailyTurnLimit}}" placeholder="沿用上方" placeholder-class="inp-placeholder" bindinput="onOaDailyLimit"/>
+    </view>
+
+    <view class="muted xs" style="margin-top:14rpx;line-height:1.6">超限回复话术（留空用默认："今天的 AI 对话次数已用完啦～…"）</view>
+    <textarea class="qta" value="{{limitReply}}" placeholder="超限时回复给顾客的话" placeholder-class="qta-placeholder" maxlength="200" auto-height cursor-spacing="24" bindinput="onLimitReply" style="margin-top:12rpx"/>
+  </view>
+
+  <view class="card">
     <view class="sec">开场白</view>
     <view class="muted xs" style="line-height:1.6">顾客进入 AI 预约页时，AI 发出的第一条消息。留空则使用内置默认（"我是二曜路8号咖啡清酒的AI预约助理小曜……"）。建议包含店铺名、能问什么、怎么开口预约。</view>
     <textarea class="qta" value="{{greeting}}" placeholder="AI 开场白（留空用默认）" placeholder-class="qta-placeholder" maxlength="200" auto-height cursor-spacing="24" bindinput="onGreeting" style="margin-top:12rpx"/>

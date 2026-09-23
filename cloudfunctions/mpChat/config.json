@@ -1,0 +1,5 @@
+{
+  "permissions": [
+    { "name": "ai.inference", "reason": "公众号内 AI 预约助理对话与预约信息抽取" }
+  ]
+}

@@ -7,6 +7,7 @@
 // 店铺名由控制台签名 SignName 提供（=「二曜路8号咖啡和清酒」），模板正文不含签名前缀。
 
 const REGION = process.env.SMS_REGION || 'ap-guangzhou'
+const { logNotify } = require('./notifyLog')   // 通知流水打点（数据分析「短信通知」数量统计的数据源）
 
 // 读取短信全局配置：优先环境变量，回退 config_sms 文档（_id:'sms'）
 // 返回：{ secretId, secretKey, smsSdkAppId, signName, region,
@@ -48,8 +49,26 @@ async function loadConfig(db) {
  *   templateId：腾讯云控制台已审批的模板 ID（字符串/数字均可）
  * 说明：三个业务模板均为无参数模板，故 TemplateParamSet 恒为空数组。
  */
+/**
+ * 短信模板 ID → 场景键（success / approaching / expired / cancel / dayBefore）
+ * 按 config_sms.templates 反查，反查不到留空（不影响发送，只是统计里归到「其它」）
+ */
+async function sceneOfSmsTemplate(db, templateId) {
+  try {
+    const cfg = await loadConfig(db)
+    const t = (cfg && cfg.templates) || {}
+    for (const k of Object.keys(t)) if (String(t[k]) === String(templateId)) return k
+  } catch (e) { /* ignore */ }
+  return ''
+}
+
 async function sendTemplateSms(o) {
   const { db, phone, templateId } = o
+  const scene = (o && o.scene) || (await sceneOfSmsTemplate(db, templateId))
+  const meta = {
+    channel: 'sms', scene, audience: (o && o.audience) || 'customer',
+    templateId, phone, reservationId: (o && o.reservationId) || ''
+  }
   if (!phone) return { skipped: true, reason: 'no phone' }
   if (!templateId) return { skipped: true, reason: 'no templateId' }
 
@@ -89,12 +108,15 @@ async function sendTemplateSms(o) {
     if (failed.length) {
       const msg = failed.map(s => `${s.SerialNo || ''}:${s.Code}:${s.Message}`).join('; ')
       console.warn('[sms] send rejected:', templateId, msg)
+      await logNotify(db, { ...meta, ok: false, errCode: 'platform_rejected', errMsg: msg })
       return { ok: false, error: msg, detail: set }
     }
     console.log('[sms] sent ok', templateId, set)
+    await logNotify(db, { ...meta, ok: true })
     return { ok: true, res }
   } catch (e) {
     console.warn('[sms] send failed (ignored):', e.message)
+    await logNotify(db, { ...meta, ok: false, errMsg: e.message })
     return { ok: false, error: e.message }
   }
 }

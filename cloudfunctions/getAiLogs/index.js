@@ -20,6 +20,15 @@ exports.main = async (event) => {
     else ands.push({ intent })
   }
 
+  // 来源渠道筛选：all / mp(小程序) / oa(公众号)
+  // ⚠️ 历史数据没有 channel 字段：选「小程序」时需带上「无此字段」的旧记录，否则早期对话会凭空消失。
+  //    用 `channel in ['mp', null]` 无法命中「字段不存在」的文档，故改为：oa 用等值筛选，mp 用「不等于 oa」。
+  const channel = event && event.channel
+  if (channel && channel !== 'all') {
+    if (channel === 'oa') ands.push({ channel: 'oa' })
+    else ands.push({ channel: _.neq('oa') })
+  }
+
   // 日期区间（按 createdAt，北京时间）
   const from = event && event.from
   const to = event && event.to
@@ -45,6 +54,9 @@ exports.main = async (event) => {
   const rows = (res.data || []).map(r => ({
     _id: r._id,
     openid: r.openid || '',
+    // 来源渠道：mp=小程序 / oa=公众号（历史数据无该字段 → 归 mp）
+    channel: r.channel === 'oa' ? 'oa' : 'mp',
+    unionid: r.unionid || '',
     nickname: r.nickname || '',
     input: r.input || '',
     output: r.output || '',

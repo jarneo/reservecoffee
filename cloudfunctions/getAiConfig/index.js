@@ -1,7 +1,12 @@
-// getAiConfig — 读取 AI 智能预约配置：总开关 enabled + 快捷短语 quickReplies
-// ⚠️ 说明：快捷短语需由「顾客端 AI 页」读取后渲染输入框上方的按钮，故本函数不再限定 owner
+// getAiConfig — 读取 AI 智能预约配置
+//   · 总开关 enabled
+//   · 快捷短语 quickReplies / 开场白 greeting
+//   · 公众号 AI 助理开关 oaEnabled
+//   · 每用户每日对话轮次上限 dailyTurnLimit / oaDailyTurnLimit（0 = 不限）、超限话术 limitReply
+//   · 小程序卡片封面素材 cardThumbMediaId（存于 config.mp，供 mpChat 发卡片用）
+// ⚠️ 说明：快捷短语需由「顾客端 AI 页」读取后渲染输入框上方的按钮，故本函数不限定 owner
 //    （返回内容仅为开关与引导话术，无敏感信息；写入仍由 saveAiConfig 严格限定 owner）。
-const { db, ok } = require('./lib')
+const { db, ok, normalizeAiLimits } = require('./lib')
 
 // 内置默认快捷短语：后台未配置时使用（与旧版硬编码的三条保持一致）
 const DEFAULT_QUICK = [
@@ -23,5 +28,24 @@ exports.main = async () => {
     .map(x => ({ label: x.label.trim(), text: x.text.trim() }))
   // 后台未配置（或全是空项）时回落到内置默认，保证「不配置也和以前一样」
   const greeting = (typeof d.greeting === 'string' && d.greeting.trim()) ? d.greeting.trim() : DEFAULT_GREETING
-  return ok({ enabled: d.enabled !== false, quickReplies: quick.length ? quick : DEFAULT_QUICK, greeting })
+
+  // 轮次上限：后台未配置时用共享库默认值（normalizeAiLimits 负责兜底）
+  const lim = normalizeAiLimits(d)
+  // oaDailyTurnLimit 未单独设置时返回 ''，前端显示「沿用上方」而不是把默认值写死进后台
+  const oaSet = (typeof d.oaDailyTurnLimit === 'number' && isFinite(d.oaDailyTurnLimit) && d.oaDailyTurnLimit >= 0)
+
+  // 小程序卡片封面素材（公众号 AI 发卡片用），存于 config.mp
+  const mp = await db.collection('config').doc('mp').get().catch(() => ({ data: null }))
+  const cardThumbMediaId = (mp && mp.data && mp.data.cardThumbMediaId) || ''
+
+  return ok({
+    enabled: d.enabled !== false,
+    quickReplies: quick.length ? quick : DEFAULT_QUICK,
+    greeting,
+    oaEnabled: d.oaEnabled !== false,
+    dailyTurnLimit: lim.dailyTurnLimit,
+    oaDailyTurnLimit: oaSet ? Math.floor(d.oaDailyTurnLimit) : '',
+    limitReply: (typeof d.limitReply === 'string' && d.limitReply.trim()) ? d.limitReply.trim() : '',
+    cardThumbMediaId
+  })
 }

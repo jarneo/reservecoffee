@@ -173,7 +173,94 @@ async function probeFull(event) {
   }
 }
 
+// ===== 网络探针：判定「小程序 access_token 是否受 IP 白名单限制」=====
+// 判据（项目已踩坑两次，必须遵守）：
+//   用**真实 AppID** 探测；不同错误码的含义完全不同 ——
+//     · 40164          → IP 未放行（errmsg 里会带当前出口 IP）
+//     · 40001 / 40125  → IP 已放行，只是 secret 不对（= 通路是通的）
+//     · 40013          → AppID 本身非法（假 AppID 的假阴性，不可用于判断 IP）
+// 小程序 AppID 固定：wxb97578ed89c6e2c7（reservecoffee）
+const MP_APPID = 'wx4d8d957ee8af6073'      // 服务号
+const WXA_APPID = 'wxb97578ed89c6e2c7'     // 小程序
+const BAD = 'PROBE_INVALID_SECRET_0000000000000000'
+
+function httpGetJson(url) {
+  const https = require('https')
+  return new Promise((resolve) => {
+    const t0 = Date.now()
+    let u
+    try { u = new URL(url) } catch (e) { return resolve({ error: 'bad url' }) }
+    const req = https.request({ hostname: u.hostname, path: u.pathname + (u.search || ''), method: 'GET', timeout: 8000 }, res => {
+      let buf = ''
+      res.setEncoding('utf8')
+      res.on('data', c => { buf += c })
+      res.on('end', () => {
+        let j = null
+        try { j = JSON.parse(buf) } catch (e) { return resolve({ error: 'non-json: ' + String(buf).slice(0, 120), ms: Date.now() - t0 }) }
+        resolve(Object.assign({ ms: Date.now() - t0 }, j))
+      })
+    })
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.on('error', e => resolve({ error: e.message }))
+    req.end()
+  })
+}
+
+function verdictOf(j) {
+  if (!j) return '无响应'
+  if (j.error) return '异常：' + j.error
+  const ipm = /invalid ip ([0-9.]+)/.exec(j.errmsg || '')
+  if (j.errcode === 40164) return `❌ IP 未放行（出口 IP ${ipm ? ipm[1] : '?'}）`
+  if (j.errcode === 40001 || j.errcode === 40125) return '✅ IP 已放行（仅 secret 不正确 = 通路 OK）'
+  if (j.errcode === 40013) return '⚠️ AppID 非法（假阴性，不能用于判断 IP）'
+  if (j.access_token) return '✅ 取到 access_token（凭证正确）'
+  return '? errcode=' + (j.errcode || 0) + ' ' + (j.errmsg || '')
+}
+
+async function netProbe(event) {
+  const rounds = Number(event.rounds) || 3
+  const out = { mode: 'net', rounds, env: { MP_APP_ID: process.env.MP_APP_ID || '(unset)', hasMpSecret: !!process.env.MP_APP_SECRET, hasWxaSecret: !!(process.env.WXA_APP_SECRET || process.env.WX_APP_SECRET) }, cases: [] }
+
+  const tok = (appid, secret) => `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
+
+  for (let i = 1; i <= rounds; i++) {
+    // ① 小程序 token（关键判据）
+    const wxa = await httpGetJson(tok(WXA_APPID, BAD))
+    out.cases.push({ round: i, label: '小程序 cgi-bin/token（错 secret）', appid: WXA_APPID, errcode: wxa.errcode || 0, errmsg: (wxa.errmsg || '').slice(0, 90), ms: wxa.ms, verdict: verdictOf(wxa) })
+
+    // ② 服务号 token（对照：已知被拦）
+    const mp = await httpGetJson(tok(MP_APPID, BAD))
+    out.cases.push({ round: i, label: '服务号 cgi-bin/token（错 secret）', appid: MP_APPID, errcode: mp.errcode || 0, errmsg: (mp.errmsg || '').slice(0, 90), ms: mp.ms, verdict: verdictOf(mp) })
+
+    // ③ 服务号 token（真实 secret）——若这条通了，客服消息卡片就能恢复
+    if (process.env.MP_APP_SECRET) {
+      const mpReal = await httpGetJson(tok(MP_APPID, process.env.MP_APP_SECRET))
+      out.cases.push({ round: i, label: '服务号 cgi-bin/token（真实 secret）', appid: MP_APPID, errcode: mpReal.errcode || 0, errmsg: (mpReal.errmsg || '').slice(0, 90), ms: mpReal.ms, gotToken: !!mpReal.access_token, verdict: verdictOf(mpReal) })
+      if (mpReal.access_token) {
+        // ④ 拿到 token 就顺手验一条「客服消息权限」——不实际发送，只查接口权限
+        const ck = await httpGetJson('https://api.weixin.qq.com/cgi-bin/getcallbackip?access_token=' + mpReal.access_token)
+        out.cases.push({ round: i, label: '服务号 getcallbackip（真实 token）', errcode: ck.errcode || 0, errmsg: (ck.errmsg || '').slice(0, 90), ms: ck.ms, verdict: verdictOf(ck) })
+      }
+    }
+    // ⑤ 网页授权（对照组：官方明确不校验 IP）
+    const oauth = await httpGetJson('https://api.weixin.qq.com/sns/oauth2/access_token?appid=' + MP_APPID + '&secret=' + BAD + '&code=x&grant_type=authorization_code')
+    out.cases.push({ round: i, label: '服务号 sns/oauth2（对照组）', errcode: oauth.errcode || 0, errmsg: (oauth.errmsg || '').slice(0, 90), ms: oauth.ms, verdict: verdictOf(oauth) })
+  }
+
+  const uniqIP = new Set(out.cases.map(c => (/invalid ip ([0-9.]+)/.exec(c.errmsg || '') || [])[1]).filter(Boolean))
+  out.uniqueEgressIPs = Array.from(uniqIP)
+  const wxaVerdicts = out.cases.filter(c => c.label.indexOf('小程序') === 0).map(c => c.verdict)
+  out.conclusion = {
+    wxaToken: wxaVerdicts.join(' | '),
+    canUseWxaToken: wxaVerdicts.every(v => v.indexOf('✅ 取到') === 0) ? 'YES(凭证已就位)'
+      : wxaVerdicts.every(v => v.indexOf('✅ IP 已放行') === 0) ? 'YES_IF_SECRET_OK(只需正确小程序 AppSecret)'
+        : 'NO(小程序 access_token 同样被 IP 白名单拦)'
+  }
+  return out
+}
+
 exports.main = async (event = {}) => {
+  if (event.mode === 'net') return netProbe(event)
   if (event.mode === 'full') return probeFull(event)
 
   const wx = aiFromWxSdk()

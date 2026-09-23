@@ -99,12 +99,37 @@ function buildView(d) {
     latencyMs: a.latencyMs || 0,
     // 漏斗三层（人数口径，宽度已按首层归一）+ 两级转化率
     funnel: (a.funnel || []).map(f => ({ key: f.key, label: f.label, uv: f.uv, pct: f.pct })),
-    rate: a.rate || { talkToConfirm: 0, confirmToBooked: 0, overall: 0 }
+    rate: a.rate || { talkToConfirm: 0, confirmToBooked: 0, overall: 0 },
+    // 来源渠道拆分：mp=小程序端 AI / oa=公众号端 AI（含各自轮次·人数·确认·成单与占比）
+    byChannel: {
+      mp: (a.byChannel && a.byChannel.mp) || { turns: 0, users: 0, confirm: 0, booked: 0 },
+      oa: (a.byChannel && a.byChannel.oa) || { turns: 0, users: 0, confirm: 0, booked: 0 },
+      pct: (a.byChannel && a.byChannel.pct) || { mpTurns: 0, oaTurns: 0, mpUsers: 0, oaUsers: 0 }
+    },
+    // AI 带来的预约单来源拆分（reservations.source）
+    orders: a.orders || { ai: 0, oa: 0, total: 0 }
+  }
+
+  // ===== 板块 通知触达（订阅通知 / 短信通知）=====
+  // 数据源 notifyLogs（云函数在每次真正尝试发送后写一条流水），口径与其它板块同一套 from/to。
+  const n = d.notify || { wx: 0, sms: 0, wxOk: 0, smsOk: 0, total: 0, ok: 0, scenes: [] }
+  const notify = {
+    wx: n.wx || 0,
+    sms: n.sms || 0,
+    total: n.total || 0,
+    ok: n.ok || 0,
+    fail: Math.max(0, (n.total || 0) - (n.ok || 0)),
+    succRate: n.total ? +((n.ok / n.total) * 100).toFixed(1) : 0,
+    wxOk: n.wxOk || 0,
+    smsOk: n.smsOk || 0,
+    scenes: (n.scenes || []).map((s, i) => ({
+      id: i, key: s.key, label: s.label, v: s.n, ok: s.ok, wx: s.wx, sms: s.sms, pct: s.pct
+    }))
   }
 
   return {
     kpis, funnel, funnelRate: d.funnelRate, tiers, byProject,
-    ai,
+    ai, notify,
     hasTrend: trend.length > 0, trendBars,
     submitHourBars, submitPeak,
     leadBars,

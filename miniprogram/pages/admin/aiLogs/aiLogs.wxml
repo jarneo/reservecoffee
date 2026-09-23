@@ -7,6 +7,11 @@
       <view class="seg-i {{intent==='confirm'?'on':''}}" bindtap="setIntent" data-v="confirm">确认</view>
       <view class="seg-i {{intent==='booked'?'on':''}}" bindtap="setIntent" data-v="booked">预约成功</view>
     </view>
+    <view class="seg">
+      <view class="seg-i {{channel==='all'?'on':''}}" bindtap="setChannel" data-v="all">全部来源</view>
+      <view class="seg-i {{channel==='mp'?'on':''}}" bindtap="setChannel" data-v="mp">小程序</view>
+      <view class="seg-i {{channel==='oa'?'on':''}}" bindtap="setChannel" data-v="oa">公众号</view>
+    </view>
     <view class="row">
       <picker mode="date" value="{{from}}" bindchange="onFrom"><view class="date">{{from||'起始日'}}</view></picker>
       <text class="tilde">~</text>
@@ -26,6 +31,7 @@
       <view class="top">
         <view class="who">{{item.nickname || '匿名'}}</view>
         <view class="tag {{item.booked?'booked':item.intent}}">{{item.booked?'预约成功':(item.intent==='chat'?'问答':(item.intent==='ask'?'追问':'确认'))}}</view>
+        <view class="tag src {{item.channel==='oa'?'oa':'mp'}}">{{item.channel==='oa'?'公众号':'小程序'}}</view>
         <view class="time">{{item.timeText}}</view>
       </view>
       <view class="q">问：{{item.input}}</view>

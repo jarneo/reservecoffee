@@ -22,6 +22,7 @@ Page({
     hasMore: false,
     loading: false,
     intent: 'all',     // all / chat(问答) / ask(追问) / confirm(确认) / booked(预约成功)
+    channel: 'all',    // all / mp(小程序端 AI) / oa(公众号端 AI)
     keyword: '',
     from: '',
     to: '',
@@ -50,7 +51,7 @@ Page({
     this.setData({ loading: true })
     try {
       const d = await call('getAiLogs', {
-        page, intent: this.data.intent,
+        page, intent: this.data.intent, channel: this.data.channel,
         keyword: this.data.keyword, from: this.data.from, to: this.data.to
       })
       const rows = (d.list || []).map(r => ({
@@ -71,6 +72,13 @@ Page({
     this.setData({ intent: v })
     this.load(true)
   },
+  // 来源渠道筛选：只看小程序端 AI / 只看公众号端 AI（导出 CSV 同步按此筛选）
+  setChannel(e) {
+    const v = e.currentTarget.dataset.v
+    if (v === this.data.channel) return
+    this.setData({ channel: v })
+    this.load(true)
+  },
   onKeyword(e) { this.setData({ keyword: e.detail.value }) },
   search() { this.load(true) },
   clearKw() { this.setData({ keyword: '' }); this.load(true) },
@@ -87,7 +95,9 @@ Page({
     }
     wx.showLoading({ title: '生成中' })
     try {
-      const d = await call('exportData', { type: 'ai', from: this.data.from, to: this.data.to })
+      const d = await call('exportData', {
+        type: 'ai', from: this.data.from, to: this.data.to, channel: this.data.channel
+      })
       this.setData({ showExport: true, exportCsv: d.csv || '', exportCount: d.count || 0 })
     } catch (e) {
       wx.showToast({ title: (e && e.message) || '导出失败', icon: 'none' })

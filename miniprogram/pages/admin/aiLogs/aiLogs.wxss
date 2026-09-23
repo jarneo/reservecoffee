@@ -28,6 +28,9 @@
 .tag.confirm { background: #7A5230; }
 /* 预约成功：完成态，用纯黑区分于其它中间态标签 */
 .tag.booked { background: #1A1A1A; }
+/* 来源渠道标签：浅底深字，避免与意图标签（深底白字）混淆 */
+.tag.src { margin-left: 8rpx; background: #F0EDE8; color: #6B6B6B; }
+.tag.src.oa { background: #EAF1EA; color: #3E6B3E; }
 .time { margin-left: auto; font-size: 22rpx; color: #999; }
 .q { font-size: 27rpx; color: #333; margin-top: 14rpx; line-height: 1.5; }
 .a { font-size: 27rpx; color: #555; margin-top: 10rpx; line-height: 1.6; }

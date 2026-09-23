@@ -7,7 +7,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && (pwd -W 2>/dev/null || pwd))"
 
 # managed Node 路径（固定，勿改）
-NODE="${SYNC_NODE:-C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2/node.exe}"
+# ⚠️ 默认路径必须指向**真实存在**的 managed node（本机是 22.22.2-3；写 22.22.2 会
+#   直接 "No such file or directory"）。换机器/换版本时用 SYNC_NODE 覆盖即可。
+NODE="${SYNC_NODE:-C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe}"
 # miniprogram-ci 装在 workspace node_modules
 export NODE_PATH="${SYNC_NODE_MODULES:-C:/Users/Administrator/.workbuddy/binaries/node/workspace/node_modules}"
 

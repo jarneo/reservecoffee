@@ -66,7 +66,7 @@ exports.main = async (event) => {
   // ⚠️ 必须在上面解构之后声明：subscribed 由该 const 解构产生，提前引用会撞 TDZ（ReferenceError）。
   let userSubs = normalizeSubs(subscribed && typeof subscribed === 'object' ? subscribed : {})
   if (!projectId || !date || !sessionId) return fail('参数缺失')
-  // 手机号非必填：仅当填写时校验格式
+  // 手机号格式：这里先做「填了就得合法」的兜底；是否必填在项目读取之后按 p.fields 判定（见下方）
   if (phone && !/^1[3-9]\d{9}$/.test(phone)) return fail('请填写正确的手机号')
   if (!name || !name.trim()) return fail('请填写称呼')
   const pSize = Number(partySize) || 1
@@ -81,6 +81,16 @@ exports.main = async (event) => {
 
   const maxParty = Number(p.maxParty) || 2
   if (pSize > maxParty) return fail('单次预约人数不能超过 ' + maxParty + ' 人')
+
+  // ⭐ 手机号必填（2026-09-24 口径）：项目字段配置勾选了 phone 就必须留 ——
+  //   没手机号短信/订阅通知都发不出去，到店提醒形同虚设。放在项目读取之后判定，
+  //   是为了尊重管理端「这个项目要不要收集手机号」的配置（缺省视为要）。
+  const needPhone = Array.isArray(p.fields) ? p.fields.indexOf('phone') >= 0 : true
+  if (needPhone) {
+    const ph = String(phone || '').trim()
+    if (!ph) return fail('请填写手机号（预约必填，仅用于本次预约的通知）')
+    if (!/^1[3-9]\d{9}$/.test(ph)) return fail('请填写正确的手机号')
+  }
 
   const adv = Number(p.advanceDays) || 7
   if (!(adv >= 1 && adv <= 30)) return fail('项目可预约天数配置异常')
@@ -155,8 +165,9 @@ exports.main = async (event) => {
       subscribed: (subscribed && typeof subscribed === 'object') ? normalizeSubs(subscribed) : normalizeSubs({}),
       // 本次预约启用的时间轴通知（4 键布尔，恒含全部键）
       notifyPlan: plan,
-      // 来源标记：'ai' = 由 AI 助理对话产生的预约单（用于区分常规下单，便于统计 AI 贡献）
-      source: source === 'ai' ? 'ai' : ''
+      // 来源标记：'ai' = 小程序端 AI 助理；'oa' = 公众号 AI 助理（导回小程序完成下单）
+      // 二者都算 AI 贡献，用于统计 AI 渠道占比；其余常规下单为 ''
+      source: (source === 'ai' || source === 'oa') ? source : ''
     }
     const add = await transaction.collection(COL.reservations).add({ data: reservation })
     await transaction.commit()
@@ -269,7 +280,9 @@ exports.main = async (event) => {
     }
 
     // AI 预约闭环：预约单已落库 → 把对应的 AI 对话日志标记为「预约成功」
-    if (source === 'ai' || aiLogId) await markAiBooked(db, OPENID, aiLogId, add._id)
+    // ⚠️ oa 场景必须靠 aiLogId（随小程序卡片 pagepath 透传）：公众号那轮对话的 openid 是「公众号 openid」，
+    //    与这里的小程序 OPENID 不同，走「按 openid 兜底查」永远查不到 → 漏斗第三层会恒为 0。
+    if (source === 'ai' || source === 'oa' || aiLogId) await markAiBooked(db, OPENID, aiLogId, add._id)
 
     return ok({ id: add._id, status: reservation.status, review: reservation.review })
   } catch (e) {

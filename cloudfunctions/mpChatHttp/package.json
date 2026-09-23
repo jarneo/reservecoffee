@@ -1,0 +1,10 @@
+{
+  "name": "mpChatHttp",
+  "version": "1.0.0",
+  "description": "公众号 AI 助理 · HTTP 入口（服务器配置 + 被动回复）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^4.0.2",
+    "@cloudbase/node-sdk": "^3.16.0"
+  }
+}
