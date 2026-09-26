@@ -1,0 +1,21 @@
+<!-- components/pageLoading — 全屏首屏加载遮罩（logo 由小程序图标充当） -->
+<!-- 说明：这是覆盖层（position:fixed），不参与页面文档流。
+     ⚠️ 绝不要用 wx:if 摘掉页面内容来「隐藏」中间态 —— 那会破坏 aiFab 的尺寸测量
+        与 AI 页 scroll-into-view 的目标节点。遮罩只负责盖住。 -->
+<view wx:if="{{visible}}"
+      class="pl-mask {{fading ? 'pl-fade' : ''}} {{theme === 'dark' ? 'pl-dark' : ''}}"
+      style="z-index: {{zIndex}}"
+      catchtouchmove="noop">
+  <view class="pl-logo-wrap">
+    <!-- logo 文件缺失时 binderror → 自动降级为品牌色字标占位，不阻塞开发 -->
+    <image wx:if="{{logoSrc && !logoErr}}"
+           class="pl-logo"
+           src="{{logoSrc}}"
+           mode="aspectFill"
+           binderror="onLogoErr" />
+    <view wx:else class="pl-logo pl-logo-ph">{{phText}}</view>
+  </view>
+  <view class="pl-title">{{title}}</view>
+  <!-- slogan 默认空串：与微信启动页一致只出一行标题；传值才渲染 -->
+  <view wx:if="{{slogan}}" class="pl-slogan">{{slogan}}</view>
+</view>

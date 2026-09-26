@@ -1,4 +1,5 @@
 const { call } = require('../../utils/cloud')
+const boot = require('../../utils/boot')
 const { ymd, isSessionExpired } = require('../../utils/util')
 
 function addDaysDate(n) { const t = new Date(); t.setDate(t.getDate() + n); return t }
@@ -8,10 +9,12 @@ Page({
     projectId: '', project: {}, introImages: [], schedules: [], openDays: [], advanceDays: 7,
     dateAnchor: '', dateChips: [], dateRangeLabel: '', canPrev: false,
     selectedDate: '', bizWindow: '', sessions: [],
-    showSeatInfo: true
+    showSeatInfo: true,
+    booting: true
   },
 
   onLoad(q) {
+    this._boot = boot(this, { timeout: 6000 })
     // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     const pid = q.projectId || ''
@@ -32,6 +35,9 @@ Page({
   },
 
   load() {
+    // 「数据在路上」这一件事，由渲染回调里的 settle(2) 释放。
+    // ⚠️ 不能只靠 images(introN)：项目没有介绍图时 n=0，计数为 0，遮罩会拖到硬超时才关
+    this._boot.hold()
     call('getProject', { projectId: this.data.projectId })
       .then(d => {
         const p = d.project
@@ -46,9 +52,22 @@ Page({
           this.buildDateChips()
           // 默认展开「离当天最近、且确有可选场次」的可约日（今天若有可选场次则为今天，否则向后取第一个）
           this.autoSelectFirst()
+          // 就绪门：本页首屏是三步串行 setData 逐步成型的
+          // （日期条 → 默认选中日 → 场次列表），最深处在 selectDay 的 setData 回调里。
+          // 用帧收敛等 2 次渲染回调后关闭，确保遮罩消失时三段都已定型。
+          const introN = (p.introImages || []).length
+          this._boot.images(introN).settle(2)
         })
       })
-      .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+      .catch(e => {
+        wx.showToast({ title: e.message || '加载失败', icon: 'none' })
+        this._boot.close('loadFail')
+      })
+  },
+
+  // bindload / binderror 共用：单张图失败也算完成，不阻塞整页
+  onBootImg() {
+    this._boot.image()
   },
 
   // 计算「离当天最近、且确有可选场次」的可约日（在提前预约窗口内）

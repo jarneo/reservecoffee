@@ -1,4 +1,5 @@
 const { call } = require('../../utils/cloud')
+const boot = require('../../utils/boot')
 
 function stars(n) {
   const r = Math.round(Number(n) || 0)
@@ -14,29 +15,47 @@ function splitCols(list) {
 }
 
 Page({
-  data: { projectId: '', shopName: '', shopTag: '图片菜品 · 真实评价', products: [] },
+  data: { projectId: '', shopName: '', shopTag: '图片菜品 · 真实评价', products: [], colA: [], colB: [], booting: true },
   onLoad(q) {
+    this._boot = boot(this, { timeout: 6000 })
     // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
     wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
     this.setData({ projectId: q.projectId || '' })
     this.load()
   },
   load() {
-    if (!this.data.projectId) return wx.showToast({ title: '缺少项目', icon: 'none' })
+    // 早退分支：不发起任何请求 → 必须显式关掉遮罩，否则永久白屏
+    if (!this.data.projectId) {
+      this._boot.close('noProject')
+      return wx.showToast({ title: '缺少项目', icon: 'none' })
+    }
     // 加载项目名作为菜单品牌头（对齐 menu-design.html 的店铺菜单 hero）
-    call('getProject', { projectId: this.data.projectId })
-      .then(d => { if (d && d.project && d.project.name) this.setData({ shopName: d.project.name }) })
-      .catch(() => {})
+    this._boot.add(
+      call('getProject', { projectId: this.data.projectId })
+        .then(d => { if (d && d.project && d.project.name) this.setData({ shopName: d.project.name }) })
+        .catch(() => {})
+    )
     // listProducts 已按 status:'on' 过滤，即「在售菜品」
-    call('listProducts', { projectId: this.data.projectId })
-      .then(d => {
-        const products = (d.products || []).map(p => ({
-          ...p, stars: stars(p.rating), priceText: '¥' + (p.price || 0)
-        }))
-        const cols = splitCols(products)
-        this.setData({ products, colA: cols.colA, colB: cols.colB })
-      })
-      .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+    this._boot.add(
+      call('listProducts', { projectId: this.data.projectId })
+        .then(d => {
+          const products = (d.products || []).map(p => ({
+            ...p, stars: stars(p.rating), priceText: '¥' + (p.price || 0)
+          }))
+          const cols = splitCols(products)
+          this.setData({ products, colA: cols.colA, colB: cols.colB }, () => {
+            // 图片门：两列卡片图的真实张数在渲染回调里统计
+            const n = products.filter(p => p.imageUrl).length
+            this._boot.images(n).settle(1)
+          })
+        })
+        .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+    )
+  },
+
+  // bindload / binderror 共用：单张图失败也算完成，不阻塞整页
+  onBootImg() {
+    this._boot.image()
   },
   goProduct(e) {
     wx.navigateTo({ url: '/pages/product/product?productId=' + e.currentTarget.dataset.id })

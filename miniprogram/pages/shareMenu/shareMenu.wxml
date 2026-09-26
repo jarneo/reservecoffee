@@ -12,7 +12,7 @@
   <view class="card" wx:for="{{products}}" wx:key="_id">
     <view class="dish">
       <view class="dish-img">
-        <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" class="img"/>
+        <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill" class="img" lazy-load/>
         <view wx:else class="ph">图片</view>
       </view>
       <view class="dish-info">
@@ -37,7 +37,7 @@
       <view class="row between">
         <view class="rev-user">
           <view class="ava">
-            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" class="ava-img"/>
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" class="ava-img" lazy-load/>
             <view wx:else class="ava-def">{{item.initial}}</view>
           </view>
           <view class="bold">{{item.name}}</view>
@@ -47,7 +47,7 @@
       <view class="stars" style="margin:8rpx 0">{{item.stars}}</view>
       <view class="sm" style="margin-top:2rpx">{{item.text}}</view>
       <view wx:if="{{item.imagesUrl.length}}" class="rev-imgs">
-        <image wx:for="{{item.imagesUrl}}" wx:for-item="im" wx:key="*this" src="{{im}}" class="rev-img" mode="aspectFill"/>
+        <image wx:for="{{item.imagesUrl}}" wx:for-item="im" wx:key="*this" src="{{im}}" class="rev-img" mode="aspectFill" lazy-load/>
       </view>
     </view>
   </view>

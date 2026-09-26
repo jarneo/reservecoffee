@@ -1,5 +1,5 @@
 // adminProducts — 管理端：列出某项目全部菜品（含下架，含图片临时 URL）
-const { db, COL, ok, fail, cloud, wxCtx, getRole } = require('./lib')
+const { db, COL, ok, fail, cloud, wxCtx, getRole, thumb } = require('./lib')
 
 async function resolveImages(list) {
   const ids = (list || []).map(p => p.image).filter(Boolean)
@@ -10,7 +10,7 @@ async function resolveImages(list) {
       ;(res.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
     } catch (e) { console.warn('[adminProducts] getTempFileURL failed:', e.message) }
   }
-  return (list || []).map(p => ({ ...p, imageUrl: urlMap[p.image] || '' }))
+  return (list || []).map(p => ({ ...p, imageUrl: thumb(urlMap[p.image] || '', 'card') }))
 }
 
 exports.main = async (event) => {

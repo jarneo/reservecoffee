@@ -85,4 +85,7 @@
       <button class="btn ghost block" bindtap="closeSuccess">返回首页</button>
     </view>
   </view>
+
+  <!-- 首屏加载遮罩：等 getProject + getMyProfile 两跳收敛（避让 z-index 100 的成功层） -->
+  <page-loading show="{{booting}}" z-index="{{1050}}" />
 </view>

@@ -10,7 +10,7 @@
     <view class="menu-col">
       <view wx:for="{{colA}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
         <view class="menu-img-wrap">
-          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix" bindload="onBootImg" binderror="onBootImg"/>
           <view wx:else class="menu-img ph">图片</view>
         </view>
         <view class="menu-info">
@@ -22,7 +22,7 @@
     <view class="menu-col">
       <view wx:for="{{colB}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
         <view class="menu-img-wrap">
-          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix" bindload="onBootImg" binderror="onBootImg"/>
           <view wx:else class="menu-img ph">图片</view>
         </view>
         <view class="menu-info">
@@ -32,4 +32,7 @@
       </view>
     </view>
   </view>
+
+  <!-- 首屏加载遮罩：等项目名 + 菜品列表 + 首屏菜品图全部就绪 -->
+  <page-loading show="{{booting}}" />
 </view>

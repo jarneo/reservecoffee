@@ -35,7 +35,7 @@
     </view>
     <view class="img-grid">
       <view wx:for="{{introImages}}" wx:key="fileId" class="img-cell">
-        <image class="img-thumb" src="{{item.url||item.fileId}}" mode="aspectFill"/>
+        <image class="img-thumb" src="{{item.url||item.fileId}}" mode="aspectFill" lazy-load/>
         <view class="img-mask">
           <view class="img-btns">
             <text class="img-btn" catchtap="replaceImage" data-i="{{index}}">替换</text>

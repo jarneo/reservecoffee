@@ -1,30 +1,19 @@
 // getHomepage — 顾客端首页数据：首页配置 + 已发布且未删除项目列表 + 在售店铺菜单
-const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDaySlash, loadAiSwitch } = require('./lib')
+const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDaySlash, loadAiSwitch, thumb } = require('./lib')
 
 // 首页店铺菜单最多展示数量（按 sort 升序取前 N 个）
 const MENU_LIMIT = 10
 
-async function resolveImage(fileId) {
-  if (!fileId) return ''
+// 批量把 cloud fileID 解析为临时下载链接（一次调用换回全部，避免 N 次网络往返）
+async function resolveUrls(fileIds) {
+  const ids = (fileIds || []).filter(Boolean)
+  const map = {}
+  if (!ids.length) return map
   try {
-    const res = await cloud.getTempFileURL({ fileList: [fileId] })
-    const f = (res.fileList || [])[0]
-    return (f && f.fileID) ? f.tempFileURL : ''
-  } catch (e) { console.warn('[getHomepage] resolveImage failed:', e.message); return '' }
-}
-
-// 批量解析菜品主图临时 URL
-async function resolveProducts(list) {
-  if (!list.length) return list
-  const ids = list.map(p => p.image).filter(Boolean)
-  let urlMap = {}
-  if (ids.length) {
-    try {
-      const res = await cloud.getTempFileURL({ fileList: ids })
-      ;(res.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
-    } catch (e) { console.warn('[getHomepage] getTempFileURL failed:', e.message) }
-  }
-  return list.map(p => ({ ...p, imageUrl: urlMap[p.image] || '' }))
+    const res = await cloud.getTempFileURL({ fileList: ids })
+    ;(res.fileList || []).forEach(f => { if (f && f.fileID && f.tempFileURL) map[f.fileID] = f.tempFileURL })
+  } catch (e) { console.warn('[getHomepage] getTempFileURL failed:', e.message) }
+  return map
 }
 
 // 场次是否已过预约截止（与顾客端 util.isSessionExpired 同源：仅取 cutoff.minutes / cutoff.mode）
@@ -40,27 +29,36 @@ function sessionExpired(dateStr, startStr, cutoff) {
   return Date.now() >= deadline.getTime()
 }
 
+// 一次性拉取所有项目在 [今天, 今天+maxAdvanceDays] 窗口内的 schedules 并按 projectId 分组。
+// ⚠️ 原来是「每个项目各查一次 + 各自 while 分页」= N 次 DB 往返；这里合并为 1 次查询（保留分页），
+// 并用 date 范围条件把返回的文档量从「全部历史」压到「只含窗口内」。
+async function loadSchedules(projectIds, today, globalMaxWin) {
+  const map = {}
+  if (!projectIds || !projectIds.length) return map
+  let skip = 0
+  while (true) {
+    const res = await db.collection(COL.schedules)
+      .where({ projectId: _.in(projectIds), date: _.gte(today).and(_.lte(globalMaxWin)) })
+      .orderBy('date', 'asc').skip(skip).limit(100).get()
+    const batch = res.data || []
+    batch.forEach(s => { (map[s.projectId] = map[s.projectId] || []).push(s) })
+    if (batch.length < 100) break
+    skip += 100
+  }
+  return map
+}
+
 // 依据项目配置计算首页可预约状态与可约日期：
 //   paused → 暂停；否则 可约日期 = openDays ∩ [今天, 今天+advanceDays] ∩ 有场次且未 closed ∩ 至少一场次可约(未暂停/有余额/未过期)
-async function projectAvailability(p) {
-  const today = ymd(new Date())
+// 纯计算，不再访问数据库（schedules 由 loadSchedules 提前批量载入）
+function projectAvailability(p, schedMap, today) {
   const adv = Number(p.advanceDays) || 7
   const maxWin = addDays(adv)
   if (p.paused) return { bookStatus: 'paused', availableDates: [], availableCount: 0 }
 
-  // 拉取该项目全部 schedules（分页规避云端默认上限），仅保留窗口内
-  const raw = []
-  let skip = 0
-  while (true) {
-    const res = await db.collection(COL.schedules).where({ projectId: p._id }).orderBy('date', 'asc').skip(skip).limit(100).get()
-    const batch = res.data || []
-    raw.push(...batch)
-    if (batch.length < 100) break
-    skip += 100
-  }
   const closedSet = new Set()
   const sessMap = {}
-  raw.forEach(s => {
+  ;(schedMap[p._id] || []).forEach(s => {
     if (s.date >= today && s.date <= maxWin) {
       if (s.closed) closedSet.add(s.date)
       sessMap[s.date] = s.sessions || []
@@ -87,62 +85,81 @@ async function projectAvailability(p) {
 exports.main = async () => {
   const { OPENID } = wxCtx()
   // 首页文案（单文档 _id='homepage'）
-  const hp = await db.collection(COL.homepage).doc('homepage').get().catch(() => ({ data: null }))
-  const homepage = hp.data || { logo: '二曜路8号咖啡和清酒', tag: 'SLOW COFFEE · 预约制', heroImage: '', intro: '' }
+  const today = ymd(new Date())
 
-  // 已发布且未删除的项目
-  const proj = await db.collection(COL.projects).where({ published: true, deleted: _.neq(true) }).orderBy('createdAt', 'asc').get()
-  const projects = await Promise.all((proj.data || []).map(async p => {
-    const av = await projectAvailability(p)
+  // ── 阶段 1：三个互不依赖的查询并行发起（原来是三次串行 await）──
+  const [hp, proj, aiEnabled] = await Promise.all([
+    db.collection(COL.homepage).doc('homepage').get().catch(() => ({ data: null })),
+    db.collection(COL.projects).where({ published: true, deleted: _.neq(true) }).orderBy('createdAt', 'asc').get(),
+    // AI 智能预约总开关（缺省开）：前端用它控制首页浮窗与 AI 入口显隐（详见 ai-reserve-spec.md §15）
+    loadAiSwitch(db).catch(() => true)
+  ])
+  const homepage = hp.data || { logo: '二曜路8号咖啡和清酒', tag: 'SLOW COFFEE · 预约制', heroImage: '', intro: '' }
+  const projList = proj.data || []
+  const projectIds = projList.map(p => p._id)
+
+  // 批量查 schedules 的窗口上界：取所有项目 advanceDays 的最大值，保证一次查询覆盖每个项目的窗口
+  const globalMaxWin = projList.reduce((m, p) => {
+    const w = addDays(Number(p.advanceDays) || 7)
+    return w > m ? w : m
+  }, addDays(7))
+
+  // ── 阶段 2：schedules / 菜品 / 图片链接 三条并行（原本是串行 + 逐项 await）──
+  // 一次性收集阶段 1 已拿到的所有 fileID，合并成单次 getTempFileURL 调用
+  const needIds = []
+  projList.forEach(p => { if (p.iconFileId) needIds.push(p.iconFileId) })
+  if (projList.length && projList[0].image) needIds.push(projList[0].image)
+  if (homepage.heroImage) needIds.push(homepage.heroImage)
+
+  const [schedMap, pRes, urlMap] = await Promise.all([
+    loadSchedules(projectIds, today, globalMaxWin),
+    projectIds.length
+      ? db.collection(COL.products)
+          .where({ projectId: _.in(projectIds), status: 'on' })
+          .orderBy('sort', 'asc').limit(MENU_LIMIT).get()
+      : Promise.resolve({ data: [] }),
+    resolveUrls(needIds)
+  ])
+
+  // 项目可约状态为纯计算（schedules 已在阶段 2 批量载入）；图标/封面一律走缩略图
+  const projects = projList.map((p, i) => {
+    const av = projectAvailability(p, schedMap, today)
     return {
       _id: p._id,
       name: p.name,
       icon: p.icon,
-      iconUrl: await resolveImage(p.iconFileId),
+      iconUrl: thumb(urlMap[p.iconFileId] || '', 'icon'),
       image: p.image,
-      imageUrl: '',
+      // 仅首个可见项目的封面作为首页头图（与原逻辑一致）
+      imageUrl: i === 0 ? thumb(urlMap[p.image] || '', 'cover') : '',
       intro: p.intro,
       needReview: !!p.needReview,
       bookStatus: av.bookStatus,
       availableDates: av.availableDates,
       availableCount: av.availableCount
     }
+  })
+  if (homepage.heroImage) homepage.heroImageUrl = thumb(urlMap[homepage.heroImage] || '', 'hero')
+
+  // ── 阶段 3：评价数 + 菜品图链接 并行 ──
+  const rawProducts = pRes.data || []
+  const productIds = rawProducts.map(p => p._id)
+  const [rRes, productUrlMap] = await Promise.all([
+    productIds.length
+      ? db.collection(COL.reviews).where({ productId: _.in(productIds), status: 'normal' }).get()
+      : Promise.resolve({ data: [] }),
+    resolveUrls(rawProducts.map(p => p.image))
+  ])
+
+  const cnt = {}
+  ;(rRes.data || []).forEach(r => { cnt[r.productId] = (cnt[r.productId] || 0) + 1 })
+  const products = rawProducts.map(p => ({
+    _id: p._id, name: p.name, price: p.price, desc: p.desc,
+    image: p.image,
+    imageUrl: thumb(productUrlMap[p.image] || '', 'card'),
+    reviewCount: cnt[p._id] || 0
   }))
 
-  // 解析首个可见项目的封面为临时 URL（顾客首页头图）
-  if (projects.length && projects[0].image) {
-    projects[0].imageUrl = await resolveImage(projects[0].image)
-  }
-
-  // 店铺菜单：在售菜品（按可见项目范围），含评价数
-  let products = []
-  const projectIds = projects.map(p => p._id)
-  if (projectIds.length) {
-    const pRes = await db.collection(COL.products)
-      .where({ projectId: _.in(projectIds), status: 'on' })
-      .orderBy('sort', 'asc').limit(MENU_LIMIT).get()
-    products = await resolveProducts(pRes.data || [])
-
-    const productIds = products.map(p => p._id)
-    if (productIds.length) {
-      const rRes = await db.collection(COL.reviews).where({ productId: _.in(productIds), status: 'normal' }).get()
-      const cnt = {}
-      ;(rRes.data || []).forEach(r => { cnt[r.productId] = (cnt[r.productId] || 0) + 1 })
-      products = products.map(p => ({
-        _id: p._id, name: p.name, price: p.price, desc: p.desc,
-        image: p.image, imageUrl: p.imageUrl, reviewCount: cnt[p._id] || 0
-      }))
-    } else {
-      products = products.map(p => ({ ...p, reviewCount: 0 }))
-    }
-  }
-
-  // 解析首页主图（店铺主图）为临时 URL，供顾客首页头图展示
-  if (homepage.heroImage) {
-    try { homepage.heroImageUrl = await resolveImage(homepage.heroImage) } catch (e) { homepage.heroImageUrl = '' }
-  }
   console.log('[getHomepage] openid=', OPENID, 'projects=', projects.length, 'products=', products.length)
-  // AI 智能预约总开关（缺省开）：用于前端控制首页浮窗与 AI 入口显隐（详见 ai-reserve-spec.md §15）
-  const aiEnabled = await loadAiSwitch(db).catch(() => true)
   return ok({ homepage, projects, products, aiEnabled })
 }

@@ -49,6 +49,9 @@
     ]
   },
   "componentFramework": "glass-easel",
+  "usingComponents": {
+    "page-loading": "/components/pageLoading/pageLoading"
+  },
   "plugins": {
     "WechatSI": {
       "version": "0.3.10",

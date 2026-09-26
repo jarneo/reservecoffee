@@ -760,6 +760,37 @@ async function generateUrlLinkCached(path, query, envVersion) {
   return link
 }
 
+// 生成「微信内拉起小程序」的 Short Link（形如 #小程序://<小程序名>/<code>）。
+// 与 URL Link(wxaurl.cn) 的区别：Short Link 专为「微信内」场景（公众号文章、自动回复、菜单、客服消息文本），
+// 用户点一下即唤起小程序；URL Link 还可用于站外（短信/邮件/网页）。
+// 公众号自定义菜单：官方「跳转小程序」类型用 appid+pagepath；但第三方菜单平台 / 文章 / 自动回复
+//   直接吃这个 #小程序:// 明文链接，菜单配置文档里给这个最方便。
+// 注意：page_url 须是已发布小程序的页面路径（可带 query，≤1024 字符）；is_permanent:true = 永久有效。
+async function generateShortLink({ pageUrl, title, permanent }) {
+  if (!pageUrl) throw new Error('generateShortLink 缺少 pageUrl')
+  const body = {
+    page_url: String(pageUrl),
+    page_title: String(title || '').slice(0, 20),
+    is_permanent: permanent === false ? false : true
+  }
+  const call = (token) => httpsJson(
+    'https://api.weixin.qq.com/wxa/genwxashortlink?access_token=' + encodeURIComponent(token),
+    { method: 'POST', body: JSON.stringify(body) }
+  )
+  let token = await getWxaAccessToken()
+  let j = await call(token)
+  const code = j && j.errcode
+  // 42001/40001/40014：token 过期或失效 → 强制刷新一次再试
+  if (code === 42001 || code === 40001 || code === 40014) {
+    token = await getWxaAccessToken(true)
+    j = await call(token)
+  }
+  if (j && j.errcode) throw new Error(`genwxashortlink 失败 ${j.errcode}：${j.errmsg || ''}`)
+  const link = (j && (j.link || j.short_link)) || ''
+  if (!link) throw new Error('genwxashortlink 未返回 link')
+  return link
+}
+
 // 生成「小程序码」图片（返回 PNG Buffer）。
 // 为什么需要它：公众号被动回复发不了 image 消息（要素材 MediaId，而素材接口需要服务号 token，
 // 被 IP 白名单拦死）；但图文消息(news)的 PicUrl 接受**任意公网图片链接**。
@@ -808,6 +839,37 @@ function isJsonResp(r) {
   return !!(r.buf && r.buf.length && r.buf[0] === 0x7b)
 }
 
+// ── 图片按显示尺寸分档缩略（腾讯云数据万象 imageMogr2）───────────────────────
+// 背景：管理端上传是「选图即传」原图（无压缩），实测单张菜品图 96~186KB、项目图标
+// 221~232KB，而实际显示仅 170px / 60px 宽 —— 首屏为此下载约 1.75MB，是加载慢的主因。
+// 实测：给临时下载链接追加处理参数仍然 HTTP 200（桶为私有读，匿名 403，但签名通道有效），
+// 且 thumbnail/400x/quality/70 让 167,992B → 10,256B（省 94%）。存量图无需重新上传。
+// ⚠️ 只缩不放：imageMogr2/thumbnail/<W>x 仅限制最大边长，小图不会被放大。
+const THUMB_SPEC = {
+  hero:   'imageMogr2/thumbnail/750x/quality/72',   // 首页/店铺头图（全宽 750rpx）
+  cover:  'imageMogr2/thumbnail/750x/quality/72',   // 项目封面大图
+  card:   'imageMogr2/thumbnail/400x/quality/72',   // 菜品卡片（每栏约 170px 宽）
+  icon:   'imageMogr2/thumbnail/160x/quality/80',   // 项目/店铺图标（60px）
+  avatar: 'imageMogr2/thumbnail/160x/quality/80',   // 顾客头像
+  full:   'imageMogr2/thumbnail/1080x/quality/80'   // 详情页点开看的大图
+}
+
+/** 给云存储临时链接追加缩略图参数；非云存储链接 / 已处理过 / 空值 → 原样返回 */
+function thumb(url, kind) {
+  if (!url || typeof url !== 'string') return url || ''
+  const spec = THUMB_SPEC[kind]
+  if (!spec) return url
+  // 仅对 CloudBase 云存储域名生效，避免误伤外链
+  if (url.indexOf('.tcb.qcloud.la/') < 0) return url
+  if (url.indexOf('imageMogr2') >= 0) return url   // 已追加过，防重复
+  return url + (url.indexOf('?') >= 0 ? '&' : '?') + spec
+}
+
+/** 批量给对象数组里的图片字段加缩略参数（原地返回新数组） */
+function thumbs(list, field, target, kind) {
+  return (list || []).map(it => ({ ...it, [target || 'imageUrl']: thumb(it[field], kind) }))
+}
+
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
   ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjYmd, bjAddDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
@@ -823,5 +885,7 @@ module.exports = {
   // 公众号客服消息
   httpsJson, getMpAccessToken, sendMpCustom,
   // 小程序 access_token / URL Link / 小程序码（公众号跳小程序的免费通路）
-  getWxaAccessToken, generateUrlLink, generateUrlLinkCached, getWxaQrCode, wxaEnvVersion
+  getWxaAccessToken, generateUrlLink, generateUrlLinkCached, generateShortLink, getWxaQrCode, wxaEnvVersion,
+  // 图片按显示尺寸缩略（首屏加载提速：实测 1.20MB → 94KB，省 92%）
+  THUMB_SPEC, thumb, thumbs
 }

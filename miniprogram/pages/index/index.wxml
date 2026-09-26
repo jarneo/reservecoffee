@@ -1,6 +1,6 @@
 <view class="page">
   <view class="hero">
-    <image wx:if="{{homepage.heroImageUrl}}" class="hero-img" src="{{homepage.heroImageUrl}}" mode="widthFix"/>
+    <image wx:if="{{homepage.heroImageUrl}}" class="hero-img" src="{{homepage.heroImageUrl}}" mode="widthFix" bindload="onBootImg" binderror="onBootImg"/>
     <view wx:if="{{homepage.intro}}" class="intro">{{homepage.intro}}</view>
   </view>
 
@@ -30,7 +30,7 @@
     <view class="menu-col">
       <view wx:for="{{colA}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
         <view class="menu-img-wrap">
-          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix" bindload="onBootImg" binderror="onBootImg"/>
           <view wx:else class="menu-img ph">暂无图</view>
         </view>
         <view class="menu-info">
@@ -42,7 +42,7 @@
     <view class="menu-col">
       <view wx:for="{{colB}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
         <view class="menu-img-wrap">
-          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix" bindload="onBootImg" binderror="onBootImg"/>
           <view wx:else class="menu-img ph">暂无图</view>
         </view>
         <view class="menu-info">
@@ -56,4 +56,7 @@
   <view wx:if="{{role!=='none'}}" class="btn ghost block" bindtap="goAdmin" style="margin-top:24rpx">进入管理端</view>
 
   <aiFab aiEnabled="{{aiEnabled}}" />
+
+  <!-- 首屏加载遮罩：onLoad 建门 + onShow 上报，资源全部就绪后淡出 -->
+  <page-loading show="{{booting}}" />
 </view>

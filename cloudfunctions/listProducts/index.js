@@ -1,5 +1,5 @@
 // listProducts — 顾客端：列出某项目「在售」菜品（含图片临时 URL）
-const { db, COL, ok, fail, cloud } = require('./lib')
+const { db, COL, ok, fail, cloud, thumb } = require('./lib')
 
 async function resolveImages(list) {
   const ids = (list || []).map(p => p.image).filter(Boolean)
@@ -10,7 +10,8 @@ async function resolveImages(list) {
       ;(res.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
     } catch (e) { console.warn('[listProducts] getTempFileURL failed:', e.message) }
   }
-  return (list || []).map(p => ({ ...p, imageUrl: urlMap[p.image] || '' }))
+  // 菜品卡片图：每栏约 170px 宽，400x 足够（原图 96~186KB → 约 10KB）
+  return (list || []).map(p => ({ ...p, imageUrl: thumb(urlMap[p.image] || '', 'card') }))
 }
 
 exports.main = async (event) => {

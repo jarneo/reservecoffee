@@ -38,14 +38,32 @@ App({
   },
 
   // 获取/刷新管理员角色（写入 globalData）
-  refreshRole() {
+  //
+  // ⚠️ 启动时这里原本会被并发调用两次（onLaunch 的「探测角色」与「链式埋点」各一次），
+  // 加上首页 onShow 的一次，同一次冷启动要跑 3 遍 getRole —— 白白多两次云函数往返。
+  // 改为「短 TTL 内复用同一个 Promise」：
+  //   · onLaunch 两处 + 首页 onShow 间隔极短 → 合并为 1 次请求
+  //   · 超过 TTL（30s）后再次调用仍会真发请求，不会把角色永久钉死
+  //   · 失败不缓存（清空 _rolePromise），下次调用正常重试
+  //   · force=true 强制刷新：管理端门禁必须拿到最新权限，不能吃缓存
+  refreshRole(force) {
+    const now = Date.now()
+    const TTL = 30 * 1000
+    if (!force && this._rolePromise && (now - (this._roleAt || 0)) < TTL) {
+      return this._rolePromise
+    }
+    this._roleAt = now
     const { call } = require('./utils/cloud')
-    return call('getRole')
+    this._rolePromise = call('getRole')
       .then(r => {
         this.globalData.role = (r && r.role) || 'none'
         this.globalData.openid = (r && r.openid) || ''
         return r
       })
-      .catch(() => ({ role: 'none' }))
+      .catch(() => {
+        this._rolePromise = null   // 失败不留缓存，下次重试
+        return { role: 'none' }
+      })
+    return this._rolePromise
   }
 })

@@ -4,7 +4,9 @@ module.exports = Behavior({
   methods: {
     async guard(roles) {
       const app = getApp()
-      const r = await app.refreshRole()
+      // force=true：门禁判断权限必须拿最新结果，不能吃 30s TTL 缓存
+      // （管理员可能刚被授权/撤权，管理端是低频操作，多一次请求无所谓）
+      const r = await app.refreshRole(true)
       const role = (r && r.role) || 'none'
       if (!roles.includes(role)) {
         wx.showModal({

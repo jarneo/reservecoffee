@@ -41,7 +41,7 @@
 // 公众号后台：设置与开发 → 基本配置 → 服务器配置 → 填 URL + Token，消息加解密方式选「明文模式」。
 const crypto = require('crypto')
 const { db, _, COL } = require('./lib')
-const { generateUrlLinkCached, getWxaQrCode } = require('./lib')
+const { generateUrlLinkCached, generateShortLink, getWxaQrCode } = require('./lib')
 const { runChat, FILL_REQUIRED_NOTE } = require('./aiCore')
 
 // 服务器配置 Token（公众号后台填同一个值）。可在 config.mp.pushToken 覆盖。
@@ -452,6 +452,28 @@ exports.main = async (event) => {
       return R(xmlText(from, to, `【链接自检】✅ 生成成功（${Date.now() - t}ms）\n${path}\n${link}\n\n点上面的链接试试，能进小程序就说明卡片通道已通。`), 'text/xml; charset=utf-8')
     } catch (e) {
       return R(xmlText(from, to, `【链接自检】❌ 失败：${String(e && (e.message || e)).slice(0, 220)}`), 'text/xml; charset=utf-8')
+    }
+  }
+
+  // ===== 排障命令：私聊发「#shortlink」→ 回一条 小程序 Short Link（#小程序://快预约/...）=====
+  // 用于给公众号菜单 / 文章 / 自动回复生成「微信内直接唤起小程序」的明文短链。
+  // 官方「自定义菜单 · 跳转小程序」类型本身是 appid+pagepath，但很多第三方菜单平台、文章、自动回复
+  //   直接吃这个 #小程序:// 明文链接，复制即用。
+  // 支持带参数：`#shortlink <pagePath>|<query>` —— 生成的短链永久有效（is_permanent:true）。
+  if (content.indexOf('#shortlink') === 0) {
+    const t = Date.now()
+    const rest = content.slice(9).trim()
+    const seg = rest.split('|')
+    const path = String(seg[0] || '').trim() || 'pages/ai/ai'
+    const query = String(seg.slice(1).join('|') || '').trim()
+    const pageUrl = query ? (path + '?' + query) : path
+    try {
+      const link = await generateShortLink({ pageUrl, title: '快预约' })
+      return R(xmlText(from, to,
+        `【小程序短链自检】✅ 生成成功（${Date.now() - t}ms）\n${pageUrl}\n${link}\n\n复制上面的短链，可填到公众号菜单 / 文章 / 自动回复，点一下即在微信内唤起小程序。`),
+        'text/xml; charset=utf-8')
+    } catch (e) {
+      return R(xmlText(from, to, `【小程序短链自检】❌ 失败：${String(e && (e.message || e)).slice(0, 220)}`), 'text/xml; charset=utf-8')
     }
   }
 

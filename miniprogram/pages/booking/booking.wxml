@@ -10,7 +10,7 @@
     <block wx:if="{{introImages.length}}">
       <view class="intro-stack">
         <view wx:for="{{introImages}}" wx:key="fileId" class="intro-item" bindtap="previewIntro" data-i="{{index}}">
-          <image class="intro-img" src="{{item.url}}" mode="widthFix"/>
+          <image class="intro-img" src="{{item.url}}" mode="widthFix" bindload="onBootImg" binderror="onBootImg"/>
           <view wx:if="{{item.caption}}" class="intro-cap">{{item.caption}}</view>
         </view>
       </view>
@@ -55,4 +55,7 @@
   <view wx:else class="note">请选择上方可预约的日期</view>
 
   <aiFab aiEnabled="{{aiEnabled}}" projectId="{{projectId}}" />
+
+  <!-- 首屏加载遮罩：等 getProject + 日期条/默认选中日/场次列表三段串行渲染收敛 -->
+  <page-loading show="{{booting}}" />
 </view>

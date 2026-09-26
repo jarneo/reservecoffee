@@ -1,0 +1,96 @@
+/* components/pageLoading — 全屏加载遮罩
+   设计：对齐**微信自己的启动页**（扫码那一瞬间的黑/白屏）——
+        圆形 logo + 单行标题 + 跟随系统深浅色。
+   层级：默认 1050（压住 aiFab 的 999）；AI 页传 1090（必须 < 1100，见 ai.wxss 的 .pmask）。
+   ⚠️ 深浅色：微信启动页跟随系统外观，小程序无法设置它，只能让本遮罩也跟随系统，
+      做到「白天白配白、晚上黑配黑」，两场景都无缝。见 .pl-dark。 */
+
+.pl-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;      /* 浅色：纯白，对齐微信启动页（原来用 --fill-2 #FAFAFA，偏灰） */
+  opacity: 1;
+}
+
+/* 深色：纯黑，对齐微信夜间启动页 */
+.pl-mask.pl-dark {
+  background: #000000;
+}
+
+/* 淡出：与页面 #FAFAFA 底色有极浅色差，故比页面转场略长一点，过渡更柔和；
+   淡出期间不拦截点击 */
+.pl-mask.pl-fade {
+  opacity: 0;
+  transition: opacity 420ms ease-out;
+  pointer-events: none;
+}
+
+.pl-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 圆形 logo（对齐启动页）。启动页图标略小，取 132rpx 并配 1px 细描边 */
+.pl-logo {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+  /* 描边：浅色下用极浅灰，深色下用极浅白（启动页图标外圈那一道环） */
+  box-shadow: 0 0 0 2rpx rgba(0, 0, 0, .06);
+  animation: plBreath 2.4s ease-in-out infinite;
+}
+
+.pl-dark .pl-logo {
+  box-shadow: 0 0 0 2rpx rgba(255, 255, 255, .10);
+}
+
+/* 占位：logo 文件未投放 / 加载失败时的品牌色圆形字标（同一套呼吸动效） */
+.pl-logo-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(122, 82, 48, .10);
+  color: var(--brand, #7A5230);
+  font-size: 52rpx;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* 单行标题：对齐启动页字号，比原来（32rpx）略大更醒目 */
+.pl-title {
+  margin-top: 40rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1A1A1A;
+  letter-spacing: 1rpx;
+}
+
+.pl-dark .pl-title {
+  color: #FFFFFF;
+}
+
+/* slogan 默认不渲染（微信启动页只有一行标题）；若页面显式传值才出现 */
+.pl-slogan {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #999999;
+  letter-spacing: 4rpx;
+}
+
+.pl-dark .pl-slogan {
+  color: rgba(255, 255, 255, .55);
+}
+
+@keyframes plBreath {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}

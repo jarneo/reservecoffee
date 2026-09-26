@@ -17,7 +17,7 @@
     <view class="row between">
       <view class="ruser">
         <view class="ava">
-          <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" class="ava-img"/>
+          <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" class="ava-img" lazy-load/>
           <view wx:else class="ava-def">{{item.initial}}</view>
         </view>
         <view class="rname">{{item.name}}<text wx:if="{{item.top}}" class="top"> · 置顶</text></view>
@@ -26,7 +26,7 @@
     </view>
     <view class="rtext">{{item.text}}</view>
     <view wx:if="{{item.imagesUrl.length}}" class="rimg-row">
-      <image wx:for="{{item.imagesUrl}}" wx:for-item="im" wx:key="*this" src="{{im}}" class="rimg" mode="aspectFill"/>
+      <image wx:for="{{item.imagesUrl}}" wx:for-item="im" wx:key="*this" src="{{im}}" class="rimg" mode="aspectFill" lazy-load/>
     </view>
     <view class="rtime">{{item.time}}</view>
   </view>

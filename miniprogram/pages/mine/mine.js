@@ -1,4 +1,5 @@
 const { call } = require('../../utils/cloud')
+const boot = require('../../utils/boot')
 const { isPhone, requestSubscribe } = require('../../utils/util')
 const { TPLS, normalizeSubs } = require('../../utils/subscribe')
 
@@ -15,19 +16,26 @@ Page({
     list: [], openid: '', role: 'none',
     name: '', phone: '', avatarUrl: '', pAvatar: '',
     // 统一订阅记录（缺省全部订阅）；用于收敛「取消预约」等点击提醒入口的授权请求
-    subs: normalizeSubs({})
+    subs: normalizeSubs({}),
+    booting: true
+  },
+
+  // 就绪门只在 onLoad 建一次：tab 切回走 onShow 不重走 onLoad，门已 closed → 遮罩不再出现，
+  // 而 onShow 里「每次全量刷新」的行为保持原样。
+  onLoad() {
+    this._boot = boot(this, { timeout: 6000 })
   },
 
   onShow() {
-    this.syncMe()
-    this.load()
-    this.loadProfile()
+    this._boot.add(this.syncMe())
+    this._boot.add(this.load())
+    this._boot.add(this.loadProfile())
   },
 
   // 同步当前用户身份（openid / 角色），供"复制 openid 给店主授权"使用
   syncMe() {
     const app = getApp()
-    app.refreshRole().then(() => {
+    return app.refreshRole().then(() => {
       this.setData({ openid: app.globalData.openid || '', role: app.globalData.role || 'none' })
     }).catch(() => {})
   },
@@ -41,7 +49,7 @@ Page({
   },
 
   load() {
-    call('listMyReservations')
+    return call('listMyReservations')
       .then(d => {
         const list = (d.list || []).map(r => ({
           ...r,
@@ -55,7 +63,7 @@ Page({
 
   // 加载我的资料（昵称/手机/头像）
   loadProfile() {
-    call('getMyProfile')
+    return call('getMyProfile')
       .then(d => {
         if (d && d.profile) {
           const p = d.profile
@@ -64,12 +72,15 @@ Page({
           patch.subs = normalizeSubs(p.subscriptions)
           this.setData(patch)
           if (p.avatar) {
+            // 头像临时链接是第 4 跳（串在 getMyProfile 之后），不纳入就绪门会二次抖动
+            this._boot.hold()
             wx.cloud.getTempFileURL({ fileList: [p.avatar] })
               .then(r => {
                 const url = r.fileList && r.fileList[0] && r.fileList[0].tempFileURL
                 if (url) this.setData({ avatarUrl: url })
+                this._boot.release()
               })
-              .catch(() => {})
+              .catch(() => { this._boot.release() })
           }
         }
       })

@@ -1,6 +1,6 @@
 // getMenu — 公众号 / 分享专用：店铺菜单 + 顾客评价（公开只读，无需登录）
 // 该页仅通过公众号菜单路径进入，不在小程序内导航出现。
-const { db, COL, ok, fail, cloud, _ } = require('./lib')
+const { db, COL, ok, fail, cloud, _, thumb } = require('./lib')
 
 async function resolveImages(list) {
   const ids = (list || []).map(p => p.image).filter(Boolean)
@@ -11,7 +11,7 @@ async function resolveImages(list) {
       ;(res.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
     } catch (e) { console.warn('[getMenu] getTempFileURL failed:', e.message) }
   }
-  return (list || []).map(p => ({ ...p, imageUrl: urlMap[p.image] || '' }))
+  return (list || []).map(p => ({ ...p, imageUrl: thumb(urlMap[p.image] || '', 'card') }))
 }
 
 exports.main = async (event) => {
@@ -69,8 +69,8 @@ exports.main = async (event) => {
   }
   const flatWithAvatar = flat.map(r => ({
     ...r,
-    avatarUrl: urlMap[r.avatar] || '',
-    imagesUrl: (r.images || []).map(id => urlMap[id] || '')
+    avatarUrl: thumb(urlMap[r.avatar] || '', 'avatar'),
+    imagesUrl: (r.images || []).map(id => thumb(urlMap[id] || '', 'card'))
   }))
 
   // 关联菜品名称 + 回填到菜品对象

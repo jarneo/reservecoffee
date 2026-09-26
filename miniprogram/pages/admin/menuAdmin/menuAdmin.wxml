@@ -12,7 +12,7 @@
   <view wx:for="{{products}}" wx:key="_id" class="card row between">
     <view class="row">
       <view class="thumb">
-        <image wx:if="{{item.imageUrl}}" class="img" src="{{item.imageUrl}}" mode="aspectFill"/>
+        <image wx:if="{{item.imageUrl}}" class="img" src="{{item.imageUrl}}" mode="aspectFill" lazy-load/>
         <view wx:else class="ph">无图</view>
       </view>
       <view>

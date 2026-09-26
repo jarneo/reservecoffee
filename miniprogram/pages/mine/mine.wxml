@@ -51,4 +51,7 @@
     <view wx:if="{{item.status==='pending'}}" class="xs" style="margin-top:6rpx;color:var(--ink-3)">审核通过后将微信通知你</view>
     <button wx:if="{{item.canCancel}}" class="btn ghost sm" style="margin-top:16rpx" bindtap="cancel" data-id="{{item._id}}">取消预约</button>
   </view>
+
+  <!-- 首屏加载遮罩：等身份 / 预约列表 / 资料（含头像临时链接）全部就绪 -->
+  <page-loading show="{{booting}}" />
 </view>

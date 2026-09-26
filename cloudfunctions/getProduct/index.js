@@ -1,5 +1,5 @@
 // getProduct — 顾客端：单个菜品详情 + 评价列表（含图片/评分）
-const { db, COL, ok, fail, cloud } = require('./lib')
+const { db, COL, ok, fail, cloud, thumb } = require('./lib')
 
 async function resolveImage(fileId) {
   if (!fileId) return ''
@@ -20,7 +20,8 @@ exports.main = async (event) => {
   const proj = await db.collection(COL.projects).doc(p.projectId).get().catch(() => null)
   if (!proj || !proj.data || !proj.data.published) return fail('项目不可访问')
 
-  const imageUrl = await resolveImage(p.image)
+  // 详情页主图全宽展示（750rpx），750x 足够
+  const imageUrl = thumb(await resolveImage(p.image), 'cover')
   // 仅对外展示「人工审核通过」的评价
   const rev = await db.collection(COL.reviews).where({ productId, reviewStatus: 'approved' }).get()
   let reviews = (rev.data || []).slice().sort((a, b) =>
@@ -43,8 +44,8 @@ exports.main = async (event) => {
   }
   reviews = reviews.map(r => ({
     ...r,
-    avatarUrl: urlMap[r.avatar] || '',
-    imagesUrl: (r.images || []).map(id => urlMap[id] || '')
+    avatarUrl: thumb(urlMap[r.avatar] || '', 'avatar'),
+    imagesUrl: (r.images || []).map(id => thumb(urlMap[id] || '', 'card'))
   }))
 
   const product = { ...p, imageUrl, rating: avg, ratingCount: count }

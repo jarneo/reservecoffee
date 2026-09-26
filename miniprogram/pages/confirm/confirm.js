@@ -1,4 +1,5 @@
 const { call } = require('../../utils/cloud')
+const boot = require('../../utils/boot')
 const { isPhone, requestSubscribe } = require('../../utils/util')
 const { normalizeSubs, notifyPlanOf, tmplIdsOfPlan, CUSTOMER_SUBS } = require('../../utils/subscribe')
 
@@ -25,7 +26,8 @@ Page({
     subs: {},
     // 提交成功页（应用内必达确认 UI）：成功后展示留座信息覆盖层
     success: false,
-    successInfo: null
+    successInfo: null,
+    booting: true
   },
 
   // 本页有两个入口：
@@ -35,6 +37,9 @@ Page({
   // （称呼 type=nickname / 手机号 + 获取手机号按钮 / 人数步进器 + 单次上限提示），
   // 顾客点一次卡片即到可提交的表单；AI 对话页没有这些，新顾客会卡在"填不了"。
   onLoad(q) {
+    // 就绪门：本页首屏是「getProject → prefill(getMyProfile)」两跳串行。
+    // 必须等第二跳，否则黑名单阻断条 / needFill 引导条 / 通知偏好会在遮罩消失后才冒出来。
+    this._boot = boot(this, { timeout: 6000 })
     this.fromOa = !!(q && q.from === 'oa')
     // log = aiLogs._id：公众号对话的 openid 与小程序 openid 不同，
     // 只有靠它才能把「公众号那轮对话」精确回写为 booked（使渠道漏斗第三层不为 0）
@@ -47,7 +52,7 @@ Page({
   },
 
   load() {
-    call('getProject', { projectId: this.data.projectId })
+    return call('getProject', { projectId: this.data.projectId })
       .then(d => {
         const p = d.project
         const s = (d.schedules.find(x => x.date === this.data.date) || {})
@@ -83,7 +88,10 @@ Page({
         if (this.data.partySize > cap) this.setData({ partySize: cap, partyCapped: true })
         this.prefill()
       })
-      .catch(e => wx.showToast({ title: e.message || '加载失败', icon: 'none' }))
+      .catch(e => {
+        wx.showToast({ title: e.message || '加载失败', icon: 'none' })
+        this._boot.close('loadFail')
+      })
   },
 
   // 资料完整性检查：称呼/手机号缺任一项就亮出引导条。
@@ -99,12 +107,15 @@ Page({
   // 同时检出黑名单：命中则进入阻断态，避免用户填完表单提交后才被服务端拒绝
   // 并取回该顾客的长期通知偏好（提交时随预约落库；也可在「我的 → 通知偏好」修改）
   prefill() {
-    call('getMyProfile')
+    // 第二跳计入就绪门；两条分支（有资料 / 无资料）都必须收敛，否则遮罩会提前关
+    this._boot.hold()
+    return call('getMyProfile')
       .then(d => {
         const profile = d && d.profile
-        if (!profile) { this.checkNeedFill(); return }
+        if (!profile) { this.checkNeedFill(); this._boot.settle(1); return }
         if (profile.isBlacklisted) {
           this.setData({ blocked: true, blockReason: profile.blacklistReason || '' })
+          this._boot.settle(1)
           return
         }
         const patch = {}
@@ -113,8 +124,12 @@ Page({
         if (Object.keys(patch).length) this.setData(patch)
         if (profile.subscriptions) this.setData({ subs: normalizeSubs(profile.subscriptions) })
         this.checkNeedFill()
+        this._boot.settle(1)
       })
-      .catch(() => this.checkNeedFill())
+      .catch(() => {
+        this.checkNeedFill()
+        this._boot.release()
+      })
   },
 
   // 手工输入称呼/手机号后同步收起引导条

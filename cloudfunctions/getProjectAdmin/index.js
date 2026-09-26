@@ -1,6 +1,6 @@
 // getProjectAdmin — 管理员专用项目详情（不限 published，修复草稿/下架项目进不去的 bug）
 // 返回 project 全字段 + 解析后的 introImages 临时 URL + 全部日期场次
-const { db, COL, ok, fail, wxCtx, getRole, cloud } = require('./lib')
+const { db, COL, ok, fail, wxCtx, getRole, cloud, thumb } = require('./lib')
 
 async function resolveIntroImages(list) {
   if (!Array.isArray(list) || !list.length) return []
@@ -13,7 +13,7 @@ async function resolveIntroImages(list) {
     } catch (e) { console.warn('[getProjectAdmin] getTempFileURL failed:', e.message) }
   }
   return list
-    .map(it => ({ ...it, url: urlMap[it.fileId] || '' }))
+    .map(it => ({ ...it, url: thumb(urlMap[it.fileId] || '', 'card') }))
     .sort((a, b) => (a.sort || 0) - (b.sort || 0))
 }
 
@@ -63,9 +63,9 @@ exports.main = async (event) => {
     _id: p._id,
     name: p.name,
     icon: p.icon,
-    iconUrl: await resolveImage(p.iconFileId),
+    iconUrl: thumb(await resolveImage(p.iconFileId), 'icon'),
     image: p.image,
-    imageUrl: await resolveImage(p.image),
+    imageUrl: thumb(await resolveImage(p.image), 'card'),
     intro: p.intro,
     introImages,
     published: !!p.published,

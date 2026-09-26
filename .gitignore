@@ -13,3 +13,6 @@ project.private.config.json
 # 系统/编辑器
 .DS_Store
 Thumbs.db
+
+# 历史源码快照（本地归档 18MB，内容与 git tag v6.6.25 / v6.6.41 / v6.6.50 重复 → 不入库）
+snapshots/

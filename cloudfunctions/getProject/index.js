@@ -1,5 +1,5 @@
 // getProject — 单项目详情 + 全部日期场次（顾客端选日期/场次用）
-const { db, COL, ok, fail, cloud, notifyWindowCfg, loadAiSwitch } = require('./lib')
+const { db, COL, ok, fail, cloud, notifyWindowCfg, loadAiSwitch, thumb } = require('./lib')
 
 // 解析介绍图片临时 URL：输入 [{fileId,...}]，返回带 url 的数组（按 sort 排序）
 async function resolveIntroImages(list) {
@@ -12,8 +12,9 @@ async function resolveIntroImages(list) {
       ;(res.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
     } catch (e) { console.warn('[getProject] getTempFileURL failed:', e.message) }
   }
+  // 介绍图在 booking 页全宽展示（.intro-img width:100%），750x 足够
   return list
-    .map(it => ({ ...it, url: urlMap[it.fileId] || '' }))
+    .map(it => ({ ...it, url: thumb(urlMap[it.fileId] || '', 'cover') }))
     .sort((a, b) => (a.sort || 0) - (b.sort || 0))
 }
 
@@ -65,9 +66,9 @@ exports.main = async (event) => {
     name: p.name,
     paused: !!p.paused,
     icon: p.icon,
-    iconUrl: await resolveImage(p.iconFileId),
+    iconUrl: thumb(await resolveImage(p.iconFileId), 'icon'),
     image: p.image,
-    imageUrl: await resolveImage(p.image),
+    imageUrl: thumb(await resolveImage(p.image), 'cover'),
     intro: p.intro,
     introImages,                       // 已解析临时 URL 的介绍图集
     needReview: !!p.needReview,
