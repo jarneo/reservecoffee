@@ -11,12 +11,13 @@
      源图 e25af1e9...png（400×949）整体墨迹 = x40-319 / y61-888 = 280 × 828
        主书法  x183-319 / y61-880 = 137 × 820
        落款列  x40-91   / y603-888 = 52  × 286
-     ⚠️ **容器以「主书法」为基准**（宽 = 书法宽 137 → 103rpx），由 .pl-mask 的 flex 居中，
-        这样书法正好落在屏幕正中；落款用负 left 挂在容器左侧之外。
+     ⚠️ **容器以「主书法」为基准**（满尺寸 = 书法宽 137 源单位 → 103rpx，实际再 ×0.8），
+        由 .pl-mask 的 flex 居中，这样书法正好落在屏幕正中；落款用负 left 挂在容器左侧之外。
         （若容器改回「整幅 280 宽」再居中，落款会占左侧 18.57%，把书法往右顶 ~54rpx。）
-     容器：103rpx × 621rpx（高仍按整幅 828 源单位 → 828/280×210 ≈ 621rpx）
+     容器：82rpx × 497rpx（= 满尺寸 103×621 的 **80%**），并整体上移 100rpx（= 50px 逻辑像素）
        主书法  left 0 / top 0 / width 100%
-       落款列  left (40-183)/137 = -104.38% / bottom 0 / width 52/137 = 37.96% */
+       落款列  left (40-183)/137 = -104.38% / bottom 0 / width 52/137 = 37.96%
+     ⚠️ 改尺寸只需动 .pl-mark 的 width/height —— 子元素全是百分比 + widthFix，自动等比跟着变。 */
 
 .pl-mask {
   position: fixed;
@@ -46,11 +47,14 @@
 }
 
 /* ===== 字幅容器（相对定位基座）===== */
-/* 宽 = 主书法宽（103rpx）→ flex 居中即「书法居中」；⚠️ 落款在容器左侧之外，勿加 overflow:hidden */
+/* 宽 = 主书法宽 → flex 居中即「书法居中」；⚠️ 落款在容器左侧之外，勿加 overflow:hidden
+   尺寸基准：满尺寸 103rpx × 621rpx（= 源图 137 × 828 单位），此处取 **80%** = 82 × 497
+   垂直：translateY(-100rpx) 整体上移 50px 逻辑像素（视觉重心略高于几何中心更平衡） */
 .pl-mark {
   position: relative;
-  width: 103rpx;
-  height: 621rpx;
+  width: 82rpx;
+  height: 497rpx;
+  transform: translateY(-100rpx);
 }
 
 /* ===== 主书法「珈琲与清酒」：静态常显，无动画 ===== */
@@ -70,7 +74,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 44rpx;
+  font-size: 35rpx;   /* 44rpx × 0.8，与整体缩放同步 */
   line-height: 1.5;
   color: #1A1A1A;
 }
@@ -111,7 +115,7 @@
 
 /* 兜底：落款素材失败时用竖排文字顶上（同一套动画） */
 .pl-sign-ph .pl-sign-c {
-  font-size: 18rpx;
+  font-size: 14rpx;   /* 18rpx × 0.8 */
   line-height: 1.5;
   text-align: center;
   color: #8A8A8A;
