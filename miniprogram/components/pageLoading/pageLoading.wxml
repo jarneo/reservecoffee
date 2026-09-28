@@ -1,31 +1,45 @@
 <!-- components/pageLoading — 全屏首屏加载遮罩 -->
-<!-- 视觉：竖排书法「咖啡与清酒」**静态常显、不做动画**；
-     其下「二曜路8号」逐字落笔作落款，播完若仍未就绪 → 循环重播（纯 CSS，无 JS 定时器）。
+<!-- 视觉（对齐源图 assets 设计）：
+       · 主书法「咖啡与清酒」竖排 —— **静态常显、不做动画**（加载再快也一定完整可见）
+       · 落款「二曜路8号」竖排小字 —— 位于主书法左侧偏下，**逐字落笔**，播完若仍未就绪 → 循环重播
      说明：这是覆盖层（position:fixed），不参与页面文档流。
      ⚠️ 绝不要用 wx:if 摘掉页面内容来「隐藏」中间态 —— 那会破坏 aiFab 的尺寸测量
         与 AI 页 scroll-into-view 的目标节点。遮罩只负责盖住。
-     素材：assets/logink/hero-{l,d}.png（整幅书法），l=浅色黑墨 / d=深色白墨。
-     兜底：图 binderror → inkErr → 退化为竖排文字，绝不白屏。 -->
+     素材：assets/logink/hero-{l,d}.png（主书法）+ sig-{l,d}1..5.png（落款逐字切片），
+          l = 浅色黑墨 / d = 深色白墨（两套预生成，不依赖运行时 filter）。
+     兜底：任一图 binderror → inkErr → 退化为竖排文字，绝不白屏。 -->
 <view wx:if="{{visible}}"
       class="pl-mask {{fading ? 'pl-fade' : ''}} {{theme === 'dark' ? 'pl-dark' : ''}}"
       style="z-index: {{zIndex}}"
       catchtouchmove="noop">
-  <!-- 书法主体：整幅单图，静态常显（加载再快也一定完整可见） -->
-  <view class="pl-ink">
+  <view class="pl-mark">
+    <!-- ① 主书法：静态单图，无动画 -->
     <image wx:if="{{!inkErr}}"
-           class="pl-ink-hero"
-           src="{{inkSrc}}"
+           class="pl-mark-hero"
+           src="{{heroSrc}}"
            mode="widthFix"
            binderror="onInkErr" />
-    <view wx:else class="pl-ink-ph">
+    <view wx:else class="pl-mark-ph">
       <text>咖</text><text>啡</text><text>与</text><text>清</text><text>酒</text>
     </view>
-  </view>
-  <!-- 落款：默认「二曜路8号」——逐字落笔，错峰 90ms；播完未就绪则循环重播 -->
-  <view wx:if="{{subChars.length}}" class="pl-sub">
-    <text wx:for="{{subChars}}"
-          wx:key="*this"
-          class="pl-sub-c"
-          style="animation-delay: {{index * 90}}ms">{{item}}</text>
+
+    <!-- ② 落款「二曜路8号」：逐字落笔，错峰 90ms；播完未就绪则循环重播 -->
+    <block wx:if="{{sign}}">
+      <view wx:if="{{!inkErr}}" class="pl-sign">
+        <image wx:for="{{signSrcs}}"
+               wx:key="*this"
+               class="pl-sign-c"
+               src="{{item}}"
+               mode="widthFix"
+               binderror="onInkErr"
+               style="animation-delay: {{index * 90}}ms" />
+      </view>
+      <view wx:else class="pl-sign pl-sign-ph">
+        <text wx:for="{{signChars}}"
+              wx:key="*this"
+              class="pl-sign-c"
+              style="animation-delay: {{index * 90}}ms">{{item}}</text>
+      </view>
+    </block>
   </view>
 </view>

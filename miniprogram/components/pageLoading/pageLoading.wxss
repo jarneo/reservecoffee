@@ -1,9 +1,16 @@
 /* components/pageLoading — 全屏加载遮罩
-   视觉：竖排书法「咖啡与清酒」**静态常显** + 「二曜路8号」逐字落笔落款（可循环）。
+   视觉：主书法「咖啡与清酒」竖排**静态常显、无动画**；
+        + 落款「二曜路8号」竖排小字逐字落笔（播完未就绪则循环重播）。
    底色：对齐**微信自己的启动页**——浅色纯白 / 深色纯黑，跟随系统外观。
    层级：默认 1050（压住 aiFab 的 999）；AI 页传 1090（必须 < 1100，见 ai.wxss 的 .pmask）。
    ⚠️ 深浅色：微信启动页跟随系统外观、小程序无法设置，只能让本遮罩也跟随系统，
-      做到「白天白配白、晚上黑配黑」。墨色由素材决定：浅色用黑墨(hero-l)、深色用白墨(hero-d)。 */
+      做到「白天白配白、晚上黑配黑」。墨色由素材决定：浅色黑墨(hero-l/sig-l*)、深色白墨(hero-d/sig-d*)。
+
+   几何（全部来自源图墨迹实测，改素材请同步改这里）：
+     源图整幅墨迹 = x259-368 / y407-730 = 110 × 324
+       主书法    x316-368 / y407-727   → 容器内 left 57/110, width 53/110
+       落款列    x259-280 / y620-730   → 容器内 left 0,    贴容器底（bottom:0）
+     容器宽 210rpx → 高 = 324/110 × 210 ≈ 618rpx */
 
 .pl-mask {
   position: fixed;
@@ -32,62 +39,74 @@
   pointer-events: none;
 }
 
-/* ===== 书法主体（静态常显，无动画）===== */
-/* 幅面宽 200rpx；高度由素材按 272:696 比例自然堆出（≈512rpx），随屏宽等比缩放 */
-.pl-ink {
-  width: 200rpx;
+/* ===== 字幅容器（相对定位基座；尺寸 = 源图整幅墨迹比例）===== */
+.pl-mark {
+  position: relative;
+  width: 210rpx;
+  height: 618rpx;
 }
 
-.pl-ink-hero {
-  display: block;
-  width: 100%;
+/* ===== 主书法「咖啡与清酒」：静态常显，无动画 ===== */
+.pl-mark-hero {
+  position: absolute;
+  left: 51.82%;    /* 57/110 */
+  top: 0;
+  width: 48.18%;   /* 53/110，高度由 mode=widthFix 按 53:321 自然得出 ≈613rpx */
 }
 
 /* 兜底：素材加载失败时的竖排文字（绝不白屏） */
-.pl-ink-ph {
+.pl-mark-ph {
+  position: absolute;
+  left: 51.82%;
+  top: 0;
+  width: 48.18%;
   display: flex;
   flex-direction: column;
   align-items: center;
   font-size: 44rpx;
   line-height: 1.5;
-  letter-spacing: 2rpx;
   color: #1A1A1A;
 }
-.pl-dark .pl-ink-ph {
+.pl-dark .pl-mark-ph {
   color: #FFFFFF;
 }
 
-/* ===== 落款「二曜路8号」：逐字落笔 · 循环 ===== */
-/* 固定行高：落笔的位移/缩放不会撑动布局，避免整屏元素跟着抖 */
-.pl-sub {
+/* ===== 落款「二曜路8号」：竖排小字，贴容器左下 ===== */
+/* 5 段连续无缝切片纵向堆叠 → 自然还原原图字距；bottom:0 让它与书法底部对齐 */
+.pl-sign {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 20%;      /* 22/110 */
   display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: center;
-  margin-top: 44rpx;
-  height: 40rpx;
-  font-size: 26rpx;
-  line-height: 40rpx;
-  color: #8A8A8A;
-}
-.pl-dark .pl-sub {
-  color: rgba(255, 255, 255, 0.62);
+  flex-direction: column;
 }
 
 /* 单字时序（周期 2200ms，错峰 90ms 由 wxml 内联 style 给）：
    0% 隐藏 → 17%(≈374ms) 落定 → 86%(≈1892ms) 保持可见 → 100% 淡出重来。
-   末字落定 ≈ 360+374 = 734ms，之后到 1892ms 仍有 ≈1.16s 的完整可读时间；
+   末字落定 ≈ 360+374 = 734ms，之后到 1892ms 仍有 ≈1.16s 完整可读时间；
    若此时加载仍未完成，动画自动进入下一轮，无需任何 JS。 */
-.pl-sub-c {
-  display: inline-block;
-  margin: 0 3rpx;
+.pl-sign-c {
+  display: block;
+  width: 100%;
   opacity: 0;
-  animation: plSubIn 2200ms cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+  animation: plSignIn 2200ms cubic-bezier(0.22, 1, 0.36, 1) infinite both;
 }
 
-@keyframes plSubIn {
-  0%   { opacity: 0; transform: translateY(10rpx) scale(0.9); }
+@keyframes plSignIn {
+  0%   { opacity: 0; transform: translateY(6rpx) scale(0.86); }
   17%  { opacity: 1; transform: translateY(0) scale(1); }
   86%  { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(0) scale(1); }
+}
+
+/* 兜底：落款素材失败时用竖排文字顶上（同一套动画） */
+.pl-sign-ph .pl-sign-c {
+  font-size: 18rpx;
+  line-height: 1.5;
+  text-align: center;
+  color: #8A8A8A;
+}
+.pl-dark .pl-sign-ph .pl-sign-c {
+  color: rgba(255, 255, 255, 0.62);
 }
