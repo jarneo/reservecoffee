@@ -1,33 +1,31 @@
-<!-- components/pageLoading — 全屏首屏加载遮罩（竖排书法「咖啡与清酒」逐字落笔） -->
-<!-- 说明：这是覆盖层（position:fixed），不参与页面文档流。
+<!-- components/pageLoading — 全屏首屏加载遮罩 -->
+<!-- 视觉：竖排书法「咖啡与清酒」**静态常显、不做动画**；
+     其下「二曜路8号」逐字落笔作落款，播完若仍未就绪 → 循环重播（纯 CSS，无 JS 定时器）。
+     说明：这是覆盖层（position:fixed），不参与页面文档流。
      ⚠️ 绝不要用 wx:if 摘掉页面内容来「隐藏」中间态 —— 那会破坏 aiFab 的尺寸测量
         与 AI 页 scroll-into-view 的目标节点。遮罩只负责盖住。
-     素材：assets/logink/{l,d}{1..5}.png（逐字）+ {l,d}m.png（小横笔），l=浅色黑墨 / d=深色白墨。
-     兜底：任一图 binderror → inkErr → 退化为竖排文字，绝不白屏。 -->
+     素材：assets/logink/hero-{l,d}.png（整幅书法），l=浅色黑墨 / d=深色白墨。
+     兜底：图 binderror → inkErr → 退化为竖排文字，绝不白屏。 -->
 <view wx:if="{{visible}}"
       class="pl-mask {{fading ? 'pl-fade' : ''}} {{theme === 'dark' ? 'pl-dark' : ''}}"
       style="z-index: {{zIndex}}"
       catchtouchmove="noop">
-  <view class="pl-ink {{inkOn ? 'pl-ink-run' : ''}} {{inkBreath ? 'pl-ink-breath' : ''}}">
-    <view class="pl-ink-inner">
-      <block wx:if="{{!inkErr}}">
-        <!-- 五字逐字落笔：DOM 顺序即进度顺序（咖→啡→与→清→酒） -->
-        <image wx:for="{{inkSrcs}}" wx:key="*this"
-               class="pl-ink-s"
-               src="{{item}}"
-               mode="widthFix"
-               binderror="onInkErr" />
-        <!-- 小横笔：最后一记「收势」，绝对定位覆盖在整幅之上 -->
-        <image class="pl-ink-mark-img"
-               src="{{inkMark}}"
-               mode="widthFix"
-               binderror="onInkErr" />
-      </block>
-      <view wx:else class="pl-ink-ph">
-        <text>咖</text><text>啡</text><text>与</text><text>清</text><text>酒</text>
-      </view>
+  <!-- 书法主体：整幅单图，静态常显（加载再快也一定完整可见） -->
+  <view class="pl-ink">
+    <image wx:if="{{!inkErr}}"
+           class="pl-ink-hero"
+           src="{{inkSrc}}"
+           mode="widthFix"
+           binderror="onInkErr" />
+    <view wx:else class="pl-ink-ph">
+      <text>咖</text><text>啡</text><text>与</text><text>清</text><text>酒</text>
     </view>
   </view>
-  <!-- 落款小字：默认留空（书法已是完整主体）；页面显式传 title 才出现 -->
-  <view wx:if="{{title}}" class="pl-sub">{{title}}</view>
+  <!-- 落款：默认「二曜路8号」——逐字落笔，错峰 90ms；播完未就绪则循环重播 -->
+  <view wx:if="{{subChars.length}}" class="pl-sub">
+    <text wx:for="{{subChars}}"
+          wx:key="*this"
+          class="pl-sub-c"
+          style="animation-delay: {{index * 90}}ms">{{item}}</text>
+  </view>
 </view>

@@ -1,10 +1,9 @@
 /* components/pageLoading — 全屏加载遮罩
-   设计：竖排书法「咖啡与清酒」的「墨迹落笔」——
-        逐字落笔（入场，固定）→ 墨迹呼吸（静息，随加载自适应）→ 收笔淡出。
+   视觉：竖排书法「咖啡与清酒」**静态常显** + 「二曜路8号」逐字落笔落款（可循环）。
    底色：对齐**微信自己的启动页**——浅色纯白 / 深色纯黑，跟随系统外观。
    层级：默认 1050（压住 aiFab 的 999）；AI 页传 1090（必须 < 1100，见 ai.wxss 的 .pmask）。
    ⚠️ 深浅色：微信启动页跟随系统外观、小程序无法设置，只能让本遮罩也跟随系统，
-      做到「白天白配白、晚上黑配黑」。墨色由素材决定：浅色用黑墨(l*)、深色用白墨(d*)。 */
+      做到「白天白配白、晚上黑配黑」。墨色由素材决定：浅色用黑墨(hero-l)、深色用白墨(hero-d)。 */
 
 .pl-mask {
   position: fixed;
@@ -33,62 +32,15 @@
   pointer-events: none;
 }
 
-/* ===== 书法墨迹 ===== */
-/* 幅面宽 200rpx；高度由切片按 136:348 比例自然堆出（≈512rpx），随屏宽等比缩放 */
+/* ===== 书法主体（静态常显，无动画）===== */
+/* 幅面宽 200rpx；高度由素材按 272:696 比例自然堆出（≈512rpx），随屏宽等比缩放 */
 .pl-ink {
   width: 200rpx;
 }
 
-.pl-ink-inner {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-/* 逐字落笔：每字自下方 16rpx、98% 缩放、0 透明度「落定」——先快后缓，像笔尖落纸 */
-.pl-ink-s {
+.pl-ink-hero {
   display: block;
   width: 100%;
-  opacity: 0;
-  transform: translateY(16rpx) scale(0.98);
-  transition: opacity 550ms ease, transform 550ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.pl-ink-run .pl-ink-s {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-/* 逐字间隔 ~130ms，自上而下依次点亮 */
-.pl-ink-run .pl-ink-s:nth-child(1) { transition-delay: 0ms; }
-.pl-ink-run .pl-ink-s:nth-child(2) { transition-delay: 130ms; }
-.pl-ink-run .pl-ink-s:nth-child(3) { transition-delay: 260ms; }
-.pl-ink-run .pl-ink-s:nth-child(4) { transition-delay: 390ms; }
-.pl-ink-run .pl-ink-s:nth-child(5) { transition-delay: 520ms; }
-
-/* 小横笔（收势）：末字落定后一记「按笔」出现 */
-.pl-ink-mark-img {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  opacity: 0;
-  transform: scale(0.4);
-  transform-origin: 20% 66%;
-  transition: opacity 280ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.pl-ink-run .pl-ink-mark-img {
-  opacity: 1;
-  transform: scale(1);
-  transition-delay: 700ms;
-}
-
-/* 静息：整幅墨迹极轻呼吸（幅度刻意压到几乎察觉不到） */
-.pl-ink-breath .pl-ink-inner {
-  animation: plInkBreath 2.8s ease-in-out infinite;
-}
-@keyframes plInkBreath {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.9; transform: scale(1.012); }
 }
 
 /* 兜底：素材加载失败时的竖排文字（绝不白屏） */
@@ -105,13 +57,37 @@
   color: #FFFFFF;
 }
 
-/* 落款小字：默认不渲染；页面显式传 title 才出现 */
+/* ===== 落款「二曜路8号」：逐字落笔 · 循环 ===== */
+/* 固定行高：落笔的位移/缩放不会撑动布局，避免整屏元素跟着抖 */
 .pl-sub {
-  margin-top: 40rpx;
-  font-size: 24rpx;
-  letter-spacing: 6rpx;
-  color: #999999;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  margin-top: 44rpx;
+  height: 40rpx;
+  font-size: 26rpx;
+  line-height: 40rpx;
+  color: #8A8A8A;
 }
 .pl-dark .pl-sub {
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* 单字时序（周期 2200ms，错峰 90ms 由 wxml 内联 style 给）：
+   0% 隐藏 → 17%(≈374ms) 落定 → 86%(≈1892ms) 保持可见 → 100% 淡出重来。
+   末字落定 ≈ 360+374 = 734ms，之后到 1892ms 仍有 ≈1.16s 的完整可读时间；
+   若此时加载仍未完成，动画自动进入下一轮，无需任何 JS。 */
+.pl-sub-c {
+  display: inline-block;
+  margin: 0 3rpx;
+  opacity: 0;
+  animation: plSubIn 2200ms cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+}
+
+@keyframes plSubIn {
+  0%   { opacity: 0; transform: translateY(10rpx) scale(0.9); }
+  17%  { opacity: 1; transform: translateY(0) scale(1); }
+  86%  { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(0) scale(1); }
 }
