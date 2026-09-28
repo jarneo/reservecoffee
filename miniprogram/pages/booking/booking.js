@@ -6,7 +6,7 @@ function addDaysDate(n) { const t = new Date(); t.setDate(t.getDate() + n); retu
 
 Page({
   data: {
-    projectId: '', project: {}, introImages: [], schedules: [], openDays: [], advanceDays: 7,
+    projectId: '', project: {}, introImages: [], relatedProjects: [], schedules: [], openDays: [], advanceDays: 7,
     dateAnchor: '', dateChips: [], dateRangeLabel: '', canPrev: false,
     selectedDate: '', bizWindow: '', sessions: [],
     showSeatInfo: true,
@@ -45,7 +45,7 @@ Page({
         const openDays = p.openDays || []
         const adv = p.advanceDays || 7
         this.setData({
-          project: p, introImages: p.introImages || [], schedules: sched,
+          project: p, introImages: p.introImages || [], relatedProjects: p.relatedProjects || [], schedules: sched,
           openDays, advanceDays: adv, showSeatInfo: p.showSeatInfo !== false,
           aiEnabled: d.aiEnabled !== false
         }, () => {
@@ -211,6 +211,13 @@ Page({
     const urls = imgs.map(x => x.url).filter(Boolean)
     if (!urls.length) return
     wx.previewImage({ current: urls[i] || urls[0], urls })
+  },
+
+  // 点击关联项目：跳转到目标项目详情页（复用本页，参数 projectId 切换）
+  goRelated(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    wx.navigateTo({ url: '/pages/booking/booking?projectId=' + id })
   },
 
   pickSession(e) {

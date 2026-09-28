@@ -25,6 +25,8 @@ page { overflow-x: hidden; width: 100%; }
 .bookinfo .more { font-size:22rpx; color:var(--ink-3); }
 
 /* 店铺菜单（首页双列网格） */
+/* 分类切换栏：紧贴「店铺菜单」标题下方 */
+.menu-cats { margin: 4rpx 0 16rpx; }
 /* 双栏瀑布流：两列各自独立纵向堆叠，互不强制行对齐，消除同行高度差造成的留白 */
 .menu-cols { display:flex; gap:16rpx; align-items:flex-start; }
 .menu-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:16rpx; }

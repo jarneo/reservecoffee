@@ -1,0 +1,6 @@
+<scroll-view scroll-x class="cat-tabs" enable-flex>
+  <view class="cat-row">
+    <view class="cat-item {{activeId==='all'?'on':''}}" data-id="all" bindtap="onTap">全部</view>
+    <view wx:for="{{categories}}" wx:key="_id" class="cat-item {{activeId===item._id?'on':''}}" data-id="{{item._id}}" bindtap="onTap">{{item.name}}</view>
+  </view>
+</scroll-view>

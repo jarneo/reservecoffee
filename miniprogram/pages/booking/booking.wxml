@@ -21,6 +21,22 @@
     </view>
   </view>
 
+  <!-- 关联项目：介绍区域延伸，点击可跳转至其他项目详情页（一对多） -->
+  <view wx:if="{{relatedProjects.length}}" class="rel-card">
+    <view class="rel-h"><text class="sec">关联项目</text><text class="muted">{{relatedProjects.length}}</text></view>
+    <view class="rel-list">
+      <view wx:for="{{relatedProjects}}" wx:key="_id" class="rel-item" bindtap="goRelated" data-id="{{item._id}}">
+        <image wx:if="{{item.iconUrl}}" class="rel-icon" src="{{item.iconUrl}}" mode="aspectFill"/>
+        <view wx:else class="rel-icon ph">图标</view>
+        <view class="rel-info">
+          <view class="rel-name">{{item.name}}</view>
+          <view wx:if="{{item.intro}}" class="rel-desc">{{item.intro}}</view>
+        </view>
+        <view class="rel-arrow">›</view>
+      </view>
+    </view>
+  </view>
+
   <view class="datestrip-wrap">
     <view class="dnav {{canPrev?'':'disabled'}}" bindtap="moveDate" data-delta="-14">‹</view>
     <scroll-view scroll-x class="datestrip" enhanced="{{true}}" show-scrollbar="{{false}}">

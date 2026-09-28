@@ -25,6 +25,7 @@
   </view>
 
   <view class="sec-title" style="margin-top:36rpx">店铺菜单</view>
+  <view class="menu-cats"><category-tabs categories="{{categories}}" activeId="{{activeCat}}" bindchange="onCatChange" /></view>
   <view wx:if="{{products.length===0}}" class="note">暂无在售菜品</view>
   <view class="menu-cols">
     <view class="menu-col">

@@ -18,7 +18,8 @@ const COL = {
   users: 'users',
   stats: 'stats_daily',
   products: 'products',
-  reviews: 'reviews'
+  reviews: 'reviews',
+  categories: 'menuCategories'   // 店铺菜单分类（全局类目，不按项目隔离）
 }
 
 // 订阅消息模板（已申请真实 ID；占位时的 TPL_ID_* 会被 sendSubscribe 自动跳过）
@@ -768,8 +769,11 @@ async function generateUrlLinkCached(path, query, envVersion) {
 // 注意：page_url 须是已发布小程序的页面路径（可带 query，≤1024 字符）；is_permanent:true = 永久有效。
 async function generateShortLink({ pageUrl, title, permanent }) {
   if (!pageUrl) throw new Error('generateShortLink 缺少 pageUrl')
+  // ⚠️ genwxashortlink 的 page_url 必须带前导斜杠（官方示例 /pages/xxx?query），
+  //    不带会直接报 40066「已发布小程序没有对应url」，与「页面未发布」是同一错误码但不同根因。
+  const norm = '/' + String(pageUrl).replace(/^\/+/, '')
   const body = {
-    page_url: String(pageUrl),
+    page_url: norm,
     page_title: String(title || '').slice(0, 20),
     is_permanent: permanent === false ? false : true
   }

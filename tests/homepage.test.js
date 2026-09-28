@@ -155,14 +155,14 @@ async function oldMain() {
       const rRes = await db.collection(COL.reviews).where({ productId: _.in(productIds), status: 'normal' }).get()
       const cnt = {}
       ;(rRes.data || []).forEach(r => { cnt[r.productId] = (cnt[r.productId] || 0) + 1 })
-      products = products.map(p => ({ _id: p._id, name: p.name, price: p.price, desc: p.desc, image: p.image, imageUrl: p.imageUrl, reviewCount: cnt[p._id] || 0 }))
+      products = products.map(p => ({ _id: p._id, name: p.name, price: p.price, desc: p.desc, image: p.image, categoryId: p.categoryId || '', imageUrl: p.imageUrl, reviewCount: cnt[p._id] || 0 }))
     } else {
       products = products.map(p => ({ ...p, reviewCount: 0 }))
     }
   }
   if (homepage.heroImage) { try { homepage.heroImageUrl = await oldResolveImage(homepage.heroImage) } catch (e) { homepage.heroImageUrl = '' } }
   const aiEnabled = await loadAiSwitch(db).catch(() => true)
-  return okRes({ homepage, projects, products, aiEnabled })
+  return okRes({ homepage, projects, products, aiEnabled, categories: [] })
 }
 
 // ─────────────────────────── 开跑 ───────────────────────────

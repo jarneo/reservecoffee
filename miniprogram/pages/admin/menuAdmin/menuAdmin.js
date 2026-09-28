@@ -5,10 +5,18 @@ Page({
   behaviors: [guard],
   data: {
     projects: [], projectId: '', projectName: '', products: [],
+    categories: [],               // 菜单分类列表（含 _id/name），供下拉与列表展示
     showForm: false, editingId: '',
-    form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: 0 }
+    form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: 0, categoryId: '' }
   },
-  onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
+  onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) { this.loadCategories(); this.loadProjects() } }) },
+  loadCategories() {
+    call('listCategories').then(d => { this.setData({ categories: d.categories || [] }) }).catch(() => {})
+  },
+  catName(id) {
+    const c = (this.data.categories || []).find(x => x._id === id)
+    return c ? c.name : '未分类'
+  },
   loadProjects() {
     call('listProjects').then(d => {
       const list = d.list || []
@@ -28,20 +36,20 @@ Page({
   loadProducts() {
     call('adminProducts', { projectId: this.data.projectId })
       .then(d => {
-        const products = (d.products || []).map(p => ({ ...p, priceText: '¥' + (p.price || 0) }))
+        const products = (d.products || []).map(p => ({ ...p, priceText: '¥' + (p.price || 0), categoryName: this.catName(p.categoryId) }))
         this.setData({ products })
       })
       .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },
   openNew() {
     const maxSort = this.data.products.reduce((m, p) => Math.max(m, Number(p.sort) || 0), 0)
-    this.setData({ showForm: true, editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: maxSort + 1 } })
+    this.setData({ showForm: true, editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: maxSort + 1, categoryId: '', categoryName: '未分类' } })
   },
   openEdit(e) {
     const p = this.data.products[e.currentTarget.dataset.i]
     this.setData({
       showForm: true, editingId: p._id,
-      form: { name: p.name, price: String(p.price), desc: p.desc || '', status: p.status !== 'off', image: p.image || '', imageUrl: p.imageUrl || '', sort: (p.sort != null ? p.sort : 0) }
+      form: { name: p.name, price: String(p.price), desc: p.desc || '', status: p.status !== 'off', image: p.image || '', imageUrl: p.imageUrl || '', sort: (p.sort != null ? p.sort : 0), categoryId: p.categoryId || '', categoryName: this.catName(p.categoryId) }
     })
   },
   onName(e) { this.setData({ 'form.name': e.detail.value }) },
@@ -49,6 +57,10 @@ Page({
   onDesc(e) { this.setData({ 'form.desc': e.detail.value }) },
   onSort(e) { this.setData({ 'form.sort': e.detail.value }) },
   onStatus(e) { this.setData({ 'form.status': e.detail.value }) },
+  onCategory(e) {
+    const c = this.data.categories[e.detail.value]
+    this.setData({ 'form.categoryId': c._id, 'form.categoryName': c.name })
+  },
   pickImage() {
     wx.chooseMedia({
       count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
@@ -80,13 +92,13 @@ Page({
     call('saveProduct', {
       projectId: this.data.projectId, productId: this.data.editingId || undefined,
       name: f.name, price: Number(f.price), desc: f.desc, status: f.status ? 'on' : 'off', image: f.image,
-      sort: savedSort
+      sort: savedSort, categoryId: f.categoryId || ''
     })
       .then(() => {
         wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }); this.loadProducts()
         if (keepOpen) {
           // 连续添加：保留弹层，重置为空白新表单（排序顺延、图片清空）
-          this.setData({ editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: savedSort + 1 } })
+          this.setData({ editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: savedSort + 1, categoryId: '', categoryName: '未分类' } })
         } else {
           this.setData({ showForm: false })
         }

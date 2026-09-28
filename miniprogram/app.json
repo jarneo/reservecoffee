@@ -17,6 +17,7 @@
     "pages/admin/review/review",
     "pages/admin/admins/admins",
     "pages/admin/menuAdmin/menuAdmin",
+    "pages/admin/categories/categories",
     "pages/admin/reviewAdmin/reviewAdmin",
     "pages/admin/smsConfig/smsConfig",
     "pages/admin/notifyConfig/notifyConfig",

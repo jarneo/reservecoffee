@@ -6,12 +6,15 @@ exports.main = async (event) => {
   const role = await getRole(OPENID)
   if (role.role !== 'owner' && role.role !== 'manager') return fail('无权限')
 
-  const { projectId, productId, name, image, price, desc, status, sort } = event
+  const { projectId, productId, name, image, price, desc, status, sort, categoryId } = event
   if (!projectId) return fail('缺少 projectId')
   if (!name || !name.trim()) return fail('请填写菜品名称')
   if (!image) return fail('请上传菜品图片')
   const p = Number(price)
   if (!(p >= 0)) return fail('价格无效')
+
+  // 分类：空值 / 非字符串 → 落空串（未归类）；合法 → 截断 40 字
+  const cat = (typeof categoryId === 'string' && categoryId) ? categoryId.slice(0, 40) : ''
 
   const patch = {
     name: String(name).trim().slice(0, 40),
@@ -19,7 +22,8 @@ exports.main = async (event) => {
     price: p,
     desc: String(desc || '').slice(0, 300),
     status: status === 'off' ? 'off' : 'on',
-    sort: Number.isFinite(Number(sort)) ? Number(sort) : 0
+    sort: Number.isFinite(Number(sort)) ? Number(sort) : 0,
+    categoryId: cat
   }
 
   if (productId) {

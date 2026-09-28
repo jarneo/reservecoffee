@@ -53,3 +53,14 @@
 .val { color: var(--ink-3); font-size: 26rpx; }
 .chip { padding:10rpx 24rpx; border:1rpx solid var(--line); border-radius:999rpx; font-size:24rpx; }
 .chip.on { border-color:var(--ink); font-weight:600; }
+
+/* 关联项目配置（添加 / 删除 / 排序） */
+.rel-list { display:flex; flex-direction:column; }
+.rel-row { display:flex; align-items:center; gap:14rpx; padding:14rpx 0; border-bottom:1rpx solid var(--line); }
+.rel-row:last-child { border-bottom:none; }
+.rel-ic { flex:none; width:56rpx; height:56rpx; border-radius:12rpx; background:var(--fill); border:1rpx solid var(--line); display:flex; align-items:center; justify-content:center; }
+.rel-ic-ph { color:var(--ink-3); font-size:22rpx; }
+.rel-name { flex:1; font-size:28rpx; color:var(--ink); }
+.rel-ops { display:flex; gap:14rpx; }
+.rel-op { font-size:26rpx; color:var(--ink-2); padding:4rpx 14rpx; border:1rpx solid var(--line); border-radius:8rpx; }
+.rel-op.del { color:#c0392b; border-color:#f5b7b1; }

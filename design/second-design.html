@@ -193,6 +193,11 @@
   .modal .macts{display:flex;gap:10px;margin-top:18px}
   .modal .macts .btn{flex:1}
   /* 店铺菜单 / 评价（与首页风格统一：白卡、黑字、棕色仅点缀） */
+  /* 菜单分类切换栏（components/categoryTabs）：首页「店铺菜单」区块上方横滑 tab，首项「全部」 */
+  .cat-tabs{display:flex;gap:16px;overflow-x:auto;white-space:nowrap;padding:4px 0 8px;border:none}
+  .cat-tabs .ci{font-size:14px;color:var(--ink-2);padding:4px 2px;position:relative;display:inline-block;cursor:pointer}
+  .cat-tabs .ci.on{color:var(--brand);font-weight:600}
+  .cat-tabs .ci.on::after{content:'';position:absolute;left:50%;transform:translateX(-50%);bottom:-2px;width:36px;height:4rpx;border-radius:2px;background:var(--brand)}
   .prod-img{width:56px;height:56px;border-radius:12px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none}
   .stars{display:inline-flex;gap:3px;font-size:18px;color:var(--line);line-height:1}
   .stars .on{color:var(--brand)}
@@ -539,6 +544,7 @@ function cHome(){
     <div class="sec">选择预约项目</div>
     ${cards}
     <div class="sec" style="margin-top:16px">店铺菜单</div>
+    <!-- 菜单分类切换栏：categoryTabs 组件，首项「全部」展示排序前 15，某分类展示该类目全量；菜品卡片/分组/排序规则不变 -->
     ${menuCards}
     <button class="btn ghost block" onclick="cMine()">我的预约</button>
     <div class="note">当前身份：顾客${state.cust?'（'+state.cust.nick+'）':''}</div>`;

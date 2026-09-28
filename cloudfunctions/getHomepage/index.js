@@ -1,8 +1,8 @@
 // getHomepage — 顾客端首页数据：首页配置 + 已发布且未删除项目列表 + 在售店铺菜单
 const { db, COL, ok, fail, wxCtx, cloud, _, ymd, addDays, monthDaySlash, loadAiSwitch, thumb } = require('./lib')
 
-// 首页店铺菜单最多展示数量（按 sort 升序取前 N 个）
-const MENU_LIMIT = 10
+// 首页店铺菜单最多展示数量（按 sort 升序取前 N 个）；分类切换时由 listProducts 取该类目全量
+const MENU_LIMIT = 15
 
 // 批量把 cloud fileID 解析为临时下载链接（一次调用换回全部，避免 N 次网络往返）
 async function resolveUrls(fileIds) {
@@ -88,15 +88,18 @@ exports.main = async () => {
   const today = ymd(new Date())
 
   // ── 阶段 1：三个互不依赖的查询并行发起（原来是三次串行 await）──
-  const [hp, proj, aiEnabled] = await Promise.all([
+  const [hp, proj, aiEnabled, catRes] = await Promise.all([
     db.collection(COL.homepage).doc('homepage').get().catch(() => ({ data: null })),
     db.collection(COL.projects).where({ published: true, deleted: _.neq(true) }).orderBy('createdAt', 'asc').get(),
     // AI 智能预约总开关（缺省开）：前端用它控制首页浮窗与 AI 入口显隐（详见 ai-reserve-spec.md §15）
-    loadAiSwitch(db).catch(() => true)
+    loadAiSwitch(db).catch(() => true),
+    // 菜单分类（全局类目），供首页分类切换栏使用
+    db.collection(COL.categories).orderBy('sort', 'asc').get().catch(() => ({ data: [] }))
   ])
   const homepage = hp.data || { logo: '二曜路8号咖啡和清酒', tag: 'SLOW COFFEE · 预约制', heroImage: '', intro: '' }
   const projList = proj.data || []
   const projectIds = projList.map(p => p._id)
+  const categories = (catRes && catRes.data) || []
 
   // 批量查 schedules 的窗口上界：取所有项目 advanceDays 的最大值，保证一次查询覆盖每个项目的窗口
   const globalMaxWin = projList.reduce((m, p) => {
@@ -155,11 +158,11 @@ exports.main = async () => {
   ;(rRes.data || []).forEach(r => { cnt[r.productId] = (cnt[r.productId] || 0) + 1 })
   const products = rawProducts.map(p => ({
     _id: p._id, name: p.name, price: p.price, desc: p.desc,
-    image: p.image,
+    image: p.image, categoryId: p.categoryId || '',
     imageUrl: thumb(productUrlMap[p.image] || '', 'card'),
     reviewCount: cnt[p._id] || 0
   }))
 
-  console.log('[getHomepage] openid=', OPENID, 'projects=', projects.length, 'products=', products.length)
-  return ok({ homepage, projects, products, aiEnabled })
+  console.log('[getHomepage] openid=', OPENID, 'projects=', projects.length, 'products=', products.length, 'categories=', categories.length)
+  return ok({ homepage, projects, products, aiEnabled, categories })
 }

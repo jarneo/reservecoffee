@@ -68,6 +68,7 @@ exports.main = async (event) => {
     imageUrl: thumb(await resolveImage(p.image), 'card'),
     intro: p.intro,
     introImages,
+    relatedProjectIds: p.relatedProjectIds || [],   // 关联项目（仅存 ID，管理端据此在列表中映射名称）
     published: !!p.published,
     needReview: !!p.needReview,
     paused: !!p.paused,

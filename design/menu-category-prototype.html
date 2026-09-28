@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>菜单分类 · 设计原型</title>
+<style>
+  :root { --brand:#7A5230; --ink:#1a1a1a; --ink2:#666; --ink3:#999; --line:#e7e3dd; --fill:#f3f1ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f5f5; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:880px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--ink3); font-size:13px; margin-bottom:24px; }
+  .layout { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  .phone { width:340px; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .phone .top { display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .phone .top button { flex:1; border:1px solid var(--brand); border-radius:8px; padding:6px 0; font-size:13px; cursor:pointer; }
+  .phone .top button.on { background:var(--brand); color:#fff; }
+  .phone .top button.off { background:#fff; color:var(--ink2); }
+  .hero { display:none; padding:18px 16px 12px; text-align:center; border-bottom:1px solid var(--line); }
+  .hero .n { font-size:15px; font-weight:500; }
+  .hero .t { font-size:12px; color:var(--ink3); margin-top:4px; }
+  .tabs { display:flex; gap:16px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .tabs div { font-size:13px; color:var(--ink2); padding-bottom:4px; cursor:pointer; }
+  .tabs div.on { color:var(--brand); font-weight:600; border-bottom:2px solid var(--brand); }
+  .sec { padding:12px 16px 4px; font-size:14px; font-weight:500; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:8px 10px 16px; }
+  .card { border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .card .img { height:104px; background:var(--fill); display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:12px; }
+  .card .info { display:flex; justify-content:space-between; padding:8px 10px; }
+  .card .info .nm { font-size:13px; }
+  .card .info .pr { font-size:13px; color:var(--brand); }
+  .note { color:var(--ink3); font-size:13px; text-align:center; padding:20px 0; }
+  .side { flex:1; min-width:280px; }
+  .side h2 { font-size:15px; margin:0 0 8px; }
+  .side p, .side li { font-size:13px; color:#333; line-height:1.7; }
+  .side code { background:#f0ece6; padding:1px 6px; border-radius:5px; font-size:12px; color:var(--brand); }
+  .kbd { display:inline-block; padding:2px 8px; border:1px dashed var(--brand); border-radius:6px; color:var(--brand); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>菜单分类 · 设计原型</h1>
+  <div class="sub">首页分类切换栏（保留现有位置/排版/卡片/分组/排序）｜独立菜单页仅提供可分享链接</div>
+  <div class="layout">
+    <div class="phone">
+      <div class="top">
+        <button id="b-home" class="on" onclick="setScreen('home')">首页菜单</button>
+        <button id="b-menu" class="off" onclick="setScreen('menu')">独立菜单页(链接)</button>
+      </div>
+      <div id="hero" class="hero">
+        <div class="n">二曜路8号咖啡和清酒</div>
+        <div class="t">SLOW COFFEE · 图片菜品 · 真实评价</div>
+      </div>
+      <div id="tabs" class="tabs"></div>
+      <div id="sec" class="sec">在售菜品</div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="side">
+      <h2>交互说明</h2>
+      <p><b>顶部分类栏</b>：横滑，首项「全部」(默认)。点「全部」展示排序前 <b>15</b> 个；点某分类展示该类目<b>全量</b>（右侧手机可直接点切换预览）。</p>
+      <p><b>首页菜单</b>：保持现在首页「店铺菜单」区块位置，仅在其上插入分类栏，下方双列瀑布流卡片样式/分组/排序规则<b>完全不变</b>。</p>
+      <p><b>独立菜单页</b>：不在小程序内另做呈现，复用现有 <code>pages/menu</code>，对外只给一条可分享/跳转的链接：</p>
+      <p><span class="kbd">pages/menu?projectId=&lt;项目ID&gt;</span></p>
+      <p>用于公众号菜单 / 图文 / 分享卡片直接跳转；分享时小程序自动带上 <code>projectId</code>。</p>
+      <h2>数据字段</h2>
+      <ul>
+        <li>新增集合 <code>menuCategories</code>（<code>name/sort/icon</code>），全局类目，管理端可增删改。</li>
+        <li><code>products</code> 新增可选字段 <code>categoryId</code>；未归类的菜品仅在「全部」可见。</li>
+        <li>首页 <code>getHomepage</code> 返回 <code>categories</code> 并透传 <code>categoryId</code>；首页菜单由前 10 改 <b>前 15</b>。</li>
+      </ul>
+      <h2>页面路由</h2>
+      <ul>
+        <li>顾客端：<code>pages/index</code>(tabBar) · <code>pages/menu?projectId=</code>(链接) · <code>pages/product?productId=</code></li>
+        <li>管理端：<code>pages/admin/hub</code> → <code>pages/admin/categories</code>(仅店主) · <code>pages/admin/menuAdmin</code> 类目下拉</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const BRAND='#7A5230';
+const CATS=[{id:'all',name:'全部'},{id:'c1',name:'自家煎焙'},{id:'c2',name:'经典名店'},{id:'c3',name:'特调'},{id:'c4',name:'甜品'},{id:'c5',name:'清酒'}];
+const P=[
+ {n:'耶加雪菲手冲',p:38,c:'c1'},{n:'巴西日晒',p:32,c:'c1'},{n:'哥伦比亚',p:36,c:'c1'},{n:'深烘法兰绒',p:30,c:'c1'},
+ {n:'卡布奇诺',p:28,c:'c2'},{n:'澳白',p:32,c:'c2'},{n:'美式',p:22,c:'c2'},{n:'拿铁',p:30,c:'c2'},
+ {n:'桂花乌龙拿铁',p:36,c:'c3'},{n:'海盐焦糖',p:38,c:'c3'},{n:'西柚美式',p:34,c:'c3'},
+ {n:'提拉米苏',p:28,c:'c4'},{n:'巴斯克',p:32,c:'c4'},{n:'可颂',p:18,c:'c4'},
+ {n:'纯米大吟酿',p:88,c:'c5'},{n:'本酿造',p:58,c:'c5'}
+];
+let active='all', screen='home';
+function renderTabs(){
+  const el=document.getElementById('tabs'); el.innerHTML='';
+  CATS.forEach(c=>{
+    const b=document.createElement('div');
+    b.textContent=c.name; b.onclick=()=>{active=c.id;renderTabs();renderGrid();};
+    const sel=active===c.id;
+    b.style.color=sel?BRAND:'var(--ink2)'; b.style.fontWeight=sel?'600':'400';
+    b.style.borderBottom=sel?('2px solid '+BRAND):'2px solid transparent';
+    el.appendChild(b);
+  });
+}
+function renderGrid(){
+  let list=active==='all'?P.slice(0,15):P.filter(x=>x.c===active);
+  const g=document.getElementById('grid'); g.innerHTML='';
+  if(!list.length){g.innerHTML='<div class="note">该类目暂无菜品</div>';return;}
+  list.forEach(x=>{
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML='<div class="img">'+x.n+'</div><div class="info"><span class="nm">'+x.n+'</span><span class="pr">¥'+x.p+'</span></div>';
+    g.appendChild(c);
+  });
+}
+function setScreen(s){
+  screen=s;
+  document.getElementById('hero').style.display=(s==='menu')?'block':'none';
+  document.getElementById('sec').textContent=(s==='menu')?'在售菜品':'店铺菜单';
+  const h=document.getElementById('b-home'), m=document.getElementById('b-menu');
+  h.className=(s==='home')?'on':'off'; m.className=(s==='menu')?'on':'off';
+}
+renderTabs(); renderGrid();
+</script>
+</body>
+</html>

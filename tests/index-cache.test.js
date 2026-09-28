@@ -28,7 +28,7 @@ const boot = require(path.join(__dirname, '..', 'miniprogram', 'utils', 'boot.js
 
 // 复刻 index.js 的相关逻辑（保持与源码同步）
 const CACHE_KEY = 'homepageCacheV1'
-const CACHE_VER = 1
+const CACHE_VER = 2   // 与 pages/index/index.js 保持同步（结构变更：新增 categories / 首页菜单改 15）
 const CACHE_TTL = 10 * 60 * 1000
 
 function mkPage(homepageData) {

@@ -1,0 +1,6 @@
+OK   d:\WorkBuddy\reservecoffee\cloudfunctions\getProject\index.js
+OK   d:\WorkBuddy\reservecoffee\cloudfunctions\getProjectAdmin\index.js
+OK   d:\WorkBuddy\reservecoffee\cloudfunctions\updateProject\index.js
+OK   d:\WorkBuddy\reservecoffee\miniprogram\pages\booking\booking.js
+OK   d:\WorkBuddy\reservecoffee\miniprogram\pages\admin\projectConfig\projectConfig.js
+

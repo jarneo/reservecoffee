@@ -1,0 +1,23 @@
+/* 分类切换栏：横滑 tab，选中态品牌色 + 底部短下划线 */
+.cat-tabs { width: 100%; white-space: nowrap; box-sizing: border-box; }
+.cat-row { display: inline-flex; align-items: flex-end; padding: 6rpx 8rpx; }
+.cat-item {
+  font-size: 28rpx;
+  color: var(--ink-2);
+  padding: 12rpx 22rpx 16rpx;
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+.cat-item.on { color: var(--brand); font-weight: 600; }
+.cat-item.on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4rpx;
+  width: 36rpx;
+  height: 4rpx;
+  border-radius: 2rpx;
+  background: var(--brand);
+}

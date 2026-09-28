@@ -15,6 +15,7 @@ Page({
         { t: '首图及介绍', u: '/pages/admin/cover/cover' },
         { t: '场次模版', u: '/pages/admin/templates/templates' },
         { t: '店铺菜单管理', u: '/pages/admin/menuAdmin/menuAdmin' },
+        { t: '菜单分类管理', u: '/pages/admin/categories/categories' },
         { t: '菜品评价管理', u: '/pages/admin/reviewAdmin/reviewAdmin' },
         { t: '预约管理', u: '/pages/admin/sessions/sessions' },
         { t: '审核', u: '/pages/admin/review/review' },

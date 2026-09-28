@@ -28,6 +28,32 @@ async function resolveImage(fileId) {
   } catch (e) { console.warn('[getProject] resolveImage failed:', e.message); return '' }
 }
 
+// 展开关联项目：按 relatedProjectIds 原序返回精简字段（仅已发布），用于顾客端「关联项目」模块
+// 无效 / 未发布 / 自引用的 ID 自动跳过，保证展示稳定
+async function resolveRelated(ids) {
+  if (!Array.isArray(ids) || !ids.length) return []
+  const docs = await Promise.all(
+    ids.map(id => db.collection(COL.projects).doc(id).get().then(r => r.data).catch(() => null))
+  )
+  const map = {}
+  docs.forEach(d => { if (d) map[d._id] = d })
+  const valid = ids.map(id => map[id]).filter(d => d && d.published)
+  const fileIds = valid.map(d => d.iconFileId).filter(Boolean)
+  let urlMap = {}
+  if (fileIds.length) {
+    try {
+      const res = await cloud.getTempFileURL({ fileList: fileIds })
+      ;(res.fileList || []).forEach(f => { if (f.fileID) urlMap[f.fileID] = f.tempFileURL })
+    } catch (e) { console.warn('[getProject] resolveRelated getTempFileURL failed:', e.message) }
+  }
+  return valid.map(d => ({
+    _id: d._id,
+    name: d.name,
+    intro: (d.intro || '').slice(0, 60),
+    iconUrl: thumb(urlMap[d.iconFileId] || '', 'icon')
+  }))
+}
+
 exports.main = async (event) => {
   const { projectId } = event
   if (!projectId) return fail('缺少 projectId')
@@ -56,6 +82,7 @@ exports.main = async (event) => {
   }))
 
   const introImages = await resolveIntroImages(p.introImages || [])
+  const relatedProjects = await resolveRelated(p.relatedProjectIds || [])
 
   // 通知时间窗配置：顾客端据此按预约时间轴裁剪「本次该申请哪几个订阅模板」（≤3，一次弹窗）
   const swRes2 = await db.collection('config').doc('smsnotify').get().catch(() => ({ data: null }))
@@ -71,6 +98,7 @@ exports.main = async (event) => {
     imageUrl: thumb(await resolveImage(p.image), 'cover'),
     intro: p.intro,
     introImages,                       // 已解析临时 URL 的介绍图集
+    relatedProjects,                    // 关联项目（已展开精简字段，按原序）
     needReview: !!p.needReview,
     dailyLimit: p.dailyLimit || 1,
     advanceDays: p.advanceDays || 7,

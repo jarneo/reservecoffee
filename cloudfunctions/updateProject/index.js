@@ -59,6 +59,15 @@ exports.main = async (event) => {
       ? event.fields.filter(k => typeof k === 'string').slice(0, 20)
       : []
   }
+  // 关联项目（一对多）：字符串数组、去重、排除自引用、上限 50；无效/已删目标在 getProject 展示时自动跳过
+  if (event.relatedProjectIds !== undefined) {
+    if (!Array.isArray(event.relatedProjectIds)) return fail('relatedProjectIds 须为数组')
+    patch.relatedProjectIds = Array.from(
+      new Set(event.relatedProjectIds.map(x => String(x).trim()).filter(Boolean))
+    )
+      .filter(id => id !== projectId)
+      .slice(0, 50)
+  }
   patch.updatedAt = Date.now()
 
   await db.collection(COL.projects).doc(projectId).update({ data: patch })

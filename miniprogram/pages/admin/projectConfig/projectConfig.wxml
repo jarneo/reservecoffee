@@ -60,6 +60,28 @@
     <view class="tip">建议竖图：宽 750px（高清可 1080px），单张 ≤1MB，最多 9 张；按添加顺序在预约页全宽纵向展示，长图不会被裁切。</view>
   </view>
 
+  <!-- 关联项目：一对多，支持添加 / 删除 / 排序 -->
+  <view class="card">
+    <view class="sec row between">
+      <view>关联项目</view>
+      <view class="muted">{{relatedList.length}} / 不限</view>
+    </view>
+    <view wx:if="{{relatedList.length}}" class="rel-list">
+      <view wx:for="{{relatedList}}" wx:key="_id" class="rel-row">
+        <view class="rel-ic"><text class="rel-ic-ph">图</text></view>
+        <view class="rel-name">{{item.name}}</view>
+        <view class="rel-ops">
+          <text class="rel-op" catchtap="moveRelated" data-i="{{index}}" data-d="-1">↑</text>
+          <text class="rel-op" catchtap="moveRelated" data-i="{{index}}" data-d="1">↓</text>
+          <text class="rel-op del" catchtap="removeRelated" data-i="{{index}}">删除</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="note" style="padding:20rpx">尚未关联任何项目</view>
+    <button class="btn block ghost" style="margin-top:12rpx" bindtap="addRelated">+ 添加关联项目</button>
+    <view class="tip">顾客端将在项目详情页展示这些入口，点击可跳转至对应项目；排序即顾客端展示顺序。</view>
+  </view>
+
   <!-- ③ 全局设定 -->
   <view class="card" style="margin-top:0">
     <view class="sec">全局设定</view>

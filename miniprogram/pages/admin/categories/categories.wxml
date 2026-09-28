@@ -1,0 +1,34 @@
+<view class="page">
+  <view class="row between" style="margin:4rpx 4rpx 12rpx">
+    <view class="sec">菜单分类（{{categories.length}}）</view>
+    <view class="btn sm" bindtap="openNew">+ 新建</view>
+  </view>
+
+  <view wx:if="{{categories.length===0}}" class="note">暂无分类，点击下方「新建」添加类目</view>
+  <view wx:for="{{categories}}" wx:key="_id" class="card row between">
+    <view>
+      <view class="bold">{{item.name}}</view>
+      <view class="sm muted" style="margin-top:6rpx">排序 {{item.sort}}</view>
+    </view>
+    <view class="ops">
+      <text class="ob" bindtap="openEdit" data-i="{{index}}">编辑</text>
+      <text class="ob danger" bindtap="del" data-i="{{index}}">删除</text>
+    </view>
+  </view>
+
+  <view wx:if="{{showForm}}" class="modal-mask" bindtap="closeForm" catchtouchmove="noop">
+    <view class="modal-panel" catchtap="noop">
+      <view class="modal-bar">
+        <view class="sec">{{editingId ? '编辑分类' : '新建分类'}}</view>
+        <view class="modal-x" bindtap="closeForm">✕</view>
+      </view>
+      <scroll-view scroll-y class="modal-body">
+        <view class="field"><view class="label">类目名称</view><input value="{{form.name}}" bindinput="onName" placeholder="如：自家煎焙 / 清酒"/></view>
+        <view class="field"><view class="label">排序（数字越小越靠前）</view><input type="number" value="{{form.sort}}" bindinput="onSort" placeholder="0"/></view>
+        <view class="modal-actions">
+          <button class="btn block" bindtap="save">保存</button>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

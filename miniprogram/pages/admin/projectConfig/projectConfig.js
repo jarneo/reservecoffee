@@ -15,6 +15,7 @@ Page({
   behaviors: [guard],
   data: {
     projects: [], projectId: '', project: null, projectName: '', intro: '', introImages: [], openDays: [], allSchedules: [], dayList: [],
+    relatedProjectIds: [], relatedList: [],
     year: 2026, month: 8,
     showAdd: false, addDate: '', addForm: { start: '10:00', end: '11:30', capacity: 8 },
     iconFileId: '', iconUrl: '', _oldIconFileId: '',
@@ -69,6 +70,7 @@ Page({
     const now = new Date()
     this.setData({
       project: p, intro: p.intro || '', introImages: p.introImages || [], openDays: p.openDays || [],
+      relatedProjectIds: p.relatedProjectIds || [],
       iconFileId: p.iconFileId || '', iconUrl: p.iconUrl || '', _oldIconFileId: p.iconFileId || '',
       year: now.getFullYear(), month: now.getMonth() + 1,
       global: {
@@ -83,7 +85,19 @@ Page({
     })
     this.computeCutoffText()
     this.computeFieldsText()
+    this.buildRelatedList()
     await this.refreshSchedules()
+  },
+
+  // 由 relatedProjectIds 映射出展示用名称（依赖已加载的 projects 列表）
+  buildRelatedList() {
+    const map = {}
+    ;(this.data.projects || []).forEach(p => { map[p._id] = p })
+    const list = (this.data.relatedProjectIds || []).map(id => {
+      const p = map[id]
+      return { _id: id, name: p ? p.name : '(已删除/未发布项目)' }
+    })
+    this.setData({ relatedList: list })
   },
 
   // ===== 介绍图片管理（上传 / 替换 / 删除 / 排序 / 说明） =====
@@ -305,6 +319,7 @@ Page({
       maxParty: g.maxParty, subscribeNotify: g.subscribeNotify,
       smsEnabled: g.smsEnabled, showSeatInfo: g.showSeatInfo,
       cutoff: g.cutoff, fields: g.fields,
+      relatedProjectIds: this.data.relatedProjectIds,
       intro: this.data.intro
     }
     const oldIcon = this.data._oldIconFileId
@@ -382,6 +397,42 @@ Page({
         this.computeFieldsText()
         wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' })
       })
+      .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message, icon: 'none' }) })
+  },
+
+  // ===== 关联项目（一对多：添加 / 删除 / 排序） =====
+  addRelated() {
+    const candidates = (this.data.projects || [])
+      .filter(p => p._id !== this.data.projectId && this.data.relatedProjectIds.indexOf(p._id) < 0)
+    if (!candidates.length) return wx.showToast({ title: '无可关联项目', icon: 'none' })
+    wx.showActionSheet({
+      itemList: candidates.map(c => c.name),
+      success: r => {
+        const id = candidates[r.tapIndex]._id
+        const ids = this.data.relatedProjectIds.concat([id])
+        this.setData({ relatedProjectIds: ids }, () => { this.buildRelatedList(); this.saveRelated() })
+      }
+    })
+  },
+  removeRelated(e) {
+    const i = e.currentTarget.dataset.i
+    const ids = this.data.relatedProjectIds.slice()
+    ids.splice(i, 1)
+    this.setData({ relatedProjectIds: ids }, () => { this.buildRelatedList(); this.saveRelated() })
+  },
+  moveRelated(e) {
+    const i = e.currentTarget.dataset.i
+    const dir = Number(e.currentTarget.dataset.dir)
+    const j = i + dir
+    const ids = this.data.relatedProjectIds.slice()
+    if (j < 0 || j >= ids.length) return
+    const t = ids[i]; ids[i] = ids[j]; ids[j] = t
+    this.setData({ relatedProjectIds: ids }, () => { this.buildRelatedList(); this.saveRelated() })
+  },
+  saveRelated() {
+    wx.showLoading({ title: '保存中' })
+    call('updateProject', { projectId: this.data.projectId, relatedProjectIds: this.data.relatedProjectIds })
+      .then(() => { wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }) })
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message, icon: 'none' }) })
   },
 

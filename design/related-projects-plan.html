@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关联项目功能 · 页面设计方案</title>
+  <style>
+    :root {
+      --bg: #f6f6f6;
+      --fill: #f2f2f2;
+      --line: #e6e6e6;
+      --ink: #1a1a1a;
+      --ink-2: #666;
+      --ink-3: #999;
+      --brand: #7A5230;
+      --brand-light: rgba(122,82,48,.08);
+      --red: #c0392b;
+      --shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#fff; color:var(--ink); line-height:1.55; }
+    h1 { font-size:22px; margin:0 0 6px; }
+    .sub { color:var(--ink-2); font-size:14px; margin-bottom:22px; }
+
+    .stage { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+
+    /* 左侧说明 */
+    .spec { flex:1; min-width:280px; max-width:420px; }
+    .spec h2 { font-size:16px; margin:18px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+    .spec h2:first-child { margin-top:0; }
+    .spec ul { margin:6px 0; padding-left:18px; color:var(--ink-2); font-size:14px; }
+    .spec li { margin:5px 0; }
+    .spec code { background:var(--fill); padding:1px 5px; border-radius:4px; color:var(--brand); font-size:13px; }
+    .spec .field { font-size:13px; color:var(--ink-2); margin:4px 0; }
+    .spec .field strong { color:var(--ink); }
+
+    /* 右侧手机预览 */
+    .phones { display:flex; gap:20px; flex-wrap:wrap; flex:2; min-width:320px; }
+    .phone { width:360px; border:1px solid var(--line); border-radius:28px; background:var(--bg); overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.08); position:relative; }
+    .phone-h { height:44px; background:#fff; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--line); font-size:13px; color:var(--ink-2); }
+    .phone-body { height:640px; overflow-y:auto; padding:16px; }
+    .phone-label { text-align:center; font-size:12px; color:var(--ink-3); margin-top:10px; }
+
+    /* 通用小程序组件 */
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:4px 4px 16px; font-weight:700; font-size:17px; }
+    .card { background:#fff; border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow); }
+    .sec { font-size:15px; font-weight:700; margin-bottom:12px; }
+    .sec.row { display:flex; justify-content:space-between; align-items:center; }
+    .muted { color:var(--ink-3); font-size:13px; }
+    .tip { color:var(--ink-3); font-size:12px; margin-top:8px; }
+    .btn { border:none; background:var(--ink); color:#fff; border-radius:10px; padding:10px 16px; font-size:14px; cursor:pointer; }
+    .btn.block { display:block; width:100%; }
+    .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
+    .btn.sm { padding:6px 12px; font-size:13px; }
+
+    /* 介绍图占位 */
+    .intro-ph { background:#fff; border:1px dashed var(--brand); border-radius:16px; padding:22px 18px; }
+    .intro-ph-t { color:var(--brand); font-weight:700; font-size:15px; margin-bottom:6px; }
+    .intro-ph-d { color:var(--ink-2); font-size:13px; }
+
+    /* ===== 顾客端：关联项目模块 ===== */
+    .related-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow); }
+    .related-h { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .related-h .title { font-size:15px; font-weight:700; }
+    .related-list { display:flex; flex-direction:column; gap:8px; }
+    .related-item { display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; background:var(--fill); cursor:pointer; transition:background .15s; }
+    .related-item:hover { background:var(--brand-light); }
+    .related-item:active { opacity:.85; }
+    .related-icon { flex:none; width:44px; height:44px; border-radius:50%; background:#fff; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .related-icon img { width:100%; height:100%; object-fit:cover; }
+    .related-icon .ph { color:var(--ink-3); font-size:12px; }
+    .related-info { flex:1; min-width:0; }
+    .related-name { font-size:15px; font-weight:600; color:var(--ink); }
+    .related-desc { font-size:12px; color:var(--ink-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .related-arrow { flex:none; color:var(--ink-3); font-size:18px; }
+
+    /* 日期条、场次占位 */
+    .datestrip { display:flex; gap:10px; overflow:hidden; margin:8px 0 14px; }
+    .dchip { flex:none; width:72px; background:#fff; border:1px solid var(--line); border-radius:20px; padding:14px 0; text-align:center; }
+    .dchip.on { background:var(--ink); color:#fff; }
+    .session { background:#fff; border-radius:12px; padding:14px; margin-bottom:10px; display:flex; justify-content:space-between; }
+
+    /* ===== 管理端：关联项目配置 ===== */
+    .rel-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+    .rel-row:last-child { border-bottom:none; }
+    .rel-row .icon { width:36px; height:36px; border-radius:8px; background:var(--fill); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--ink-3); overflow:hidden; }
+    .rel-row .icon img { width:100%; height:100%; object-fit:cover; }
+    .rel-row .name { flex:1; font-size:14px; }
+    .rel-row .ops { display:flex; gap:6px; }
+    .rel-row .ops button { padding:4px 10px; font-size:12px; border-radius:6px; border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; }
+    .add-row { margin-top:10px; }
+
+    /* 添加弹层 */
+    .modal-mask { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:100; }
+    .modal-mask.show { display:flex; }
+    .modal { width:300px; background:#fff; border-radius:16px; padding:18px; }
+    .modal-t { font-weight:700; margin-bottom:12px; }
+    .picker-list { max-height:240px; overflow-y:auto; }
+    .picker-item { padding:12px; border-bottom:1px solid var(--line); cursor:pointer; font-size:14px; }
+    .picker-item:hover { background:var(--fill); }
+    .picker-item:last-child { border-bottom:none; }
+
+    .nav-tab { display:flex; justify-content:space-around; padding:10px 0 6px; border-top:1px solid var(--line); background:#fff; position:absolute; bottom:0; left:0; right:0; font-size:11px; color:var(--ink-3); }
+    .nav-tab span { text-align:center; }
+  </style>
+</head>
+<body>
+  <h1>关联项目 · 页面设计方案</h1>
+  <div class="sub">一对多关联，顾客端展示可跳转链接；管理端支持添加、删除、排序。</div>
+
+  <div class="stage">
+    <section class="spec">
+      <h2>一、数据模型</h2>
+      <ul>
+        <li><code>projects</code> 集合新增字段：<code>relatedProjectIds: string[]</code>，存储关联项目 _id 的有序数组。</li>
+        <li>仅存 ID，避免项目改名/换图后数据过期；云端 <code>getProject</code> 时按需填充名称、简介、图标。</li>
+        <li>不允许关联自己；保存时过滤掉无效/重复 ID。</li>
+      </ul>
+
+      <h2>二、云端改动（3 处）</h2>
+      <ul>
+        <li><code>getProject</code>：返回 <code>relatedProjects</code>（由 <code>relatedProjectIds</code> 展开，含 _id/name/intro/iconUrl）。</li>
+        <li><code>getProjectAdmin</code>：返回原始 <code>relatedProjectIds</code> 及对应项目名列表。</li>
+        <li><code>updateProject</code>：接收并持久化 <code>relatedProjectIds</code>。</li>
+      </ul>
+
+      <h2>三、顾客端详情页（pages/booking/booking）</h2>
+      <ul>
+        <li>位置：放在「介绍图片区域」之后、「横向日期条」之前（属于介绍区域的延伸）。</li>
+        <li>仅当 <code>relatedProjects.length &gt; 0</code> 时显示。</li>
+        <li>每行展示：项目图标、名称、首页描述摘要、右箭头。</li>
+        <li>点击跳转：<code>/pages/booking/booking?projectId={{item._id}}</code>，重新加载目标项目详情。</li>
+      </ul>
+
+      <h2>四、管理端配置页（pages/admin/projectConfig/projectConfig）</h2>
+      <ul>
+        <li>新增「关联项目」卡片，放在「项目首页描述」或「介绍图片」卡片之后。</li>
+        <li>列表展示已选项目，支持 ↑/↓ 排序、删除。</li>
+        <li>「添加关联项目」按钮：弹出选择器，列出除当前项目外的所有项目；选择后追加到末尾。</li>
+        <li>每次增/删/排序立即调用 <code>updateProject</code> 保存，也可随底部「保存」统一提交。</li>
+      </ul>
+
+      <h2>五、交互与边界</h2>
+      <ul>
+        <li>已关联项目在选择器中置灰，防止重复添加。</li>
+        <li>目标项目被删除/下架后，关联列表自动隐藏无效项，但 ID 保留（便于恢复后重新展示）。</li>
+        <li>循环关联不限制：A 关联 B，B 也可关联 A，由业务决定。</li>
+      </ul>
+    </section>
+
+    <section class="phones">
+      <!-- 顾客端预览 -->
+      <div>
+        <div class="phone">
+          <div class="phone-h">顾客端 · 项目详情</div>
+          <div class="phone-body">
+            <div class="topbar">
+              <span>法兰绒深烘咖啡</span>
+              <span style="color:var(--ink-3)">⋯</span>
+            </div>
+
+            <!-- 介绍图区 -->
+            <div class="intro-ph" style="margin-bottom:14px;">
+              <div class="intro-ph-t">预约须知</div>
+              <div class="intro-ph-d">请准时到店；如需取消请提前在「我的预约」操作。可约时间以日历开放日为准。</div>
+            </div>
+
+            <!-- ===== 新增：关联项目模块 ===== -->
+            <div class="related-card">
+              <div class="related-h">
+                <span class="title">关联项目</span>
+                <span class="muted">3</span>
+              </div>
+              <div class="related-list">
+                <div class="related-item">
+                  <div class="related-icon"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23eee'/%3E%3C/svg%3E" alt=""></div>
+                  <div class="related-info">
+                    <div class="related-name">清酒品鉴</div>
+                    <div class="related-desc">每周限定酒款，吧台小杯品鉴。</div>
+                  </div>
+                  <div class="related-arrow">›</div>
+                </div>
+                <div class="related-item">
+                  <div class="related-icon"><span class="ph">图标</span></div>
+                  <div class="related-info">
+                    <div class="related-name">法兰绒研习社</div>
+                    <div class="related-desc">周日下午小班，进阶冲煮与感官。</div>
+                  </div>
+                  <div class="related-arrow">›</div>
+                </div>
+                <div class="related-item">
+                  <div class="related-icon"><span class="ph">图标</span></div>
+                  <div class="related-info">
+                    <div class="related-name">店铺菜单</div>
+                    <div class="related-desc">当季豆单与酒单，到店点单参考。</div>
+                  </div>
+                  <div class="related-arrow">›</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 日期条占位 -->
+            <div class="datestrip">
+              <div class="dchip"><div style="font-size:11px;color:var(--ink-3)">今天</div><div style="font-size:18px;font-weight:700">09/27</div></div>
+              <div class="dchip on"><div style="font-size:11px">周日</div><div style="font-size:18px;font-weight:700">09/28</div></div>
+              <div class="dchip"><div style="font-size:11px;color:var(--ink-3)">周一</div><div style="font-size:18px;font-weight:700">09/29</div></div>
+            </div>
+
+            <!-- 场次占位 -->
+            <div class="session"><span>10:00 – 11:30</span><span style="color:var(--brand);font-size:13px">剩 2/8</span></div>
+            <div class="session"><span>14:00 – 15:30</span><span style="color:var(--brand);font-size:13px">剩 4/8</span></div>
+          </div>
+        </div>
+        <div class="phone-label">顾客端 · 关联项目展示在介绍区下方</div>
+      </div>
+
+      <!-- 管理端预览 -->
+      <div>
+        <div class="phone">
+          <div class="phone-h">管理端 · 项目配置</div>
+          <div class="phone-body">
+            <div class="card" style="padding:14px 16px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>法兰绒深烘咖啡</strong>
+                <span style="color:var(--ink-3);font-size:13px">切换 ›</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="sec">项目首页描述</div>
+              <div style="background:var(--fill);border-radius:10px;padding:10px;font-size:13px;color:var(--ink-2);min-height:54px;">每日限量手冲深烘，安静的吧台座位。</div>
+            </div>
+
+            <!-- ===== 新增：关联项目配置 ===== -->
+            <div class="card">
+              <div class="sec row">
+                <span>关联项目</span>
+                <span class="muted">2 / 不限</span>
+              </div>
+              <div class="related-list">
+                <div class="rel-row">
+                  <div class="icon"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23eee'/%3E%3C/svg%3E" alt=""></div>
+                  <div class="name">清酒品鉴</div>
+                  <div class="ops">
+                    <button>↑</button>
+                    <button>↓</button>
+                    <button style="color:var(--red);border-color:#f5b7b1;">删除</button>
+                  </div>
+                </div>
+                <div class="rel-row">
+                  <div class="icon"><span style="font-size:11px">图标</span></div>
+                  <div class="name">法兰绒研习社</div>
+                  <div class="ops">
+                    <button>↑</button>
+                    <button>↓</button>
+                    <button style="color:var(--red);border-color:#f5b7b1;">删除</button>
+                  </div>
+                </div>
+              </div>
+              <div class="add-row">
+                <button class="btn block ghost" onclick="document.getElementById('addModal').classList.add('show')">+ 添加关联项目</button>
+              </div>
+              <div class="tip">顾客端将在项目详情页展示这些入口，点击可跳转到对应项目。</div>
+            </div>
+
+            <div class="card">
+              <div class="sec">全局设定</div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px;"><span>预约截止规则</span><span style="color:var(--ink-3)">场次开始前 30 分钟 ›</span></div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;"><span>提交后是否审核</span><span style="color:var(--ink-3)">开关</span></div>
+            </div>
+
+            <button class="btn block" style="margin-top:6px;">保存</button>
+          </div>
+        </div>
+        <div class="phone-label">管理端 · 关联项目配置卡片</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 添加弹层 -->
+  <div class="modal-mask" id="addModal" onclick="this.classList.remove('show')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-t">选择要关联的项目</div>
+      <div class="picker-list">
+        <div class="picker-item">店铺菜单</div>
+        <div class="picker-item">法兰绒研习社</div>
+        <div class="picker-item" style="color:var(--ink-3)">清酒品鉴（已关联）</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
