@@ -2,6 +2,10 @@ const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
 
 const DEF_APP = 'wxb97578ed89c6e2c7'
+// 「二曜路8号咖啡与清酒」微商城（= utils/jump.js 的 TARGET_APPID）。
+// ⚠️ 菜单项跳小程序只认 appid + pagepath 两者**必须同属一个小程序**：
+//    yb_wm/index/index 是微商城的页面，填 DEF_APP 会导致微信发布返 40066 invalid url。
+const WM_APP = 'wx00914125678e1ad3'
 const MAX_TOP = 3
 const MAX_SUB = 5
 
@@ -25,7 +29,9 @@ const DEFAULT_MENU = {
       ]
     },
     // ⚠️ 一级菜单名 ≤4 字（微信硬限制）。原「联系/关于」为 5 字，永远发布不出去 ⇒ 改为「联系我们」。
-    { type: 'miniprogram', name: '买豆买酒', appid: DEF_APP, pagepath: 'yb_wm/index/index', url: 'https://mp.weixin.qq.com' },
+    // 「买豆买酒」指向**微商城**（另一小程序）：appid 必须是 WM_APP，与 pagepath 同属微商城。
+    // 前置条件：目标小程序须已在公众号后台「小程序管理」关联过，否则发布报 40066。
+    { type: 'miniprogram', name: '买豆买酒', appid: WM_APP, pagepath: 'yb_wm/index/index', url: 'https://mp.weixin.qq.com' },
     { type: 'click', name: '联系我们', key: 'contact', replyText: '你可以直接发消息给我。ai 小曜目前接管中，有问题可以直接跟我说。\n如果解决不了，可以直接电话（微信同号）：19292757851' }
   ]
 }
