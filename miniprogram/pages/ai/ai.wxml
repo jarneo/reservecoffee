@@ -1,5 +1,10 @@
 <view class="page chat">
-  <scroll-view scroll-y class="msgs" scroll-into-view="{{scrollTo}}" scroll-with-animation>
+  <!-- ⭐ 自动滚屏：改用 scroll-top（可量化、可重复触发）而不是 scroll-into-view。
+       scroll-into-view 指向「刚 setData 进去、这一帧还没渲染」的节点时必然失效 —— 这正是
+       消息一多新消息就不自动滚到底的根因。scroll-top 给一个超过内容高度的超大值，
+       会被容器自动钳到 maxScrollTop，等价于「贴底」，且不依赖节点是否已渲染。
+       bindscroll 用来感知「用户是否贴在底部」，从而决定新消息要不要打断他。 -->
+  <scroll-view scroll-y class="msgs" scroll-top="{{scrollTop}}" scroll-with-animation bindscroll="onScroll">
     <view wx:for="{{messages}}" wx:key="id" id="m{{item.id}}" class="msg {{item.role}}">
       <view class="bubble {{item.notice?'notice':''}}">{{item.content}}</view>
     </view>
@@ -34,6 +39,9 @@
       <button class="btn block" bindtap="goBooking">进入常规预约</button>
     </view>
   </scroll-view>
+
+  <!-- 「贴底」以外的状态给一个回到底部的入口：既然不强制打断，就必须留一条一键回去的路 -->
+  <view wx:if="{{showJump}}" class="jump" bindtap="jumpBottom">{{hasNew ? '新消息 ↓' : '回到最新 ↓'}}</view>
 
   <!-- 快捷短语（仅在尚未进入确认/降级时展示）：来自后台「AI 预约 · 快捷短语」，点一下即发送 item.text -->
   <view class="chips" wx:if="{{!intent && !downgraded && quickReplies.length}}">

@@ -1,5 +1,7 @@
 .chat { display:flex; flex-direction:column; height:100vh; padding:0; }
-.msgs { flex:1; padding:24rpx; box-sizing:border-box; }
+/* flex 子项默认 min-height:auto —— 内容一多会把容器撑开、把输入栏顶出屏幕，
+   表现为「消息超出可视高度却不滚动」。必须显式归零，滚动条才交给 scroll-view 自己管。 */
+.msgs { flex:1 1 0; min-height:0; padding:24rpx; box-sizing:border-box; }
 .msg { display:flex; margin-bottom:20rpx; }
 .msg.user { justify-content:flex-end; }
 .msg.assistant { justify-content:flex-start; }
@@ -43,6 +45,18 @@
 
 .down { background:#fff8ec; border:1rpx solid #f0d9a0; }
 .down .sec { font-weight:600; }
+
+/* 「回到最新 / 新消息」圆钮：不强制滚动打断浏览，就必须留一个一键回到底部的入口。
+   位置避开输入栏（含安全区），层级低于成功/弹窗覆盖层（1000/1100）。 */
+.jump {
+  position:fixed; right:24rpx; bottom:calc(130rpx + env(safe-area-inset-bottom));
+  z-index:20; flex:none;
+  padding:12rpx 22rpx; border-radius:999rpx;
+  background:#fff; border:1rpx solid var(--line); color:var(--brand);
+  font-size:24rpx; line-height:1;
+  box-shadow:0 4rpx 14rpx rgba(0,0,0,.10);
+}
+.jump:active { background:rgba(122,82,48,.08); }
 
 .chips { display:flex; flex-wrap:wrap; gap:14rpx; padding:0 24rpx 12rpx; }
 .chip {

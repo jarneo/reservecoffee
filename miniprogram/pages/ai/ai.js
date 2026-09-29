@@ -34,6 +34,15 @@ const GREET_IDLE_MS = 5 * 60 * 1000
 // 上滑取消阈值（px）：手指超过起点这么高就进取消区，与微信语音输入手感一致
 const VOICE_CANCEL_PX = 60
 
+// ===== 自动滚屏 =====
+// 「距底部多少 px 以内」算贴底（用户在看最新）。给足容差，避免浮点/1px 误差导致误判成在看历史。
+const BOTTOM_EPS = 48
+// 程序滚动后的静默期：scroll-with-animation 期间会连发 scroll 事件，
+// 这些事件里的位置是动画中间态（还没到底），若拿它判定会把「刚滚到底」误判成「在看历史」。
+const AUTO_SCROLL_SILENCE_MS = 420
+// 补滚延迟：新气泡里的换行/长文本有时会在下一帧才撑开高度，补一次兜住。
+const RESCROLL_DELAY_MS = 320
+
 // 快捷短语兜底：后台未配置 / 拉取失败时使用（与云端 getAiConfig 的 DEFAULT_QUICK 保持一致）
 const DEFAULT_QUICK = [
   { label: '明天·法兰绒', text: '明天两点，两人，法兰绒深烘' },
@@ -50,7 +59,9 @@ Page({
     profile: { name: '', phone: '' },
     oaFill: false,         // true = 来自公众号（from=oa），确认卡需补填称呼/手机号
     downgraded: false,
-    scrollTo: '',
+    scrollTop: 0,        // 受控滚动位置：给一个超大值即被容器钳到底部（见 scrollBottom）
+    showJump: false,     // 未贴底时显示「回到最新 / 新消息」圆钮
+    hasNew: false,       // 未贴底期间又来了新消息
     success: false,
     successInfo: null,
     sending: false,
@@ -83,10 +94,20 @@ Page({
   onLoad(q) {
     const pid = (q && q.projectId) || ''
     this.projectId = pid
+    // 滚动状态（实例变量，不进 data，避免无谓渲染）
+    this._scrollTop = 0
+    this._scrollH = 0
+    this._viewH = 0
+    this._atBottom = true
+    this._autoScrolling = false
+    this._ignoreScrollUntil = 0
+    // 键盘弹出/收起、窗口尺寸变化会改变可视高度，贴底判定必须跟着更新
+    this._onResize = () => this.measureView()
+    if (wx.onWindowResize) wx.onWindowResize(this._onResize)
     // 开场白：先用内置默认（与云端 getAiConfig 的 DEFAULT_GREETING 一致），配置加载后若后台有值则替换
     this._greeting = DEFAULT_GREETING
     this._lastActiveAt = Date.now()
-    this.setData({ messages: [{ id: mkId(), role: 'assistant', content: this._greeting }] })
+    this.setData({ messages: [{ id: mkId(), role: 'assistant', content: this._greeting }] }, () => this.scrollBottom(true))
     this.loadConfig()
     this.initVoice()
     // 公众号卡片落地现在走常规确认页（pages/confirm/confirm），会带 from=oa；
@@ -99,7 +120,46 @@ Page({
   // 为什么不能只写在 onLoad：onLoad 只在「新建页面实例」时跑一次。小程序切后台再回来、
   // 或从别的页面返回时，页面实例还在栈里 ⇒ onLoad 不再执行 ⇒ 开场白只在"第一次进入"出现。
   // onShow 则是每次页面可见都触发，把它放这里才是"每次进入都有一条"。
-  onShow() { this.ensureGreeting() },
+  onShow() { this.ensureGreeting(); this.measureView() },
+
+  // 可视高度：贴底判定要用（scroll 事件只给 scrollTop / scrollHeight，不给容器高度，只能量一次）
+  onReady() { this.measureView() },
+
+  measureView() {
+    try {
+      wx.createSelectorQuery().in(this).select('.msgs').boundingClientRect(r => {
+        if (r && r.height) this._viewH = r.height
+      }).exec()
+    } catch (e) { /* 量不到就走「按贴底处理」的兜底 */ }
+  },
+
+  // ===== 滚动状态感知 =====
+  // 只有「用户自己滚」的事件才用于判定是否在看历史；程序滚动（动画中间态）一律忽略。
+  onScroll(e) {
+    const d = (e && e.detail) || {}
+    const st = Number(d.scrollTop) || 0
+    const sh = Number(d.scrollHeight) || 0
+    this._scrollTop = st
+    if (sh) this._scrollH = sh
+    if (Date.now() < (this._ignoreScrollUntil || 0)) return
+    // 用户动了手指 ⇒ 取消待执行的补滚，绝不跟他抢滚动条
+    this._autoScrolling = false
+    const at = this._isAtBottom()
+    if (at !== this._atBottom) {
+      this._atBottom = at
+      this.setData({ showJump: !at || this.data.hasNew })
+      if (at) this.setData({ hasNew: false })
+    }
+  },
+
+  // 贴底判定：量不到可视高度时**一律按贴底处理**（宁可多滚一次，也不能把新消息吞掉不滚）
+  _isAtBottom() {
+    const sh = Number(this._scrollH || 0)
+    const st = Number(this._scrollTop || 0)
+    const vh = Number(this._viewH || 0)
+    if (!vh) return true
+    return sh - st - vh <= BOTTOM_EPS
+  },
 
   ensureGreeting() {
     const now = Date.now()
@@ -117,7 +177,7 @@ Page({
     this.setData({
       messages: [{ id: mkId(), role: 'assistant', content: this._greeting || DEFAULT_GREETING }],
       intent: '', confirmation: null, draft: '', voicePending: false, downgraded: false
-    }, () => this.scrollBottom())
+    }, () => this.scrollBottom(true))
     this._lastActiveAt = now
   },
 
@@ -203,7 +263,7 @@ Page({
       confirmation: c,
       profile: { name: '', phone: '' },
       oaFill: true            // 公众号来源：需在本页补填称呼 / 手机号
-    })
+    }, () => this.scrollBottom(true))
     // 已有资料则预填（老顾客不用重填）；失败静默，不影响手动填写
     call('getMyProfile').then(d => {
       const p = d && d.profile
@@ -217,7 +277,6 @@ Page({
         if (d && d.notifyCfg) this.setData({ notifyCfg: d.notifyCfg })
       }).catch(() => {})
     }
-    this.scrollBottom()
   },
 
   // 公众号来源需补填称呼 / 手机号（createReservation 要求 name 必填）。
@@ -272,7 +331,7 @@ Page({
         if (!hasUser && msgs.length && msgs[0].role === 'assistant') {
           const next = msgs.slice()
           next[0] = { ...next[0], content: g }
-          this.setData({ messages: next })
+          this.setData({ messages: next }, () => this.scrollBottom())
         }
       }
     }).catch(() => {})
@@ -554,14 +613,56 @@ Page({
   onUnload() {
     this.stopVoiceMeter()
     this.onVoiceEnd()
+    if (this._sbTimer) { clearTimeout(this._sbTimer); this._sbTimer = null }
+    if (wx.offWindowResize && this._onResize) { try { wx.offWindowResize(this._onResize) } catch (e) {} }
   },
 
   onDraft(e) { this.setData({ draft: e.detail.value }) },
 
-  scrollBottom() {
-    const len = this.data.messages.length
-    if (len) this.setData({ scrollTo: 'm' + this.data.messages[len - 1].id })
+  // ===== 滚到底部 =====
+  // ⭐ 三个关键点（修掉「消息一多就不自动滚」）：
+  //   1) 用 scroll-top 而不是 scroll-into-view。scroll-into-view 指向刚 setData 进来的新节点时
+  //      该节点尚未渲染 ⇒ 滚动必然失效（旧实现就是这个坑）。
+  //   2) scroll-top 只有**值变化**才生效，所以带一个自增序号，保证每条新消息都能触发一次。
+  //   3) 给一个远超内容高度的值，容器自动钳到 maxScrollTop ⇒ 永远落在真正的底部，
+  //      不依赖「消息高度是否已撑开」。
+  // force=true 用于用户自己的动作（发消息 / 取消确认 / 新开一轮）：无论如何都要带他回到底部；
+  // force=false 用于 AI 回话：用户正在往上看历史时**不打断**，只把「新消息」入口亮出来。
+  scrollBottom(force) {
+    if (this._sbTimer) { clearTimeout(this._sbTimer); this._sbTimer = null }
+    if (!force && !this._isAtBottom()) {
+      if (!this.data.hasNew || !this.data.showJump) this.setData({ hasNew: true, showJump: true })
+      return
+    }
+    this._doScrollBottom()
+    // 补滚：长文本换行/图片常在下一帧才撑开高度，届时首次滚动会差一截。
+    // 一旦用户在补滚前手动滑过（onScroll 会把 _autoScrolling 置 false），就放弃补滚。
+    this._autoScrolling = true
+    this._sbTimer = setTimeout(() => {
+      this._sbTimer = null
+      if (!this._autoScrolling) return
+      this._doScrollBottom()
+      this._autoScrolling = false
+    }, RESCROLL_DELAY_MS)
   },
+
+  _doScrollBottom() {
+    // 保证每次值都在变：scrollH 会随内容增长，seq 兜住「内容高度没变但确实要重滚」的情况
+    this._seq = (this._seq || 0) + 1
+    const top = (Number(this._scrollH) || 0) + 100000 + this._seq
+    this._atBottom = true
+    this._ignoreScrollUntil = Date.now() + AUTO_SCROLL_SILENCE_MS
+    this.setData({ scrollTop: top, showJump: false, hasNew: false })
+  },
+
+  // 圆钮：一键回到最新（用户主动点，等价于 force）
+  jumpBottom() {
+    this.setIdle()
+    this.scrollBottom(true)
+  },
+
+  // 有交互就刷新「进入」计时，避免聊到一半被开场白打断
+  setIdle() { this._lastActiveAt = Date.now() },
 
   async send() {
     const text = (this.data.draft || '').trim()
@@ -569,8 +670,8 @@ Page({
     this._lastActiveAt = Date.now()   // 有交互就刷新「进入」计时，避免聊到一半被开场白打断
     const userMsg = { id: mkId(), role: 'user', content: text }
     const msgs = this.data.messages.concat(userMsg)
-    this.setData({ messages: msgs, draft: '', sending: true, voicePending: false })
-    this.scrollBottom()
+    // ⭐ 必须等这一帧渲染完（setData 回调）再滚：否则滚的是「还没这条新气泡」的高度
+    this.setData({ messages: msgs, draft: '', sending: true, voicePending: false }, () => this.scrollBottom(true))
     try {
       const res = await call('aiReserve', {
         messages: msgs.map(m => ({ role: m.role, content: m.content })),
@@ -581,8 +682,7 @@ Page({
     } catch (e) {
       // 服务可用性降级（spec §5.5）：展示降级提示卡，提供「进入常规预约」，不阻断用户
       const tip = { id: mkId(), role: 'assistant', content: '抱歉，AI 助理暂时连接不上。您可以改用常规预约，不影响操作～' }
-      this.setData({ downgraded: true, messages: this.data.messages.concat(tip) })
-      this.scrollBottom()
+      this.setData({ downgraded: true, messages: this.data.messages.concat(tip) }, () => this.scrollBottom())
     } finally {
       this.setData({ sending: false })
     }
@@ -598,36 +698,36 @@ Page({
     if (res.logId) this._aiLogId = res.logId
     if (res.intent === 'confirm') {
       const assistantMsg = { id: mkId(), role: 'assistant', content: res.reply }
+      // 确认卡比普通气泡高得多，更要等渲染完再滚
       this.setData({
         messages: this.data.messages.concat(assistantMsg),
         intent: 'confirm',
         confirmation: res.confirmation,
         profile: res.profile || { name: '', phone: '' }
-      })
+      }, () => this.scrollBottom())
       // 预取项目通知配置，供「确认预约」时同步计算授权模板（异步，不阻塞对话）
       if (res.confirmation && res.confirmation.projectId) {
         call('getProject', { projectId: res.confirmation.projectId }).then(d => {
           if (d && d.notifyCfg) this.setData({ notifyCfg: d.notifyCfg })
         }).catch(() => {})
       }
-      this.scrollBottom()
       return
     }
-  const reply = res.reply || (res.intent === 'ask' ? '请补充一下信息～' : '好的～')
-  const adds = []
-  if (res.notice) adds.push({ id: mkId(), role: 'assistant', content: res.notice, notice: true })
-  adds.push({ id: mkId(), role: 'assistant', content: reply })
-  this.setData({
-    messages: this.data.messages.concat(adds),
-    intent: ''
-  })
-  this.scrollBottom()
-},
+    const reply = res.reply || (res.intent === 'ask' ? '请补充一下信息～' : '好的～')
+    const adds = []
+    if (res.notice) adds.push({ id: mkId(), role: 'assistant', content: res.notice, notice: true })
+    adds.push({ id: mkId(), role: 'assistant', content: reply })
+    this.setData({
+      messages: this.data.messages.concat(adds),
+      intent: ''
+    }, () => this.scrollBottom())
+  },
 
   cancelConfirm() {
     this.setData({ intent: '', confirmation: null })
-    this.setData({ messages: this.data.messages.concat([{ id: mkId(), role: 'assistant', content: '好的，已取消本次确认。您还想约什么？' }]) })
-    this.scrollBottom()
+    this.setData({
+      messages: this.data.messages.concat([{ id: mkId(), role: 'assistant', content: '好的，已取消本次确认。您还想约什么？' }])
+    }, () => this.scrollBottom(true))
   },
 
   // 点「确认预约」：资料缺失时**再弹一次获取层**，而不是只弹个 toast 把人拦住。

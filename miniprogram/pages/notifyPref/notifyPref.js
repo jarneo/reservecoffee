@@ -3,7 +3,7 @@ const { requestSubscribe } = require('../../utils/util')
 const { CUSTOMER_SUBS, BOOKER_TPLS, normalizeSubs } = require('../../utils/subscribe')
 
 // ⚠️ 开发调试开关：正式发布前改为 false，即可隐藏「测试订阅弹窗」调试按钮
-const DEBUG = true
+const DEBUG = false
 
 // 顾客侧「通知偏好」：订阅消息设置页
 // 统一订阅记录 users.subscriptions 的唯一顾客端入口；含全部 5 类通知（含此前缺失的「前一天提醒」）。
