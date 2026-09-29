@@ -75,3 +75,5 @@
   <!-- 首屏加载遮罩：等 getProject + 日期条/默认选中日/场次列表三段串行渲染收敛 -->
   <page-loading show="{{booting}}" />
 </view>
+
+<path-bar />

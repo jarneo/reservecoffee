@@ -2,6 +2,7 @@ const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
 const { requestSubscribe } = require('../../../utils/util')
 const { ADMIN_TPLS } = require('../../../utils/subscribe')
+const img = require('../../../utils/img')
 
 // 归一化截止规则为新模型 { mode:'before'|'after', minutes }，兼容旧 {type,hours,time}
 function normCutoff(c) {
@@ -108,9 +109,10 @@ Page({
   },
 
   async uploadOne(tempPath) {
-    const ext = (tempPath.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const p = await img.compress(tempPath, 'cover')      // 介绍图上传前压到 750w
+    const ext = (p.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
     const cloudPath = `projects/${this.data.projectId}/${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
-    const res = await wx.cloud.uploadFile({ cloudPath, filePath: tempPath })
+    const res = await wx.cloud.uploadFile({ cloudPath, filePath: p })
     return res.fileID
   },
 
@@ -208,10 +210,13 @@ Page({
   },
 
   // ===== 项目图标（首页列表左侧展示） =====
-  uploadOne(tempPath) {
-    const ext = (tempPath.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  // ⚠️ 原与方法「介绍图 uploadOne」重名（后者覆盖前者，介绍图实际走了这里）；改名 uploadIcon 修正
+  async uploadIcon(tempPath) {
+    const p = await img.compress(tempPath, 'icon')       // 图标上传前压到 160w
+    const ext = (p.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
     const cloudPath = `projects/${this.data.projectId}/icon_${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
-    return wx.cloud.uploadFile({ cloudPath, filePath: tempPath }).then(res => res.fileID)
+    const res = await wx.cloud.uploadFile({ cloudPath, filePath: p })
+    return res.fileID
   },
   pickIcon() {
     const old = this.data.iconFileId
@@ -220,7 +225,7 @@ Page({
       success: async (r) => {
         wx.showLoading({ title: '上传中' })
         try {
-          const fileId = await this.uploadOne(r.tempFiles[0].tempFilePath)
+          const fileId = await this.uploadIcon(r.tempFiles[0].tempFilePath)
           this.setData({ iconFileId: fileId, iconUrl: fileId, _oldIconFileId: old || '' })
           wx.showToast({ title: '已选择，记得点保存', icon: 'none' })
         } catch (e) {

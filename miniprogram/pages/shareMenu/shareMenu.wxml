@@ -55,3 +55,5 @@
 
   <view class="foot muted xs">本页由公众号菜单进入 · 在线预约请打开小程序</view>
 </view>
+
+<path-bar />

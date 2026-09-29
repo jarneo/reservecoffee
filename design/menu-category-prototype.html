@@ -60,7 +60,7 @@
     <div class="side">
       <h2>交互说明</h2>
       <p><b>顶部分类栏</b>：横滑，首项「全部」(默认)。点「全部」展示排序前 <b>15</b> 个；点某分类展示该类目<b>全量</b>（右侧手机可直接点切换预览）。</p>
-      <p><b>首页菜单</b>：保持现在首页「店铺菜单」区块位置，仅在其上插入分类栏，下方双列瀑布流卡片样式/分组/排序规则<b>完全不变</b>。</p>
+      <p><b>首页菜单</b>：保持现在首页「买豆买酒」区块位置，仅在其上插入分类栏，下方双列瀑布流卡片样式/分组/排序规则<b>完全不变</b>。</p>
       <p><b>独立菜单页</b>：不在小程序内另做呈现，复用现有 <code>pages/menu</code>，对外只给一条可分享/跳转的链接：</p>
       <p><span class="kbd">pages/menu?projectId=&lt;项目ID&gt;</span></p>
       <p>用于公众号菜单 / 图文 / 分享卡片直接跳转；分享时小程序自动带上 <code>projectId</code>。</p>
@@ -114,7 +114,7 @@ function renderGrid(){
 function setScreen(s){
   screen=s;
   document.getElementById('hero').style.display=(s==='menu')?'block':'none';
-  document.getElementById('sec').textContent=(s==='menu')?'在售菜品':'店铺菜单';
+  document.getElementById('sec').textContent=(s==='menu')?'在售菜品':'买豆买酒';
   const h=document.getElementById('b-home'), m=document.getElementById('b-menu');
   h.className=(s==='home')?'on':'off'; m.className=(s==='menu')?'on':'off';
 }

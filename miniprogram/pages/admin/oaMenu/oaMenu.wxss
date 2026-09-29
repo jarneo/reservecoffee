@@ -1,0 +1,102 @@
+.page { padding: 16rpx; }
+.sec { font-size: 26rpx; color: #999; margin: 8rpx 4rpx 16rpx; }
+.tip { font-size: 24rpx; color: #999; line-height: 1.6; }
+.muted { color: #999; font-size: 26rpx; }
+
+.phone { background: #fff; border: 1rpx solid #E7E7E7; border-radius: 28rpx; padding: 16rpx 12rpx 0; margin-bottom: 20rpx; }
+.ph-hd { font-size: 22rpx; color: #999; text-align: center; padding-bottom: 12rpx; }
+.screen { background: #FBFBFB; border: 1rpx solid #E7E7E7; border-radius: 12rpx; margin-bottom: 12rpx; padding: 14rpx; min-height: 120rpx; }
+.bar { display: flex; border-top: 1rpx solid #E7E7E7; background: #fafafa; border-radius: 0 0 28rpx 28rpx; }
+.bar .b { flex: 1; text-align: center; padding: 22rpx 6rpx; font-size: 24rpx; border-right: 1rpx solid #E7E7E7; position: relative; }
+.bar .b:last-child { border-right: 0; }
+.bar .b.on { color: #7A5230; font-weight: 500; }
+.bar .b .subpop { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #fff; border: 1rpx solid #E7E7E7; border-radius: 12rpx; width: 200rpx; margin-bottom: 10rpx; display: none; }
+.bar .b .subpop.show { display: block; }
+.bar .b .subpop .s { padding: 18rpx 10rpx; font-size: 22rpx; border-bottom: 1rpx solid #f2f2f2; }
+.bar .b .subpop .s:last-child { border-bottom: 0; }
+.bar .b .subpop .s.on { color: #7A5230; font-weight: 500; }
+
+.card { background: #fff; border: 1rpx solid #E7E7E7; border-radius: 20rpx; padding: 24rpx; margin-bottom: 20rpx; }
+.et { font-size: 30rpx; font-weight: 500; margin: 0 0 6rpx; }
+.fld { margin: 18rpx 0; }
+.label { display: block; font-size: 24rpx; color: #999; margin-bottom: 10rpx; }
+/* 表单控件统一基线：行高 + 内边距 + 最小高度。
+   之前只有 padding 没有 line-height / min-height，长文本会被挤压、多行文本域会被截断。 */
+.inp {
+  width: 100%; border: 1rpx solid #E7E7E7; border-radius: 12rpx;
+  padding: 18rpx 20rpx; font-size: 26rpx; line-height: 1.6;
+  min-height: 84rpx;              /* 单行输入也保证足够行高，避免文字被上下裁切 */
+  background: #fff; box-sizing: border-box;
+}
+/* 多行文本域（如 click 回复文案）：给足行高与最小高度，保证内容完整可见 */
+.ta { min-height: 220rpx; line-height: 1.7; padding: 18rpx 20rpx; }
+.cnt { font-size: 22rpx; color: #999; float: right; }
+.cnt.bad { color: #A32D2D; }
+.note { font-size: 22rpx; color: #999; }
+/* 与 .inp 保持同一基线（内边距 + 行高 + 最小高度），避免选类型控件比输入框矮一截 */
+.picker {
+  border: 1rpx solid #E7E7E7; border-radius: 12rpx;
+  padding: 18rpx 20rpx; font-size: 26rpx; line-height: 1.6; min-height: 84rpx;
+  background: #fff; box-sizing: border-box;
+}
+
+.sublist { margin: 14rpx 0; border: 1rpx dashed #E7E7E7; border-radius: 12rpx; padding: 8rpx; }
+.si { display: flex; justify-content: space-between; align-items: center; padding: 14rpx 8rpx; border-bottom: 1rpx solid #f2f2f2; }
+.si:last-child { border-bottom: 0; }
+.si.on .si-name { color: #7A5230; font-weight: 500; }
+.si-main { flex: 1; display: flex; align-items: center; gap: 12rpx; }
+.si-name { font-size: 26rpx; }
+.si-type { font-size: 20rpx; color: #999; }
+.si-del { font-size: 22rpx; color: #A32D2D; padding-left: 16rpx; }
+
+.row { display: flex; gap: 16rpx; }
+.btn {
+  /* ⚠️ 原生 button 默认 width:100%，不复位会撑爆父容器；自建 .btn 必须自带完整复位
+     （width:auto !important 是最易漏的一条） */
+  display: flex; align-items: center; justify-content: center;
+  width: auto !important; flex: none; line-height: 1; margin: 0;
+  border: 1rpx solid #E7E7E7; border-radius: 12rpx; padding: 18rpx; font-size: 26rpx; background: #fff; color: #1A1A1A;
+}
+.btn::after { border: none; }
+.btn.block { flex: 1; background: #1A1A1A; color: #fff; border-color: #1A1A1A; }
+.btn.ghost { flex: none; }
+.btn.del { color: #A32D2D; border-color: #F7C1C1; margin-top: 8rpx; }
+.btn[disabled] { opacity: .4; }
+
+.result { margin: 16rpx 4rpx; font-size: 26rpx; color: #1A1A1A; }
+.warn {
+  background: #FFF6F5; border: 1rpx solid #F7C1C1; border-radius: 12rpx;
+  padding: 18rpx 20rpx; font-size: 24rpx; color: #A32D2D; line-height: 1.6; margin-bottom: 20rpx;
+}
+/* ⚠️ scroll-view 必须给「确定 height」：只给 max-height 会按内容撑开，把底部兄弟节点顶出父容器 */
+.json {
+  height: 420rpx; margin: 14rpx 0; padding: 16rpx; box-sizing: border-box;
+  background: #FBFBFB; border: 1rpx solid #E7E7E7; border-radius: 12rpx;
+  font-size: 20rpx; color: #444; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+}
+/* ── 一级菜单拖动排序（movable-view） ──────────────────────────────
+   ⚠️ movable-view 默认尺寸只有 10px×10px，宽高必须显式给死，否则整块塌掉、拖不动。 */
+.sort-area {
+  width: 100%; margin-top: 14rpx; background: #FBFBFB;
+  border: 1rpx solid #E7E7E7; border-radius: 12rpx; overflow: hidden;
+}
+.sort-item {
+  width: 100%; height: 88rpx; box-sizing: border-box;
+  display: flex; align-items: center; padding: 0 16rpx;
+  background: #fff; border-bottom: 1rpx solid #F2F2F2; z-index: 1;
+}
+.sort-item.cur { background: #FDFAF6; }
+/* 拖动中：换底色 + 品牌色描边 + 抬 z-index（否则被下面一行盖住，看起来像没拖动） */
+.sort-item.drag { z-index: 9; background: #FFF9F2; border: 2rpx solid #7A5230; border-radius: 12rpx; }
+/* 落点提示：目标行整行淡底 + 序号变品牌色 */
+.sort-item.tgt { background: #FBF4EC; }
+.sort-item.tgt .sk-idx { color: #7A5230; }
+.sort-item .sk-idx { width: 40rpx; font-size: 22rpx; color: #B0B0B0; }
+.sort-item .sk-main { flex: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.sort-item .sk-name { font-size: 26rpx; color: #1A1A1A; }
+.sort-item .sk-sub { font-size: 20rpx; color: #999; margin-top: 2rpx; }
+/* ↑/↓ 兜底按钮：用 text 不用 button（原生 button 默认 width:100%，会撑爆整行） */
+.sort-item .sk-mv { font-size: 26rpx; color: #7A5230; padding: 10rpx 12rpx; }
+.sort-item .sk-mv.off { color: #DCDCDC; }
+
+.legend { font-size: 22rpx; color: #999; line-height: 1.7; margin-top: 8rpx; }

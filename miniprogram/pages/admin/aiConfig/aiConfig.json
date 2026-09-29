@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "AI 智能预约设置", "usingComponents": {} }
+{
+  "navigationBarTitleText": "AI 智能预约设置",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

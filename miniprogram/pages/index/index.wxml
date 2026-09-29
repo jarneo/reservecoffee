@@ -61,3 +61,5 @@
   <!-- 首屏加载遮罩：onLoad 建门 + onShow 上报，资源全部就绪后淡出 -->
   <page-loading show="{{booting}}" />
 </view>
+
+<path-bar />

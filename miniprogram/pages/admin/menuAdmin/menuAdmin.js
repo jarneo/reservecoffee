@@ -1,5 +1,6 @@
 const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
+const img = require('../../../utils/img')
 
 Page({
   behaviors: [guard],
@@ -68,9 +69,10 @@ Page({
         wx.showLoading({ title: '上传中' })
         try {
           const tp = r.tempFiles[0].tempFilePath
-          const ext = (tp.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+          const cp = await img.compress(tp, 'card')      // 上传前压到 400w，替代数据万象
+          const ext = (cp.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
           const cloudPath = `products/${this.data.projectId}/${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
-          const res = await wx.cloud.uploadFile({ cloudPath, filePath: tp })
+          const res = await wx.cloud.uploadFile({ cloudPath, filePath: cp })
           this.setData({ 'form.image': res.fileID })
           const urlRes = await wx.cloud.getTempFileURL({ fileList: [res.fileID] })
           const u = (urlRes.fileList || [])[0]

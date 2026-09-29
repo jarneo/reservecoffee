@@ -14,6 +14,19 @@
  *   MINI_UPLOAD_KEY   私钥路径（默认 deploy/private.wxb97578ed89c6e2c7.key）
  *   MINI_ROBOT        机器人编号（默认 1）
  */
+// ---- 编译子进程兜底 ----
+// miniprogram-ci 2.1.x 默认 fork 一个 summer-compiler 子进程，子进程须在 20s 内 IPC 回 "ready"；
+// 本机实测子进程迟迟不发 ready（直接触发 "fork process timeout"，连传 3 次必失败）。
+// 官方内部开关 shouldRunInMainProcess() 读 localStorage.getItem('compilerInMainProcess')，
+// 置 1 后改为「主进程内编译」，不再 fork，实测上传正常（6.6.70 起走这条路）。
+// 极少数情况下想恢复 fork 编译：设 MINI_FORK_COMPILER=1。
+if (!process.env.MINI_FORK_COMPILER) {
+  global.localStorage = {
+    getItem: (k) => (k === 'compilerInMainProcess' ? '1' : null),
+    setItem: () => {}, removeItem: () => {}, clear: () => {},
+  }
+}
+
 const fs = require('fs')
 const path = require('path')
 const ci = require('miniprogram-ci')

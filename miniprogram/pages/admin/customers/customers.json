@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "顾客名录",
-  "enablePullDownRefresh": true
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

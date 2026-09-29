@@ -17,3 +17,5 @@
     <button class="btn block" bindtap="saveCoverIntro" style="margin-top:14rpx">保存主图与介绍</button>
   </view>
 </view>
+
+<path-bar />

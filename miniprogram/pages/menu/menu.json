@@ -1,1 +1,5 @@
-{}
+{
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

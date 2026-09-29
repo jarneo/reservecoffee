@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "隐私政策",
-  "usingComponents": {}
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

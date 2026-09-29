@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "顾客分析"
+  "navigationBarTitleText": "顾客分析",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

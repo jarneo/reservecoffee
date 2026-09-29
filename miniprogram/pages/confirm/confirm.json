@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "确认预约", "usingComponents": {} }
+{
+  "navigationBarTitleText": "确认预约",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

@@ -1,1 +1,8 @@
-{ "navigationBarTitleText": "二曜路8号咖啡和清酒", "usingComponents": { "aiFab": "/components/aiFab/aiFab", "category-tabs": "/components/categoryTabs/categoryTabs" } }
+{
+  "navigationBarTitleText": "二曜路8号咖啡和清酒",
+  "usingComponents": {
+    "aiFab": "/components/aiFab/aiFab",
+    "category-tabs": "/components/categoryTabs/categoryTabs",
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

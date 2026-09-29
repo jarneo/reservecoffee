@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "黑名单"
+  "navigationBarTitleText": "黑名单",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

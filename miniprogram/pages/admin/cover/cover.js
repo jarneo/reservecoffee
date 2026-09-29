@@ -1,5 +1,6 @@
 const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
+const img = require('../../../utils/img')
 
 Page({
   behaviors: [guard],
@@ -25,9 +26,10 @@ Page({
   },
 
   async uploadOne(tempPath) {
-    const ext = (tempPath.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const p = await img.compress(tempPath, 'hero')       // 上传前压到 750w，替代数据万象
+    const ext = (p.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
     const cloudPath = `homepage/${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
-    const res = await wx.cloud.uploadFile({ cloudPath, filePath: tempPath })
+    const res = await wx.cloud.uploadFile({ cloudPath, filePath: p })
     return res.fileID
   },
 

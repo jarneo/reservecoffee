@@ -25,3 +25,5 @@
 
   <view class="foot">本政策依《个人信息保护法》及微信开放平台规范制定。</view>
 </view>
+
+<path-bar />

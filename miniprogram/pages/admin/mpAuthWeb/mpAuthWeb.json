@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "开启服务号通知",
-  "usingComponents": {}
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

@@ -192,8 +192,8 @@
   .modal .mb{font-size:12px;color:var(--ink-2);margin-top:10px;line-height:1.6}
   .modal .macts{display:flex;gap:10px;margin-top:18px}
   .modal .macts .btn{flex:1}
-  /* 店铺菜单 / 评价（与首页风格统一：白卡、黑字、棕色仅点缀） */
-  /* 菜单分类切换栏（components/categoryTabs）：首页「店铺菜单」区块上方横滑 tab，首项「全部」 */
+  /* 买豆买酒 / 评价（与首页风格统一：白卡、黑字、棕色仅点缀） */
+  /* 菜单分类切换栏（components/categoryTabs）：首页「买豆买酒」区块上方横滑 tab，首项「全部」 */
   .cat-tabs{display:flex;gap:16px;overflow-x:auto;white-space:nowrap;padding:4px 0 8px;border:none}
   .cat-tabs .ci{font-size:14px;color:var(--ink-2);padding:4px 2px;position:relative;display:inline-block;cursor:pointer}
   .cat-tabs .ci.on{color:var(--brand);font-weight:600}
@@ -430,7 +430,7 @@ const templates = [
   { id:'t2', name:'周末单场', slots:[{start:'15:00',end:'17:00',max:12}] }
 ];
 
-/* 店铺菜单（产品）演示数据；reviews 与产品关联。image 为图片URL（真实小程序上传到云存储），空则用 emoji 占位 */
+/* 买豆买酒（产品）演示数据；reviews 与产品关联。image 为图片URL（真实小程序上传到云存储），空则用 emoji 占位 */
 const products = [
   { id:'m1', name:'法兰绒深烘手冲', emoji:'☕', image:'', price:38, desc:'法兰绒滤布慢萃，醇厚回甘，带坚果与可可调性。', status:'on',
     reviews:[
@@ -538,12 +538,12 @@ function cHome(){
           <div class="xs muted" style="margin-top:6px">查看评价 (${pr.reviews.length}) ›</div>
         </div>
       </div>
-    </div>`).join('') || '<div class="note">暂无可展示的店铺菜单。</div>';
+    </div>`).join('') || '<div class="note">暂无可展示的买豆买酒。</div>';
   const featured = projects.find(p=>p.published && !p.paused) || projects[0];
   const html = `    ${heroBlock(featured)}
     <div class="sec">选择预约项目</div>
     ${cards}
-    <div class="sec" style="margin-top:16px">店铺菜单</div>
+    <div class="sec" style="margin-top:16px">买豆买酒</div>
     <!-- 菜单分类切换栏：categoryTabs 组件，首项「全部」展示排序前 15，某分类展示该类目全量；菜品卡片/分组/排序规则不变 -->
     ${menuCards}
     <button class="btn ghost block" onclick="cMine()">我的预约</button>
@@ -817,7 +817,7 @@ function cCancel(i){
 }
 function doCancel(i){ state.myResv[i].status='cancelled'; closeModal(); cMine(); toast('已取消，名额已释放'); }
 
-/* ---- 店铺菜单 / 评价（顾客端） ---- */
+/* ---- 买豆买酒 / 评价（顾客端） ---- */
 function starStr(n){ let s=''; for(let i=1;i<=5;i++) s+=`<span class="${i<=n?'on':''}">★</span>`; return s; }
 function cProduct(pid){
   const pr=products.find(x=>x.id===pid);
@@ -871,7 +871,7 @@ function hub(){
   viewKind='admin';
   const isOwner=state.role==='owner';
   const menus = isOwner
-    ? [['aProjects','项目管理'],['aConfig','项目配置（时间/场次）'],['aCover','首图及介绍'],['aTemplates','场次模版'],['aProducts','店铺菜单管理'],['aReviews','评价管理'],['aDaily','当日场次管理'],['aView','查看预约'],['aReview','审核'],['aStats','数据分析'],['aAdmins','管理员'],['aSms','短信通知配置']]
+    ? [['aProjects','项目管理'],['aConfig','项目配置（时间/场次）'],['aCover','首图及介绍'],['aTemplates','场次模版'],['aProducts','店铺菜单管理'],['aReviews','评价管理'],['aDaily','当日场次管理'],['aView','查看预约'],['aReview','审核'],['aStats','数据分析'],['aAdmins','管理员'],['aSms','短信通知配置'],['aOaMenu','公众号菜单配置']]
     : [['aProducts','店铺菜单管理'],['aReviews','评价管理'],['aDaily','当日场次管理'],['aView','查看预约'],['aReview','审核']];
   const html = `<div class="card">
       <div class="row between"><div class="bold">管理台</div>
@@ -882,6 +882,17 @@ function hub(){
     </div>
     <button class="btn ghost block" onclick="landing()">退出（切换身份）</button>`;
   nav(html,'管理台');
+}
+
+/* ---- 公众号菜单配置（管理端：复刻微信后台自定义菜单编辑器） ---- */
+function aOaMenu(){
+  const html = `<div class="sec">公众号菜单配置</div>
+    <div class="card" style="padding:10px">
+      <div class="xs muted" style="margin-bottom:8px">复刻微信后台自定义菜单编辑器：左侧手机菜单栏实时预览，右侧编辑选中项的名称 / 类型 / 跳转；一级 ≤3、二级 ≤5；支持全类型；「发布」调用云函数 setOaMenu 推送至公众号。</div>
+      <iframe src="oa-menu-prototype.html" style="width:100%;height:680px;border:1px solid #E7E7E7;border-radius:10px;background:#fff"></iframe>
+    </div>
+    <div class="note">入口：管理台「公众号菜单配置」（仅超级管理员）。线上实现：miniprogram/pages/admin/oaMenu/oaMenu；云函数 getOaMenu / setOaMenu。第三方平台若仍持有「自定义菜单」权限，需先在公众号后台「授权管理」取消对应授权，否则 menu/create 会被拦截或覆盖。</div>`;
+  nav(html,'公众号菜单配置');
 }
 
 /* ---- 项目管理 ---- */
@@ -1747,7 +1758,7 @@ function saveSms(){
 /* ---- 店铺菜单管理（admin：新增 / 编辑 / 上下架 / 删除） ---- */
 function aProducts(){
   const html=`<div class="row between" style="margin-bottom:8px">
-      <div class="bold">店铺菜单</div>
+      <div class="bold">买豆买酒</div>
       <div class="btn sm" onclick="editProduct()">+ 新增产品</div>
     </div>
     ${products.map(p=>`
@@ -1766,7 +1777,7 @@ function aProducts(){
           <button class="btn ghost sm" onclick="delProduct('${p.id}')">删除</button>
         </div>
       </div>`).join('')}
-    <div class="note">上架产品在顾客端首页「店铺菜单」展示；下架不可见。评价管理见「评价管理」。</div>`;
+    <div class="note">上架产品在顾客端首页「买豆买酒」展示；下架不可见。评价管理见「评价管理」。</div>`;
   nav(html,'店铺菜单管理');
 }
 function toggleProduct(id){ const p=products.find(x=>x.id===id); p.status = p.status==='on'?'off':'on'; toast(p.status==='on'?'已上架':'已下架'); aProducts(); }

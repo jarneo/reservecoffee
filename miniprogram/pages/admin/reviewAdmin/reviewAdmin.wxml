@@ -42,3 +42,5 @@
     </view>
   </view>
 </view>
+
+<path-bar />

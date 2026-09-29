@@ -1,0 +1,25 @@
+/* components/pathBar/pathBar.wxss — 管理员路径行（文档流末尾，灰字不显眼） */
+.pb-row {
+  display: flex; align-items: flex-start;
+  margin: 28rpx 24rpx 40rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx dashed #EDEDED;
+}
+
+.pb-path {
+  flex: 1;
+  font-size: 20rpx; line-height: 1.5;
+  color: #B0B0B0;              /* 灰色、不抢眼 */
+  word-break: break-all;
+  padding-right: 16rpx;
+}
+
+/* 用 text 而非原生 button：天然 width:auto，也不会有 ::after 边框 */
+.pb-copy {
+  flex: none;
+  font-size: 20rpx; line-height: 1;
+  color: #B0B0B0;
+  border: 1rpx solid #E5E5E5;
+  border-radius: 6rpx;
+  padding: 8rpx 16rpx;
+}

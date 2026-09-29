@@ -1,0 +1,130 @@
+<view class="page">
+  <view class="sec">公众号菜单配置 · 仅超级管理员</view>
+
+  <view wx:if="{{envWarn}}" class="warn">{{envWarn}}</view>
+
+  <!-- 手机预览（复刻微信后台：底部菜单栏实时预览） -->
+  <view class="phone">
+    <view class="ph-hd">公众号菜单预览（用户视角）</view>
+    <view class="screen">
+      <view class="tip">底部菜单实时预览见下方；点菜单项可编辑其名称、类型与跳转。发布后用户在此看到的效果与下方一致。</view>
+    </view>
+    <view class="bar">
+      <view wx:for="{{menu.button}}" wx:key="bi" class="b {{sel.top===index && sel.sub<0 ? 'on':''}}" data-i="{{index}}" bindtap="onTapTop">
+        <text class="bt">{{item.name}}</text>
+        <view wx:if="{{item.sub_button.length}}" class="subpop {{openPop===index ? 'show':''}}">
+          <view wx:for="{{item.sub_button}}" wx:for-item="s" wx:for-index="j" wx:key="j" class="s {{sel.top===index && sel.sub===j ? 'on':''}}" data-i="{{index}}" data-j="{{j}}" catchtap="onTapSub">{{s.name}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 一级菜单顺序：按住拖动即可重排（微信后台菜单栏从左到右按此顺序展示） -->
+  <view wx:if="{{sortRows.length}}" class="card">
+    <view class="et">一级菜单顺序（可拖动）</view>
+    <view class="note">按住任意一项上下拖动即可调整顺序；微信菜单栏从左到右就是这里的从上到下。不想拖时也可以点右侧 ↑ / ↓ 微调。点一下该项可选中去编辑。调整完记得点下方「发布到公众号」才会生效。</view>
+    <movable-area class="sort-area" style="height:{{sortAreaH}}rpx">
+      <movable-view
+        wx:for="{{sortRows}}"
+        wx:key="k"
+        class="sort-item {{sortDrag===index ? 'drag' : ''}} {{sortTarget===index && sortDrag>-1 ? 'tgt' : ''}} {{sel.top===index ? 'cur' : ''}}"
+        direction="vertical"
+        animation="{{false}}"
+        out-of-bounds="{{false}}"
+        y="{{item.y}}"
+        data-i="{{index}}"
+        bindtouchstart="onSortStart"
+        bindchange="onSortMove"
+        bindtouchend="onSortEnd"
+        bindtap="onSortTap"
+      >
+        <text class="sk-idx">{{item.id}}</text>
+        <view class="sk-main">
+          <text class="sk-name">{{item.name}}</text>
+          <text class="sk-sub">{{item.subText}}</text>
+        </view>
+        <text class="sk-mv {{index===0 ? 'off' : ''}}" data-i="{{index}}" data-d="-1" catchtap="onMoveStep">↑</text>
+        <text class="sk-mv {{index===sortRows.length-1 ? 'off' : ''}}" data-i="{{index}}" data-d="1" catchtap="onMoveStep">↓</text>
+      </movable-view>
+    </movable-area>
+    <view wx:if="{{sortTip}}" class="note">{{sortTip}}</view>
+  </view>
+
+  <!-- 编辑器 -->
+  <view class="card">
+    <view wx:if="{{editor.mode==='empty'}}" class="muted">从上方选择菜单项开始编辑</view>
+
+    <!-- 一级（分组）编辑器 -->
+    <block wx:elif="{{editor.mode==='parent'}}">
+      <view class="et">{{editor.title}}</view>
+      <view class="fld">
+        <view class="label">菜单名称 <text class="cnt {{editor.nameBad?'bad':''}}">{{editor.nameCount}}/{{editor.nameLimit}}</text></view>
+        <input class="inp" value="{{editor.name}}" bindinput="onName" placeholder="菜单名称"/>
+      </view>
+      <view class="sublist">
+        <view wx:for="{{editor.subList}}" wx:key="index" class="si {{sel.sub===item.index ? 'on':''}}">
+          <view class="si-main" data-i="{{sel.top}}" data-j="{{item.index}}" bindtap="onTapSub"><text class="si-name">{{item.name}}</text><text class="si-type">{{item.typeT}}</text></view>
+          <text class="si-del" data-j="{{item.index}}" catchtap="onDelSub">删除</text>
+        </view>
+      </view>
+      <button class="btn block" disabled="{{!editor.canAddSub}}" bindtap="onAddSub">+ 子菜单（{{editor.subCount}}/{{MAX_SUB}}）</button>
+      <view class="note">有子菜单的一级菜单在手机上点开弹出子项，本身不触发动作。</view>
+    </block>
+
+    <!-- 叶子（有动作）编辑器 -->
+    <block wx:else>
+      <view class="et">{{editor.title}}</view>
+      <view class="fld">
+        <view class="label">菜单名称 <text class="cnt {{editor.nameBad?'bad':''}}">{{editor.nameCount}}/{{editor.nameLimit}}</text></view>
+        <input class="inp" value="{{editor.name}}" bindinput="onName" placeholder="菜单名称"/>
+      </view>
+      <view class="fld">
+        <view class="label">动作类型</view>
+        <picker mode="selector" range="{{editor.typeOptions}}" range-key="t" value="{{editor.typeIndex}}" bindchange="onType">
+          <view class="picker">{{editor.typeOptions[editor.typeIndex].t}} ▾</view>
+        </picker>
+      </view>
+      <view wx:for="{{editor.fields}}" wx:key="key" class="fld">
+        <view class="label">{{item.label}}<text wx:if="{{item.note}}" class="note"> · {{item.note}}</text></view>
+        <textarea wx:if="{{item.multiline}}" class="inp ta" value="{{item.value}}" placeholder="{{item.placeholder}}" data-k="{{item.key}}" bindinput="onField"></textarea>
+        <input wx:else class="inp" value="{{item.value}}" placeholder="{{item.placeholder}}" data-k="{{item.key}}" bindinput="onField"/>
+      </view>
+      <button class="btn del block" bindtap="onDelItem">删除此项</button>
+    </block>
+  </view>
+
+  <!-- access_token（可选）：IP 白名单只拦「换 token」这一步，本机取到后粘进来即可发布 -->
+  <view class="card">
+    <view class="et">access_token（可选）</view>
+    <view class="fld">
+      <view class="label">粘贴 token<text wx:if="{{tokenHint}}" class="note"> · {{tokenHint}}</text></view>
+      <input class="inp" value="{{tokenInput}}" bindinput="onTokenInput" placeholder="留空则用已缓存的 token"/>
+    </view>
+    <view class="note">云函数出口 IP 完全随机漂移（实测 8 轮 8 个不同 IP），靠加白名单不可行。但本机取到的 token 可直接用：IP 白名单只作用于「用 AppSecret 换 token」这一步，拿到 token 后调 menu/create 不再校验 IP。token 有效期 2 小时，菜单很少改，发布前刷一次即可。</view>
+  </view>
+
+  <!-- 上次发布结果（进页面就能看到真实成败，避免「假成功」埋雷） -->
+  <view wx:if="{{lastText}}" class="card">
+    <view class="et">上次发布结果</view>
+    <view class="note">{{lastText}}</view>
+    <view wx:if="{{liveText}}" class="note">线上菜单（微信侧实际生效）：{{liveText}}</view>
+  </view>
+
+  <view class="row">
+    <button class="btn ghost" bindtap="onAddTop">+ 一级菜单（{{menu.button.length}}/{{MAX_TOP}}）</button>
+    <button class="btn block" bindtap="publish">发布到公众号</button>
+  </view>
+
+  <view wx:if="{{publishMsg}}" class="result">{{publishMsg}}</view>
+
+  <!-- 发布报文：给官方接口调试工具兜底用 -->
+  <view wx:if="{{payloadJson}}" class="card">
+    <view class="et">menu/create 报文</view>
+    <view class="note">官方接口调试工具（mp.weixin.qq.com/debug）从微信侧发起，不受服务号 IP 白名单限制；复制后粘贴到接口的 body 即可发布。</view>
+    <scroll-view scroll-y class="json">{{payloadJson}}</scroll-view>
+    <button class="btn block" bindtap="onCopyPayload">复制报文</button>
+  </view>
+  <view class="legend">排序：在「一级菜单顺序」里按住拖动即可调整一级菜单左右顺序（微信菜单栏从左到右＝列表从上到下）。复刻微信后台规则：一级 ≤3、二级 ≤5；有二级的一级不可直接点击；一级名 ≤4 字、二级名 ≤8 字。类型：跳转小程序/网页/发送文本/扫码/拍照·相册/发送图片图文/地理位置。跳转小程序的 pagepath 须指向已发布版本页面。</view>
+</view>
+
+<path-bar />

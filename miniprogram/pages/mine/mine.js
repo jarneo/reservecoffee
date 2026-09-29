@@ -2,6 +2,7 @@ const { call } = require('../../utils/cloud')
 const boot = require('../../utils/boot')
 const { isPhone, requestSubscribe } = require('../../utils/util')
 const { TPLS, normalizeSubs } = require('../../utils/subscribe')
+const img = require('../../utils/img')
 
 const MAP = {
   pending: ['待审核', 'paused'],
@@ -111,7 +112,8 @@ Page({
     if (this.data.pAvatar) {
       const oid = this.data.openid || Date.now()
       const cloudPath = `avatars/${oid}_${Date.now()}.png`
-      wx.cloud.uploadFile({ cloudPath, filePath: this.data.pAvatar })
+      img.compress(this.data.pAvatar, 'avatar')          // 上传前压到 160w，替代数据万象
+        .then(p => wx.cloud.uploadFile({ cloudPath, filePath: p }))
         .then(res => finish(res.fileID))
         .catch(() => finish())
     } else {

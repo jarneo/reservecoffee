@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>公众号菜单配置 · 管理端原型</title>
+<style>
+  :root{ --ink:#1A1A1A; --ink2:#555; --ink3:#999; --line:#E7E7E7; --fill:#F5F5F5; --brand:#7A5230; --page:#FBFBFB; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,"PingFang SC",Helvetica,sans-serif;color:var(--ink);background:#eee;padding:24px}
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{font-size:13px;color:var(--ink3);margin:0 0 18px}
+  .layout{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+  .phone{width:300px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:14px 12px 0;height:560px;display:flex;flex-direction:column}
+  .ph-hd{font-size:12px;color:var(--ink3);text-align:center;padding-bottom:8px}
+  .screen{flex:1;background:var(--page);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:10px;font-size:12px;color:var(--ink2);overflow:auto}
+  .bar{display:flex;border-top:1px solid var(--line);background:#fafafa;border-radius:0 0 24px 24px}
+  .bar .b{flex:1;text-align:center;padding:11px 4px;font-size:12px;border-right:1px solid var(--line);position:relative;cursor:pointer}
+  .bar .b:last-child{border-right:0}
+  .bar .b.on{color:var(--brand);font-weight:600}
+  .bar .b .subpop{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:10px;width:128px;margin-bottom:6px;display:none}
+  .bar .b .subpop.show{display:block}
+  .bar .b .subpop .s{padding:9px 6px;font-size:12px;border-bottom:1px solid var(--line);cursor:pointer}
+  .bar .b .subpop .s:last-child{border-bottom:0}
+  .bar .b .subpop .s.on{color:var(--brand);font-weight:600}
+  .editor{width:350px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .et{font-size:14px;font-weight:600;margin:0 0 4px}
+  .es{font-size:12px;color:var(--ink3);margin:0 0 12px}
+  .fld{margin:10px 0}
+  .fld label{display:block;font-size:12px;color:var(--ink3);margin-bottom:5px}
+  .fld input,.fld textarea,.fld select{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff}
+  .fld textarea{min-height:60px}
+  .cnt{font-size:11px;color:var(--ink3);float:right}
+  .cnt.bad{color:#A32D2D}
+  .row{display:flex;gap:8px;margin-top:10px}
+  .btn{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--ink);cursor:pointer;flex:1}
+  .btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn.del{color:#A32D2D;border-color:#F7C1C1}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .note{font-size:11px;color:var(--ink3);line-height:1.5;margin-top:6px}
+  .sublist{margin:8px 0;border:1px dashed var(--line);border-radius:8px;padding:8px}
+  .sublist .si{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 4px;border-bottom:1px solid #f2f2f2;cursor:pointer}
+  .sublist .si:last-child{border-bottom:0}
+  .sublist .si.on{color:var(--brand);font-weight:600}
+  .sublist .si .x{color:#A32D2D;cursor:pointer}
+  /* 一级菜单拖动排序（对应小程序 movable-view 列表；88rpx ≈ 44px） */
+  .sortcard{width:300px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+  .sortlist{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--page)}
+  .srow{display:flex;align-items:center;height:44px;padding:0 8px;background:#fff;border-bottom:1px solid #F2F2F2;cursor:grab}
+  .srow:last-child{border-bottom:0}
+  .srow.cur{background:#FDFAF6}
+  .srow.dragging{background:#FFF9F2;border:2px solid var(--brand);border-radius:8px}
+  .srow.tgt{background:#FBF4EC;box-shadow:inset 0 2px 0 var(--brand)}
+  .srow.tgt .sidx{color:var(--brand)}
+  .srow .sidx{width:20px;font-size:11px;color:#B0B0B0}
+  .srow .smain{flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .srow .sname{font-size:13px;color:var(--ink)}
+  .srow .ssub{font-size:10px;color:var(--ink3);margin-top:1px}
+  .srow .smv{font-size:13px;color:var(--brand);padding:5px 6px}
+  .srow .smv.off{color:#DCDCDC}
+  .json{margin-top:12px;background:var(--page);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:11px;white-space:pre-wrap;word-break:break-all;color:#444;max-height:220px;overflow:auto;display:none}
+  .legend{font-size:11px;color:var(--ink3);margin:10px 0 0;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>公众号菜单配置 · 管理端原型</h1>
+<p class="sub">复刻微信后台菜单编辑器：左侧手机菜单栏实时预览，右侧编辑选中项的名称/类型/跳转；一级≤3、二级≤5；支持全类型；「发布」生成 menu/create 报文。</p>
+<div class="layout">
+  <div class="phone">
+    <div class="ph-hd">公众号菜单预览（用户视角）</div>
+    <div class="screen" id="scr">点击下方底部菜单查看结构。发布后用户在此看到的效果与左下图一致。</div>
+    <div class="bar" id="bar"></div>
+  </div>
+  <div class="editor">
+    <p class="et" id="et">菜单项编辑</p>
+    <p class="es" id="es">从左侧选择菜单项开始编辑</p>
+    <div id="edbody"></div>
+    <div class="row">
+      <button class="btn" id="addTop" onclick="addTop()">+ 一级菜单</button>
+      <button class="btn pri" onclick="publish()">发布到公众号</button>
+    </div>
+    <pre class="json" id="json"></pre>
+    <p class="legend">规则：一级菜单 ≤3 个；有子菜单的一级不可直接点击（仅分组）；子菜单 ≤5 个；一级名 ≤4 字、子菜单名 ≤8 字。类型：跳转小程序 / 跳转网页 / 发送文本 / 扫码 / 拍照·相册 / 发送图片图文 / 地理位置。</p>
+  </div>
+  <div class="sortcard">
+    <p class="et">一级菜单顺序（可拖动）</p>
+    <p class="es">按住任意一项上下拖动即可调整顺序；微信菜单栏从左到右就是这里的从上到下。不想拖时也可以点右侧 ↑ / ↓ 微调。点一下该项可选中去编辑。调整完记得点「发布到公众号」才会生效。</p>
+    <div class="sortlist" id="sortlist"></div>
+    <p class="note" id="sorttip" style="min-height:16px"></p>
+  </div>
+</div>
+<script>
+var MAX_TOP=3, MAX_SUB=5, defApp='wxb97578ed89c6e2c7';
+var menu={button:[
+ {name:'预约到店',sub_button:[
+   {type:'miniprogram',name:'法兰绒预约',appid:defApp,pagepath:'pages/booking/booking?projectId=d5e30a9b6a7f39e5017968b11c813702',url:'https://mp.weixin.qq.com'},
+   {type:'miniprogram',name:'清酒预约',appid:defApp,pagepath:'pages/booking/booking?projectId=d5e30a9b6a7f39e5017968b233a0dea9',url:'https://mp.weixin.qq.com'},
+   {type:'miniprogram',name:'AI 智能预约',appid:defApp,pagepath:'pages/ai/ai',url:'https://mp.weixin.qq.com'}
+ ]},
+ {type:'miniprogram',name:'买豆买酒',appid:defApp,pagepath:'pages/menu/menu',url:'https://mp.weixin.qq.com'},
+ {type:'click',name:'联系我们',key:'contact',replyText:'微信：二曜路8号咖啡和清酒\n电话：19292757851'}
+]};
+var sel={top:0,sub:-1}, openPop=-1;
+var TYPES=[
+ {v:'miniprogram',t:'跳转小程序',f:['appid','pagepath','url']},
+ {v:'view',t:'跳转网页',f:['url']},
+ {v:'click',t:'发送文本',f:['key','replyText']},
+ {v:'scancode_waitmsg',t:'扫码',f:['key']},
+ {v:'pic_photo_or_album',t:'拍照/相册',f:['key']},
+ {v:'media_id',t:'发送图片图文',f:['media_id']},
+ {v:'location_select',t:'地理位置',f:['key']}
+];
+function $(id){return document.getElementById(id);}
+function cur(){var b=menu.button[sel.top];return sel.sub<0?b:(b.sub_button?b.sub_button[sel.sub]:null);}
+function isParent(b){return b&&b.sub_button&&b.sub_button.length;}
+function typeT(v){var t=TYPES.filter(function(x){return x.v===v;})[0];return t?t.t:v;}
+function fieldsOf(v){var t=TYPES.filter(function(x){return x.v===v;})[0];return t?t.f:['url'];}
+function renderBar(){
+ var bar=$('bar');bar.innerHTML='';
+ menu.button.forEach(function(b,i){
+  var d=document.createElement('div');d.className='b'+(sel.top===i&&sel.sub<0?' on':'');
+  d.textContent=b.name;
+  if(isParent(b)){
+   var pop=document.createElement('div');pop.className='subpop'+(openPop===i?' show':'');
+   b.sub_button.forEach(function(s,j){
+    var ss=document.createElement('div');ss.className='s'+(sel.top===i&&sel.sub===j?' on':'');
+    ss.textContent=s.name;ss.onclick=function(e){e.stopPropagation();sel.top=i;sel.sub=j;openPop=-1;renderAll();};
+    pop.appendChild(ss);
+   });
+   d.onclick=function(e){e.stopPropagation();sel.top=i;sel.sub=-1;openPop=(openPop===i?-1:i);renderAll();};
+   d.appendChild(pop);
+  } else { d.onclick=function(e){e.stopPropagation();sel.top=i;sel.sub=-1;openPop=-1;renderAll();}; }
+  bar.appendChild(d);
+ });
+}
+function renderEditor(){
+ var it=cur();var et=$('et'),es=$('es'),body=$('edbody');
+ if(!it){et.textContent='菜单项编辑';es.textContent='从左侧选择菜单项开始编辑';body.innerHTML='';return;}
+ var parent=menu.button[sel.top];
+ if(sel.sub<0&&isParent(parent)){
+  et.textContent='一级菜单（分组）：'+parent.name;es.textContent='含 '+parent.sub_button.length+' 个子菜单';
+  var h='<div class="fld"><label>菜单名称<span class="cnt" id="nc"></span></label><input id="nm" value="'+parent.name+'" oninput="upName(this.value)"></div>';
+  h+='<div class="sublist">';
+  parent.sub_button.forEach(function(s,j){h+='<div class="si'+(sel.sub===j?' on':'')+'" onclick="selSub('+j+')"><span>'+s.name+' · '+typeT(s.type)+'</span><span class="x" onclick="event.stopPropagation();delSub('+j+')">删除</span></div>';});
+  h+='</div><div class="row"><button class="btn" '+(parent.sub_button.length>=MAX_SUB?'disabled':'')+' onclick="addSub()">+ 子菜单（'+parent.sub_button.length+'/'+MAX_SUB+'）</button></div>';
+  h+='<p class="note">有子菜单的一级菜单在手机上点开弹出子项，本身不触发动作。</p>';
+  body.innerHTML=h;
+ } else {
+  et.textContent=(sel.sub<0?('一级菜单：'+it.name):('子菜单：'+it.name));es.textContent='设置动作类型与跳转';
+  var html='<div class="fld"><label>菜单名称<span class="cnt" id="nc"></span></label><input id="nm" value="'+it.name+'" oninput="upName(this.value)"></div>';
+  var opts='';TYPES.forEach(function(t){opts+='<option value="'+t.v+'"'+(it.type===t.v?' selected':'')+'>'+t.t+'</option>';});
+  html+='<div class="fld"><label>动作类型</label><select onchange="upType(this.value)">'+opts+'</select></div>';
+  (fieldsOf(it.type)||[]).forEach(function(f){
+   if(f==='appid')html+='<div class="fld"><label>小程序 AppID</label><input value="'+(it.appid||defApp)+'" oninput="upF(\'appid\',this.value)"></div>';
+   if(f==='pagepath')html+='<div class="fld"><label>页面路径 pagepath</label><input value="'+(it.pagepath||'')+'" placeholder="pages/booking/booking?projectId=..." oninput="upF(\'pagepath\',this.value)"><p class="note">须为已发布小程序的页面。</p></div>';
+   if(f==='url')html+='<div class="fld"><label>'+(it.type==='miniprogram'?'备用网页 url（兜底）':'跳转链接 url')+'</label><input value="'+(it.url||'')+'" placeholder="https://..." oninput="upF(\'url\',this.value)"></div>';
+   if(f==='key')html+='<div class="fld"><label>事件 key</label><input value="'+(it.key||'')+'" placeholder="如 contact" oninput="upF(\'key\',this.value)"></div>';
+   if(f==='replyText')html+='<div class="fld"><label>回复文本（mpChat 按 key 下发）</label><textarea oninput="upF(\'replyText\',this.value)">'+(it.replyText||'')+'</textarea><p class="note">click 事件由 mpChatHttp 被动回复按 key 路由。</p></div>';
+   if(f==='media_id')html+='<div class="fld"><label>素材 media_id</label><input value="'+(it.media_id||'')+'" placeholder="公众号素材库" oninput="upF(\'media_id\',this.value)"><p class="note">需先在公众号素材库上传。</p></div>';
+  });
+  html+='<div class="row"><button class="btn del" onclick="delItem()">删除此项</button></div>';
+  body.innerHTML=html;
+ }
+ upCount();
+}
+function upCount(){var it=cur();if(!it)return;var lim=sel.sub<0?4:8;var n=[...it.name].length;var c=$('nc');if(c){c.textContent=n+'/'+lim;c.className='cnt'+(n>lim?' bad':'');}}
+function upName(v){var it=cur();if(!it)return;it.name=v;renderBar();renderSort();upCount();}
+function upType(v){var it=cur();if(!it)return;it.type=v;if(v==='miniprogram'){it.appid=it.appid||defApp;it.url=it.url||'https://mp.weixin.qq.com';}renderEditor();}
+function upF(k,v){var it=cur();if(!it)return;it[k]=v;}
+function selSub(j){sel.sub=j;openPop=-1;renderAll();}
+function addTop(){if(menu.button.length>=MAX_TOP)return;menu.button.push({type:'miniprogram',name:'新建菜单',appid:defApp,pagepath:'',url:'https://mp.weixin.qq.com'});sel.top=menu.button.length-1;sel.sub=-1;renderAll();}
+function addSub(){var p=menu.button[sel.top];if(isParent(p)&&p.sub_button.length>=MAX_SUB)return;if(!isParent(p)){var leaf={name:p.name,type:p.type};['appid','pagepath','url','key','replyText','media_id'].forEach(function(k){if(p[k]!==undefined)leaf[k]=p[k];});p.sub_button=[leaf];delete p.type;delete p.appid;delete p.pagepath;delete p.url;delete p.key;delete p.replyText;delete p.media_id;}p.sub_button.push({type:'miniprogram',name:'子菜单',appid:defApp,pagepath:'',url:'https://mp.weixin.qq.com'});sel.sub=p.sub_button.length-1;renderAll();}
+function delSub(j){var p=menu.button[sel.top];if(!p.sub_button)return;p.sub_button.splice(j,1);if(!p.sub_button.length){delete p.sub_button;}sel.sub=-1;renderAll();}
+function delItem(){if(sel.sub<0){if(menu.button.length<=1)return;menu.button.splice(sel.top,1);sel.top=Math.max(0,sel.top-1);}else{var p=menu.button[sel.top];p.sub_button.splice(sel.sub,1);if(!p.sub_button.length)delete p.sub_button;sel.sub=-1;}renderAll();}
+function buildMenu(){var out={button:[]};menu.button.forEach(function(b){if(isParent(b)){var o={name:b.name,sub_button:[]};b.sub_button.forEach(function(s){o.sub_button.push(clean(s));});out.button.push(o);}else out.button.push(clean(b));});return out;}
+function clean(it){var o={name:it.name,type:it.type};if(it.type==='miniprogram'){o.appid=it.appid;o.pagepath=it.pagepath;if(it.url)o.url=it.url;}else if(it.type==='view'){o.url=it.url;}else if(it.type==='click'){o.key=it.key;}else if(it.type==='media_id'){o.media_id=it.media_id;}else{o.key=it.key;}return o;}
+function publish(){
+ var errs=[];
+ menu.button.forEach(function(b){if([...b.name].length>4)errs.push('一级「'+b.name+'」超过4字');if(isParent(b)){b.sub_button.forEach(function(s){if([...s.name].length>8)errs.push('子菜单「'+s.name+'」超过8字');if(!s.type)errs.push('子菜单「'+s.name+'」未选类型');});}else if(!b.type)errs.push('一级「'+b.name+'」未选类型');});
+ if(errs.length){$('json').style.display='block';$('json').textContent='校验未通过：\n'+errs.join('\n');return;}
+ $('json').style.display='block';
+ $('json').textContent='POST https://api.weixin.qq.com/cgi-bin/menu/create?access_token=ACCESS_TOKEN\n\n'+JSON.stringify(buildMenu(),null,2);
+}
+function renderAll(){renderBar();renderEditor();renderSort();}
+// ── 一级菜单拖动排序（原型用 HTML5 DnD；小程序里用 movable-view） ──
+var dragFrom=-1;
+function renderSort(){
+ var el=$('sortlist');if(!el)return;el.innerHTML='';
+ menu.button.forEach(function(b,i){
+  var d=document.createElement('div');
+  d.className='srow'+(sel.top===i?' cur':'');
+  d.draggable=true;
+  var subs=(b.sub_button||[]).map(function(s){return s.name;});
+  d.innerHTML='<span class="sidx">'+(i+1)+'</span>'+
+   '<span class="smain"><span class="sname">'+b.name+'</span><span class="ssub">'+(subs.length?subs.join(' / '):typeT(b.type))+'</span></span>'+
+   '<span class="smv'+(i===0?' off':'')+'" data-d="-1">↑</span>'+
+   '<span class="smv'+(i===menu.button.length-1?' off':'')+'" data-d="1">↓</span>';
+  d.onclick=function(e){
+   var t=e.target;
+   if(t&&t.classList&&t.classList.contains('smv')){e.stopPropagation();moveStep(i,Number(t.getAttribute('data-d')));return;}
+   sel.top=i;sel.sub=-1;openPop=-1;renderAll();
+  };
+  d.ondragstart=function(){dragFrom=i;d.classList.add('dragging');};
+  d.ondragover=function(e){e.preventDefault();[].forEach.call(el.children,function(c){if(c!==d)c.classList.remove('tgt');});if(i!==dragFrom)d.classList.add('tgt');};
+  d.ondrop=function(e){e.preventDefault();if(dragFrom>=0&&dragFrom!==i)moveTop(dragFrom,i);dragFrom=-1;};
+  d.ondragend=function(){dragFrom=-1;$('sorttip').textContent='';renderAll();};
+  el.appendChild(d);
+ });
+}
+function moveTop(from,to){
+ var it=menu.button.splice(from,1)[0];menu.button.splice(to,0,it);
+ var t=sel.top;if(t===from)t=to;else if(from<t&&to>=t)t--;else if(from>t&&to<=t)t++;
+ sel.top=t;sel.sub=-1;openPop=-1;
+ $('sorttip').textContent='顺序已调整，第 '+(t+1)+' 位：'+menu.button[t].name+'（需点「发布到公众号」才生效）';
+ renderAll();
+}
+function moveStep(i,d){var to=i+d;if(to<0||to>=menu.button.length)return;moveTop(i,to);}
+renderAll();
+</script>
+</body>
+</html>

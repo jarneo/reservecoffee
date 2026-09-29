@@ -1,4 +1,5 @@
 const { call } = require('../../utils/cloud')
+const img = require('../../utils/img')
 const app = getApp()
 
 function stars(n) {
@@ -105,13 +106,15 @@ Page({
     this.setData({ posting: true })
     const oid = (app.globalData && app.globalData.openid) || Date.now()
     try {
-      // 上传微信头像（chooseAvatar 得到临时路径）
-      const avUp = await wx.cloud.uploadFile({ cloudPath: `avatars/${oid}_${Date.now()}.png`, filePath: this.data.pAvatar })
+      // 上传微信头像（chooseAvatar 得到临时路径）——上传前压到 160w
+      const avPath = await img.compress(this.data.pAvatar, 'avatar')
+      const avUp = await wx.cloud.uploadFile({ cloudPath: `avatars/${oid}_${Date.now()}.png`, filePath: avPath })
       const avatarFile = avUp.fileID
-      // 上传评价图片
+      // 上传评价图片——上传前压到 400w
       const imageFiles = []
       for (const path of this.data.images) {
-        const up = await wx.cloud.uploadFile({ cloudPath: `reviews/${oid}_${Date.now()}_${Math.random().toString(36).slice(2)}.png`, filePath: path })
+        const cp = await img.compress(path, 'card')
+        const up = await wx.cloud.uploadFile({ cloudPath: `reviews/${oid}_${Date.now()}_${Math.random().toString(36).slice(2)}.png`, filePath: cp })
         imageFiles.push(up.fileID)
       }
       const res = await call('addReview', {

@@ -1,1 +1,7 @@
-{ "navigationBarTitleText": "预约管理", "usingComponents": { "sessionCard": "/components/sessionCard/sessionCard" } }
+{
+  "navigationBarTitleText": "预约管理",
+  "usingComponents": {
+    "sessionCard": "/components/sessionCard/sessionCard",
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

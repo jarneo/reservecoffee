@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "AI小曜预约助理", "usingComponents": {} }
+{
+  "navigationBarTitleText": "AI小曜预约助理",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

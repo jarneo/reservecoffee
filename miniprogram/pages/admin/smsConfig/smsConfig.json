@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "短信通知配置", "usingComponents": {} }
+{
+  "navigationBarTitleText": "短信通知配置",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

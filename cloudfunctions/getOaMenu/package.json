@@ -1,0 +1,9 @@
+{
+  "name": "getOaMenu",
+  "version": "1.0.0",
+  "description": "读取公众号菜单草稿与线上菜单",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^4.0.2"
+  }
+}

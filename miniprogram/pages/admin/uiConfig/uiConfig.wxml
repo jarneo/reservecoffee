@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="banner">这里的开关只影响「你（超级管理员）在自己手机上看到什么」，顾客端与普通管理员完全不受影响。</view>
+
+  <view class="card">
+    <view class="sec">页面路径条</view>
+    <view class="fld row between">
+      <view class="fld-txt">
+        <view class="label">显示页面路径条</view>
+        <view class="muted xs tip">开启后，你在任意页面滑到底能看到一行灰色小字：当前页完整路径（含 ?参数）+「复制」。用于配公众号菜单的 pagepath、生成小程序短链。关掉则全部页面都不再显示。</view>
+      </view>
+      <switch checked="{{pathBar}}" disabled="{{saving}}" bindchange="onToggle"/>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="sec">怎么用这条路径</view>
+    <view class="muted xs">1. 打开目标页面（如「法兰绒预约」）→ 滑到底 → 点「复制」</view>
+    <view class="muted xs">2. 进「公众号菜单配置」→ 选中菜单项 → 动作类型选「跳转小程序」→ 把路径粘进 pagepath</view>
+    <view class="muted xs">3. 发布即可；带 ?projectId=xxx 的路径会直接落到对应项目</view>
+  </view>
+</view>
+
+<path-bar />

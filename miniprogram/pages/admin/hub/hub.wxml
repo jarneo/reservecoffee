@@ -22,3 +22,5 @@
   </view>
   <view class="btn ghost block" bindtap="exit" style="margin-top:12rpx">退出管理端</view>
 </view>
+
+<path-bar />

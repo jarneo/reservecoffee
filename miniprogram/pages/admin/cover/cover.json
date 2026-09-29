@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "首图及介绍",
-  "usingComponents": {}
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "项目管理", "usingComponents": {} }
+{
+  "navigationBarTitleText": "项目管理",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

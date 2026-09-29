@@ -6,11 +6,19 @@ set -e
 # 解析脚本目录，输出 Windows 风格路径（避免 Git Bash 的 POSIX 路径被 node 二次转换）
 SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && (pwd -W 2>/dev/null || pwd))"
 
-# managed Node 路径（固定，勿改）
-# ⚠️ 默认路径必须指向**真实存在**的 managed node（本机是 22.22.2-3；写 22.22.2 会
-#   直接 "No such file or directory"）。换机器/换版本时用 SYNC_NODE 覆盖即可。
-NODE="${SYNC_NODE:-C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe}"
-# miniprogram-ci 装在 workspace node_modules
-export NODE_PATH="${SYNC_NODE_MODULES:-C:/Users/Administrator/.workbuddy/binaries/node/workspace/node_modules}"
+# managed Node 路径
+# ⚠️ 原默认值写死 Windows 路径（C:/Users/Administrator/...），在 Mac 上直接
+#   "No such file or directory"。改为**自动探测本机 managed node**，仍可用 SYNC_NODE 覆盖。
+if [ -z "${SYNC_NODE:-}" ]; then
+  for c in \
+    "$HOME/.workbuddy/binaries/node/versions/22.22.2-3/bin/node" \
+    "$HOME/.workbuddy/binaries/node/versions/22.22.2/bin/node" \
+    "$HOME/.workbuddy/binaries/node/versions/22.22.2-2/bin/node"; do
+    if [ -x "$c" ]; then SYNC_NODE="$c"; break; fi
+  done
+fi
+NODE="${SYNC_NODE:-node}"
+# miniprogram-ci 装在工程 node_modules；可用 SYNC_NODE_MODULES 覆盖
+export NODE_PATH="${SYNC_NODE_MODULES:-$SCRIPT_DIR/../node_modules}"
 
 exec "$NODE" "$SCRIPT_DIR/sync.js" "$@"

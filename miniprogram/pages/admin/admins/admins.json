@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "管理员管理", "usingComponents": {} }
+{
+  "navigationBarTitleText": "管理员管理",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

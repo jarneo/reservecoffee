@@ -2,5 +2,8 @@
   "navigationBarTitleText": "店铺菜单",
   "navigationBarBackgroundColor": "#FFFFFF",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#F5F5F5"
+  "backgroundColor": "#F5F5F5",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
 }

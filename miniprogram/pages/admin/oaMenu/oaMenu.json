@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "公众号菜单配置",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

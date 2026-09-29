@@ -51,3 +51,5 @@
 
   <view wx:if="{{loading}}" class="empty muted">加载中…</view>
 </view>
+
+<path-bar />

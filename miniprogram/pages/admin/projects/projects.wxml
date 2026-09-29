@@ -56,3 +56,5 @@
   </view>
   <view wx:if="{{list.length===0}}" class="note">暂无项目，点击右上角新建</view>
 </view>
+
+<path-bar />

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "界面设置",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

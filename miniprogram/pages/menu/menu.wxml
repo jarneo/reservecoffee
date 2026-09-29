@@ -36,3 +36,5 @@
   <!-- 首屏加载遮罩：等项目名 + 菜品列表 + 首屏菜品图全部就绪 -->
   <page-loading show="{{booting}}" />
 </view>
+
+<path-bar />

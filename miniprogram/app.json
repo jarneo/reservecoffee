@@ -17,6 +17,8 @@
     "pages/admin/review/review",
     "pages/admin/admins/admins",
     "pages/admin/menuAdmin/menuAdmin",
+    "pages/admin/oaMenu/oaMenu",
+    "pages/admin/uiConfig/uiConfig",
     "pages/admin/categories/categories",
     "pages/admin/reviewAdmin/reviewAdmin",
     "pages/admin/smsConfig/smsConfig",
@@ -60,5 +62,8 @@
     }
   },
   "sitemapLocation": "sitemap.json",
-  "style": "v2"
+  "style": "v2",
+  "navigateToMiniProgramAppIdList": [
+    "wx00914125678e1ad3"
+  ]
 }

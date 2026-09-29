@@ -1,1 +1,3 @@
 <web-view wx:if="{{src}}" src="{{src}}" bindmessage="onMessage"></web-view>
+
+<path-bar />

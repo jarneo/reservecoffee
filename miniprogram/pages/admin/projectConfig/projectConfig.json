@@ -1,7 +1,8 @@
 {
   "navigationBarTitleText": "项目配置",
-    "usingComponents": {
+  "usingComponents": {
     "calendar": "/components/calendar/calendar",
-    "sessionCard": "/components/sessionCard/sessionCard"
+    "sessionCard": "/components/sessionCard/sessionCard",
+    "path-bar": "/components/pathBar/pathBar"
   }
 }

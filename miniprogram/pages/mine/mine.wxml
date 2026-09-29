@@ -55,3 +55,5 @@
   <!-- 首屏加载遮罩：等身份 / 预约列表 / 资料（含头像临时链接）全部就绪 -->
   <page-loading show="{{booting}}" />
 </view>
+
+<path-bar />

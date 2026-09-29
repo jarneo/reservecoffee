@@ -42,3 +42,5 @@
     <button class="btn block" bindtap="add">授权</button>
   </view>
 </view>
+
+<path-bar />

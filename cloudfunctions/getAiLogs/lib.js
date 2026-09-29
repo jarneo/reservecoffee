@@ -849,6 +849,11 @@ function isJsonResp(r) {
 // 实测：给临时下载链接追加处理参数仍然 HTTP 200（桶为私有读，匿名 403，但签名通道有效），
 // 且 thumbnail/400x/quality/70 让 167,992B → 10,256B（省 94%）。存量图无需重新上传。
 // ⚠️ 只缩不放：imageMogr2/thumbnail/<W>x 仅限制最大边长，小图不会被放大。
+// ⚠️ 阶段 0（2026-09-29）：停用 imageMogr2 实时处理 —— 它按「每次访问」计费，小店也会
+//   持续产生数据万象后付费（资源桶 636c-cloud1-d8g9mhgxm32d2eac6-1468614423）。
+//   现改为「原图直出」，彻底消除该费用；后续阶段 1 改为「上传即压缩」预生成静态缩略图
+//   （见 miniprogram/utils/img.js）。临时恢复实时处理：把 ENABLE_CI_THUMB 置 true。
+const ENABLE_CI_THUMB = false
 const THUMB_SPEC = {
   hero:   'imageMogr2/thumbnail/750x/quality/72',   // 首页/店铺头图（全宽 750rpx）
   cover:  'imageMogr2/thumbnail/750x/quality/72',   // 项目封面大图
@@ -858,9 +863,11 @@ const THUMB_SPEC = {
   full:   'imageMogr2/thumbnail/1080x/quality/80'   // 详情页点开看的大图
 }
 
-/** 给云存储临时链接追加缩略图参数；非云存储链接 / 已处理过 / 空值 → 原样返回 */
+/** 图片 URL 处理：当前为「原图直出」（不做数据万象实时处理，避免按次计费）。
+ *  空值原样返回；仅当 ENABLE_CI_THUMB=true 时才恢复 imageMogr2 追加（限 .tcb.qcloud.la 域名）。 */
 function thumb(url, kind) {
   if (!url || typeof url !== 'string') return url || ''
+  if (!ENABLE_CI_THUMB) return url                     // ← 阶段 0：停用 imageMogr2，原图直出
   const spec = THUMB_SPEC[kind]
   if (!spec) return url
   // 仅对 CloudBase 云存储域名生效，避免误伤外链

@@ -202,6 +202,26 @@ async function loadWelcome() {
   } catch (e) { return '' }
 }
 
+// 自定义菜单 click 的回复文案（管理端「公众号菜单配置」页维护 → config.oaMenu.clickReplies）
+// 走**被动回复**下发：不需要 access_token、不走公网、不受服务号 IP 白名单限制，
+// 所以在「服务号 token 被 40164 拦死」的情况下，菜单点击回复依然 100% 可用。
+// 容器内缓存 60s：菜单点击是低频动作，没必要每次读库。
+let _clickCache = { at: 0, v: {} }
+async function loadClickReply(key) {
+  const now = Date.now()
+  if (!_clickCache.v || (now - _clickCache.at) > 60000) {
+    let v = {}
+    try {
+      const r = await db.collection('config').doc('oaMenu').get().catch(() => ({ data: null }))
+      v = (r && r.data && r.data.clickReplies && typeof r.data.clickReplies === 'object')
+        ? r.data.clickReplies : {}
+    } catch (e) { /* 读不到就当没配 */ }
+    _clickCache = { at: now, v }
+  }
+  const t = _clickCache.v[key]
+  return typeof t === 'string' ? t : ''
+}
+
 // ===== 卡片落地页 =====
 // ⭐ 默认落到「常规确认页」pages/confirm/confirm，而不是 AI 对话页 pages/ai/ai。
 //   为什么换：确认页本身就已经具备顾客下单所需的一切 ——
@@ -389,6 +409,18 @@ exports.main = async (event) => {
       await ensureOaUser(from)
       const w = await loadWelcome()
       if (w) return R(xmlText(from, to, w), 'text/xml; charset=utf-8')
+    }
+    // 自定义菜单「发送文本」（click）事件：按 EventKey 取文案并被动回复。
+    // 没配文案就静默返回 success（微信侧表现为"点菜单没反应"，属预期，可在菜单配置页补文案）。
+    if (evt === 'click') {
+      const key = String(pickXml(xml, 'EventKey') || '').trim()
+      const txt = key ? await loadClickReply(key) : ''
+      if (txt) {
+        console.log('[mpChatHttp] 菜单 click key=' + key + ' → 被动回复文案')
+        return R(xmlText(from, to, txt), 'text/xml; charset=utf-8')
+      }
+      console.warn('[mpChatHttp] 菜单 click key=' + key + ' 未配置回复文案，静默')
+      return R('success')
     }
     return R('success')
   }

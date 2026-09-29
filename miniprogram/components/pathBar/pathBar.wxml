@@ -1,0 +1,5 @@
+<!-- 页面末尾（文档流内，不固定）：管理员专用的当前页完整路径 + 复制 -->
+<view wx:if="{{show}}" class="pb-row">
+  <text class="pb-path" user-select="true">{{path}}</text>
+  <text class="pb-copy" bindtap="onCopy">复制</text>
+</view>

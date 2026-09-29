@@ -25,7 +25,9 @@ Page({
         { t: '管理员管理', u: '/pages/admin/admins/admins' },
         { t: '全局通知配置', u: '/pages/admin/notifyConfig/notifyConfig' },
         { t: 'AI 智能预约设置', u: '/pages/admin/aiConfig/aiConfig' },
-        { t: 'AI 对话记录', u: '/pages/admin/aiLogs/aiLogs' }
+        { t: 'AI 对话记录', u: '/pages/admin/aiLogs/aiLogs' },
+        { t: '公众号菜单配置', u: '/pages/admin/oaMenu/oaMenu' },
+        { t: '界面设置', u: '/pages/admin/uiConfig/uiConfig' }
       ]
       const manager = [
         { t: '店铺菜单管理', u: '/pages/admin/menuAdmin/menuAdmin' },

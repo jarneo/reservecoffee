@@ -1,0 +1,9 @@
+{
+  "name": "setOaMenu",
+  "version": "1.0.0",
+  "description": "发布公众号自定义菜单（cgi-bin/menu/create）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^4.0.2"
+  }
+}
