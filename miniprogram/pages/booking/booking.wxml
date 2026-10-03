@@ -115,7 +115,7 @@
         <view class="field row between">
           <view class="label">人数</view>
           <view class="stepper"><button bindtap="step" data-d="-1">−</button><view class="v">{{partySize}}</view><button bindtap="step" data-d="1">+</button></view>
-          <view class="sm muted" style="margin-top:6rpx">单次最多 {{maxParty}} 人</view>
+          <view class="sm muted" style="margin-top:6rpx">本场最多可约 {{partyMax}} 人</view>
         </view>
         <view wx:if="{{partyCapped}}" class="cap-note">
           您选择的人数超过了单次上限，已按上限 {{partySize}} 位为您安排。如需更多位，请直接联系我们：vx / 电话 19292757851。
@@ -126,7 +126,7 @@
 
       <button wx:if="{{unavailable}}" class="btn block blk-disabled" disabled>场次已失效</button>
       <button wx:elif="{{blocked}}" class="btn block blk-disabled" disabled>无法预约</button>
-      <button wx:else class="btn block" bindtap="submit">提交预约</button>
+      <button wx:else class="btn block" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">{{submitting ? '提交中…' : '提交预约'}}</button>
 
       <view class="tip">点「提交预约」后，微信会询问是否接收本单通知；未开启的项将改用短信通知您（需店家已开启短信）。</view>
 

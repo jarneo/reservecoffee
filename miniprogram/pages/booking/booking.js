@@ -18,7 +18,7 @@ Page({
     maxParty: 2, fields: ['name', 'phone'],
     showPhone: true, showWechat: false, showGender: false, showAge: false, showNote: false,
     subs: {},
-    needFill: false, partyCapped: false,
+    needFill: false, partyCapped: false, partyMax: 1, submitting: false,
     unavailable: '', blocked: false, blockReason: '',
     success: false, successInfo: null,
     booting: true
@@ -301,7 +301,7 @@ Page({
     // 选中场次 → 展开页面底部的内嵌表单
     const unavailable = (!admin && s.remaining <= 0) ? '这个场次刚刚被约满了，请换一个时间～' : ''
     const cap = Math.max(1, Math.min(this.data.maxParty || 2, Math.max(1, s.remaining)))
-    this.setData({ selSession: s, unavailable, partySize: cap, partyCapped: false }, () => {
+    this.setData({ selSession: s, unavailable, partySize: cap, partyMax: cap, partyCapped: false }, () => {
       // 滚动到内嵌表单区，减少寻找成本
       wx.pageScrollTo({ selector: '#bookForm', duration: 260 })
     })
@@ -343,10 +343,17 @@ Page({
     const d = Number(e.currentTarget.dataset.d)
     const s = this.data.selSession
     if (!s) return
-    const max = Math.min(this.data.maxParty || 2, s.remaining)
+    const maxParty = this.data.maxParty || 2
+    // 本场真实可约上限 = min(单次上限, 本场余位)
+    const max = Math.min(maxParty, s.remaining)
     const v = Math.max(1, Math.min(max, this.data.partySize + d))
     if (d > 0 && v === this.data.partySize) {
-      wx.showToast({ title: `单次最多 ${this.data.maxParty} 人，更多请致电 19292757851`, icon: 'none', duration: 2600 })
+      // 已到上限：按**真正的限制来源**给提示，且与真实可约上限动态一致（不再报固定的单次上限数字）
+      if (s.remaining <= maxParty) {
+        wx.showToast({ title: `该场次人员不足，无法成行（本场最多可约 ${s.remaining} 人）`, icon: 'none', duration: 2600 })
+      } else {
+        wx.showToast({ title: `单次最多 ${maxParty} 人，更多请致电 19292757851`, icon: 'none', duration: 2600 })
+      }
       return
     }
     this.setData({ partySize: v, partyCapped: false })
@@ -390,6 +397,8 @@ Page({
   },
 
   async submit() {
+    // 提交防重复：已在提交中则直接忽略本次点击（微信订阅弹窗期间用户会误以为没反应而连点）
+    if (this._submitting) return
     if (this.data.unavailable) {
       return wx.showModal({ title: '这个场次约不上了', content: this.data.unavailable, showCancel: false })
     }
@@ -420,6 +429,9 @@ Page({
       payload.source = 'oa'
       if (this._aiLogId) payload.aiLogId = this._aiLogId
     }
+    // 校验全部通过 → 锁定提交（按钮置灰 + 文案转「提交中」），直至本次请求完成
+    this._submitting = true
+    this.setData({ submitting: true })
     // 先同步拉起微信订阅弹窗（手势内），结果回写 subs 后再提交
     await Promise.race([
       this.requestNotify(),
@@ -464,7 +476,7 @@ Page({
           fail: () => this.setData({ success: true, successInfo: info })
         })
       })
-      .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '提交失败', icon: 'none' }) })
+      .catch(e => { wx.hideLoading(); this._submitting = false; this.setData({ submitting: false }); wx.showToast({ title: e.message || '提交失败', icon: 'none' }) })
   },
 
   goMine() { wx.switchTab({ url: '/pages/mine/mine' }) },

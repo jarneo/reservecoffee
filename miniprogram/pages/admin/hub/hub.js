@@ -36,6 +36,8 @@ Page({
     mySubs: null,          // { adminNew, adminCancel, adminReview } 布尔
     mySubInvalid: false,   // 任一推送已失效 → 卡片变警示态
     mySubscribedAt: '',    // 已格式化的「上次续订」时间；空串则不显示
+    mySubTotal: ADMIN_SUBS.length,  // 管理员推送类型总数（adminNew/adminCancel/adminReview）
+    mySubRemain: null,     // 仍有效（未失效）的推送类型数；null=本人查不到（如 manager）
     unread: 0              // 提醒未读数（0 也照常显示，只是数字转灰）
   },
   onLoad() {
@@ -97,9 +99,11 @@ Page({
   applySubs(subs, subscribedAt) {
     const keys = ADMIN_SUBS.map(s => s.key)
     const invalid = keys.some(k => subs[k] === false)
+    const remain = subs ? keys.filter(k => subs[k] !== false).length : null
     this.setData({
       mySubs: subs,
       mySubInvalid: invalid,
+      mySubRemain: remain,
       mySubscribedAt: fmtTime(subscribedAt)
     })
   },

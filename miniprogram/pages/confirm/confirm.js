@@ -17,7 +17,7 @@ Page({
     // 而微信的昵称/手机号填充必须在用户手势内触发，不能自动弹，所以只能靠这条提示把人引到按钮上。
     needFill: false,
     // 人数超单次上限被自动钳制时的说明（不做拆单、不推回常规预约，只说明上限 + 人工出口）
-    partyCapped: false,
+    partyCapped: false, partyMax: 1, submitting: false,
     // 黑名单阻断态：进入页面即检出，禁用提交
     blocked: false, blockReason: '',
     // 用户长期通知偏好（users.subscriptions，缺省全订阅）。
@@ -93,7 +93,10 @@ Page({
         // 被夹取时置 partyCapped，页面上明确说明「上限就是这么多 + 人工出口」，
         // 而不是静默改小 —— 顾客看到的人数和自己说的不一致会以为系统出错。
         const cap = Math.max(1, Math.min(this.data.maxParty, sess ? (sess.capacity - (sess.booked || 0)) : 1))
-        if (this.data.partySize > cap) this.setData({ partySize: cap, partyCapped: true })
+        const patch = {}
+        if (this.data.partySize > cap) { patch.partySize = cap; patch.partyCapped = true }
+        patch.partyMax = cap
+        this.setData(patch)
         this.prefill()
       })
       .catch(e => {
@@ -179,11 +182,19 @@ Page({
 
   step(e) {
     const d = Number(e.currentTarget.dataset.d)
-    const max = Math.min(this.data.session ? this.data.session.remaining : 9, this.data.maxParty || 2)
+    const sess = this.data.session
+    const remaining = sess ? sess.remaining : 9
+    const maxParty = this.data.maxParty || 2
+    // 本场真实可约上限 = min(单次上限, 本场余位)
+    const max = Math.min(maxParty, remaining)
     const v = Math.max(1, Math.min(max, this.data.partySize + d))
     if (d > 0 && v === this.data.partySize) {
-      // 已到上限：明确告知「上限就是这么多」并给人工出口，避免 + 号按了没反应
-      wx.showToast({ title: `单次最多 ${this.data.maxParty} 人，更多请致电 19292757851`, icon: 'none', duration: 2600 })
+      // 已到上限：按**真正的限制来源**给提示，且与真实可约上限动态一致（不再报固定的单次上限数字）
+      if (remaining <= maxParty) {
+        wx.showToast({ title: `该场次人员不足，无法成行（本场最多可约 ${remaining} 人）`, icon: 'none', duration: 2600 })
+      } else {
+        wx.showToast({ title: `单次最多 ${maxParty} 人，更多请致电 19292757851`, icon: 'none', duration: 2600 })
+      }
       return
     }
     this.setData({ partySize: v, partyCapped: false })
@@ -242,6 +253,8 @@ Page({
   },
 
   async submit() {
+    // 提交防重复：已在提交中则直接忽略本次点击（微信订阅弹窗期间用户会误以为没反应而连点）
+    if (this._submitting) return
     // 场次失效兜底：卡片链接可能已生成几分钟，期间该场次可能被约满/下架
     if (this.data.unavailable) {
       return wx.showModal({ title: '这个场次约不上了', content: this.data.unavailable, showCancel: false })
@@ -291,6 +304,9 @@ Page({
       payload.source = 'oa'
       if (this._aiLogId) payload.aiLogId = this._aiLogId
     }
+    // 校验全部通过 → 锁定提交（按钮置灰 + 文案转「提交中」），直至本次请求完成
+    this._submitting = true
+    this.setData({ submitting: true })
     // 先同步拉起微信订阅弹窗（必须在手势内）；等用户授权/拒绝结果回写 subs 后再提交预约。
     // 用 Promise.race 加 20s 兜底：万一弹窗异常未回调（如用户强行退出），不至于卡住提交。
     await Promise.race([
@@ -340,7 +356,7 @@ Page({
           fail: () => this.setData({ success: true, successInfo: info })
         })
       })
-      .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '提交失败', icon: 'none' }) })
+      .catch(e => { wx.hideLoading(); this._submitting = false; this.setData({ submitting: false }); wx.showToast({ title: e.message || '提交失败', icon: 'none' }) })
   },
 
   // 提交成功页：查看我的预约（我的预约是 tabBar 页，必须用 switchTab）

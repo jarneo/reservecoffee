@@ -46,3 +46,8 @@
 .mi:last-child { border-bottom:none; }
 .mt { font-size:30rpx; }
 .ma { color:var(--ink-3); font-size:32rpx; }
+
+/* 管理推送剩余可用次数：数字放大 + 品牌色，便于一眼看清额度 */
+.c2remain { font-size:22rpx; color:var(--ink-2); margin-top:6rpx; }
+.c2remain.muted { color:var(--ink-3); }
+.c2remain .big { font-size:40rpx; font-weight:700; color:var(--brand); margin:0 6rpx; }

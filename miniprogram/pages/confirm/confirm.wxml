@@ -50,7 +50,7 @@
     <view class="field row between">
       <view class="label">人数</view>
       <view class="stepper"><button bindtap="step" data-d="-1">−</button><view class="v">{{partySize}}</view><button bindtap="step" data-d="1">+</button></view>
-      <view class="sm muted" style="margin-top:6rpx">单次最多 {{maxParty}} 人</view>
+      <view class="sm muted" style="margin-top:6rpx">本场最多可约 {{partyMax}} 人</view>
     </view>
     <!-- 人数超上限：说明已按上限安排 + 给人工出口（不提拆单、不推回常规预约） -->
     <view wx:if="{{partyCapped}}" class="cap-note">
@@ -62,7 +62,7 @@
 
   <button wx:if="{{unavailable}}" class="btn block blk-disabled" disabled>场次已失效</button>
   <button wx:elif="{{blocked}}" class="btn block blk-disabled" disabled>无法预约</button>
-  <button wx:else class="btn block" bindtap="submit">提交预约</button>
+  <button wx:else class="btn block" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">{{submitting ? '提交中…' : '提交预约'}}</button>
 
   <!-- 提示：点「提交预约」后会由微信原生弹窗询问通知授权（只带本次预约会真正触发的通知类型，≤3 项）。
        授权与逐项勾选都在原生弹窗内完成，不再自绘一层。

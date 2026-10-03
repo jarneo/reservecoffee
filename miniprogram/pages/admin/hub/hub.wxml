@@ -24,6 +24,8 @@
       <view class="c2n xs {{mySubInvalid?'bad':''}}">{{mySubInvalid?'收不到通知':'微信通知'}}</view>
       <view class="c2d">{{mySubInvalid?'授权已用尽，有预约你也收不到':'发完即失效，失效后需续订'}}</view>
       <view wx:if="{{mySubscribedAt}}" class="c2meta">上次续订 {{mySubscribedAt}}</view>
+      <view wx:if="{{mySubRemain !== null}}" class="c2remain">管理推送剩余可用 <text class="big">{{mySubRemain}}</text> / {{mySubTotal}} 类</view>
+      <view wx:if="{{mySubRemain === null}}" class="c2remain muted">管理推送剩余可用 —</view>
       <view class="c2b {{mySubInvalid?'danger':'pri'}}" bindtap="enableAdminNotify">{{mySubInvalid?'立即续订':'续订推送'}}</view>
     </view>
 
