@@ -8,9 +8,19 @@
     <view class="sm" style="margin-top:8rpx"><text class="bold">{{item.nickname || '未设置昵称'}}</text></view>
     <view class="sm muted" style="margin-top:4rpx">openid：{{item.openid}}</view>
     <view wx:if="{{item.note}}" class="xs" style="margin-top:4rpx">备注：{{item.note}}</view>
+    <!-- 订阅失效提示：管理推送额度用尽 → 收不到新预约通知 -->
+    <view wx:if="{{item.hasInvalid}}" class="tag warn" style="margin-top:8rpx">管理推送已失效</view>
+    <!-- 通知范围徽标：该管理员可接收通知的项目数（与通知分配矩阵同源，projects.notifyAdmins） -->
+    <view wx:if="{{item.scopeText && item.scopeText !== '—'}}" class="tag {{item.scopeText==='全部项目'?'ok':'warn'}}" style="margin-top:8rpx">通知范围：{{item.scopeText}}</view>
+    <view wx:if="{{item.roleChangedAt}}" class="xs muted" style="margin-top:6rpx">角色于 {{item.roleChangedAtText}} 由{{item.roleChangedFrom==='owner'?'超级':'普通'}}管理员变更为当前角色</view>
     <view class="row" style="margin-top:14rpx;gap:12rpx">
+      <!-- 角色切换：走 updateAdminRole（改已有记录，保留 nickname/createdAt），
+           与下方「最近访问者」的两个按钮是**两条不同路径**：那里是新增时指定角色。 -->
+      <button wx:if="{{item.role!=='owner'}}" class="btn ghost sm" bindtap="changeRole" data-openid="{{item.openid}}" data-cur="manager" data-name="{{item.nickname}}">升为超级</button>
+      <button wx:if="{{item.role==='owner'}}" class="btn ghost sm" bindtap="changeRole" data-openid="{{item.openid}}" data-cur="owner" data-name="{{item.nickname}}">降为普通</button>
       <button wx:if="{{item.role!=='owner'}}" class="btn ghost sm" bindtap="remove" data-id="{{item._id}}">移除</button>
       <button class="btn sm" bindtap="setNickname" data-openid="{{item.openid}}" data-cur="{{item.nickname}}">设置昵称</button>
+      <button class="btn sm" bindtap="openMatrix" data-name="{{item.nickname}}">通知范围</button>
     </view>
   </view>
 
@@ -42,5 +52,32 @@
     <button class="btn block" bindtap="add">授权</button>
   </view>
 </view>
+
+  <!-- 通知分配矩阵（项目维度：projects.notifyAdmins）—— 点格子切换接收人，保存后按项目写回 -->
+  <view class="modal-mask" wx:if="{{showMatrix}}" bindtap="closeMatrix">
+    <view class="matrix-sheet" catchtap="noop">
+      <view class="modal-t">{{matrixTitle}}</view>
+      <scroll-view scroll-x class="matrix-scroll">
+        <view class="matrix">
+          <view class="m-row m-head">
+            <view class="m-cell m-corner">项目 \ 管理员</view>
+            <view wx:for="{{matrix[0].cells}}" wx:key="openid" class="m-cell m-colhead">{{item.name}}</view>
+          </view>
+          <view wx:for="{{matrix}}" wx:key="pid" class="m-row">
+            <view class="m-cell m-rowhead">{{item.name}}</view>
+            <view wx:for="{{item.cells}}" wx:for-item="c" wx:for-index="ai" wx:key="openid"
+                  class="m-cell m-toggle {{c.on?'on':''}}" data-pi="{{index}}" data-ai="{{ai}}" bindtap="toggleCell">
+              {{c.on?'✓':''}}
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="tip">点格子切换：✓ = 该管理员接收此项目通知。新项目默认全员；改为指定后仅通知勾选者。</view>
+      <view class="row" style="gap:12rpx;margin-top:16rpx">
+        <button class="btn ghost block" bindtap="closeMatrix">取消</button>
+        <button class="btn block" bindtap="saveMatrix">保存</button>
+      </view>
+    </view>
+  </view>
 
 <path-bar />

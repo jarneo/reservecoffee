@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>预约成功结果页 · 设计原型</title>
+<style>
+  :root { --brand:#7A5230; --ink:#1a1a1a; --ink2:#666; --ink3:#999; --line:#e7e3dd; --fill:#f3f1ec; --ok:#3d7a4e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f5f5; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:1000px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--ink3); font-size:13px; margin-bottom:24px; }
+  .layout { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  .phone { width:340px; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .nav { padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; font-weight:500; display:flex; align-items:center; gap:8px; }
+  .nav .back { color:var(--ink3); font-size:16px; }
+
+  /* 成功卡：沿用 confirm.wxss 的 .success-* 视觉，改为文档流内块（无 fixed 遮罩） */
+  .succ { margin:14px 12px; padding:20px 16px 18px; border:1px solid var(--line); border-radius:14px; text-align:center; }
+  .succ .ic { width:44px; height:44px; margin:0 auto 12px; border-radius:50%; background:#eef4ef; display:flex; align-items:center; justify-content:center; font-size:22px; color:var(--ok); }
+  .succ .ti { font-size:16px; font-weight:600; }
+  .succ .su { font-size:12px; color:var(--ink3); margin-top:6px; line-height:1.5; }
+  .sdetail { margin-top:16px; padding-top:14px; border-top:1px solid var(--line); text-align:left; }
+  .srow { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; }
+  .srow .k { color:var(--ink3); flex-shrink:0; }
+  .srow .v { text-align:right; padding-left:12px; }
+
+  .sec { padding:4px 14px; font-size:14px; font-weight:500; display:flex; justify-content:space-between; align-items:baseline; }
+  .sec .hint { font-size:11px; color:var(--ink3); font-weight:400; }
+  .tabs { display:flex; gap:16px; overflow-x:auto; padding:10px 14px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .tabs div { font-size:13px; color:var(--ink2); padding-bottom:4px; cursor:pointer; }
+  .tabs div.on { color:var(--brand); font-weight:600; border-bottom:2px solid var(--brand); }
+  .cols { display:flex; gap:8px; padding:10px 12px 4px; align-items:flex-start; }
+  .col { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+  .card { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff; }
+  .card .img { background:var(--fill); display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:11px; }
+  .card .info { display:flex; justify-content:space-between; align-items:baseline; gap:6px; padding:7px 9px; }
+  .card .info .nm { font-size:12px; font-weight:600; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .card .info .pr { font-size:12px; color:var(--brand); font-weight:600; flex-shrink:0; }
+  .acts { padding:14px 12px 20px; display:flex; flex-direction:column; gap:8px; }
+  .btn { text-align:center; padding:11px 0; border-radius:10px; font-size:14px; border:1px solid var(--brand); color:var(--brand); cursor:pointer; }
+  .btn.fill { background:var(--brand); color:#fff; }
+  .failbar { margin:10px 12px 0; padding:10px 12px; background:#fdf6f2; border:1px dashed var(--brand); border-radius:9px; font-size:12px; color:var(--ink2); display:flex; justify-content:space-between; align-items:center; }
+  .failbar a { color:var(--brand); }
+
+  .side { flex:1; min-width:300px; }
+  .side h2 { font-size:15px; margin:0 0 8px; }
+  .side h3 { font-size:13px; margin:16px 0 6px; color:var(--ink2); }
+  .side p, .side li { font-size:13px; color:#333; line-height:1.75; }
+  .side ul { padding-left:18px; margin:6px 0; }
+  .side code { background:#f0ece6; padding:1px 6px; border-radius:5px; font-size:12px; color:var(--brand); }
+  .kbd { display:inline-block; padding:2px 8px; border:1px dashed var(--brand); border-radius:6px; color:var(--brand); font-size:12px; }
+  .cmp { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+  .cmp th, .cmp td { border:1px solid var(--line); padding:6px 8px; text-align:left; }
+  .cmp th { background:var(--fill); font-weight:500; }
+  .no { color:var(--ink3); }
+  .yes { color:var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>预约成功结果页 · 设计原型</h1>
+  <div class="sub">问题 7 · 由弹层（fixed 遮罩）改为独立页面 · 上方留座信息 + 下方完整菜单（分类 tabs）</div>
+  <div class="layout">
+
+    <div class="phone">
+      <div class="nav"><span class="back">‹</span>预约成功</div>
+      <div class="sec" style="padding-top:14px;">
+        <span>门店信息</span>
+        <span class="hint">门店信息</span>
+      </div>
+
+      <div class="succ" id="succ"></div>
+      <div id="failbar"></div>
+
+      <div class="sec" style="margin-top:6px;">
+        <span>店铺菜单</span>
+        <span class="hint" id="cathint"></span>
+      </div>
+      <div class="tabs" id="tabs"></div>
+      <div class="cols" id="cols"></div>
+
+      <div class="acts">
+        <div class="btn fill" onclick="alert('switchTab → /pages/mine/mine')">查看我的预约</div>
+        <div class="btn" onclick="alert('reLaunch → /pages/index/index')">返回首页</div>
+      </div>
+    </div>
+
+    <div class="side">
+      <h2>交互说明</h2>
+
+      <h3>1. 与原弹层的关系</h3>
+      <p>上方成功卡<b>视觉沿用</b> <code>confirm.wxss</code> 的 <code>.success-*</code>（图标/标题/副标题/信息行/按钮），但从 <code>position:fixed</code> 遮罩改为<b>文档流内块</b>——因此不再需要 <code>z-index</code> 避让，也不会与 <code>page-loading</code>（z=1050）冲突。</p>
+
+      <h3>2. 相比原弹层补齐的字段</h3>
+      <p>原弹层只有 4 个字段（项目/日期/场次/人数 + 待审核分支），本次新增 1 项：</p>
+      <ul>
+        <li><b>联系电话</b>：用 <code>this.data.phone</code>（顾客刚自己填的，必有）。</li>
+      </ul>
+      <p class="no">❌ <b>不做预约号</b>：<code>createReservation</code> 返回的 <code>id</code> 是 32 位 hex 内部主键（截前 8 位对用户也无意义），顾客不会用、店员也不查，纯增噪音。</p>
+      <p class="no">门店地址本期<b>不做</b>：<code>config_homepage</code> 只有 logo/tag/heroImage/intro 四字段，<code>projects</code> 也无地址字段，做需 4 处改动。</p>
+
+      <h3>3. 下方菜单：完整菜单 + 分类 tabs</h3>
+      <p>用 <code>&lt;category-tabs&gt;</code> 组件 + <b>真·瀑布流</b>双列（直接 <code>require('../../utils/masonry')</code>，与首页共用同一实现，不二次造）。</p>
+      <p>数据取 <code>listCategories</code> + <code>listProducts</code>（2 跳 <code>Promise.all</code>），<b>不调 getHomepage</b>（后者连带返回 projects + 全量 schedules，8+ 次 DB 往返，其中 4 次对结果页无用）。</p>
+      <p>顶部「门店信息」标题的右侧灰字会显示<b>当前生效的默认分类来源</b>，便于验收时确认配置是否命中（见第 5 节）。</p>
+
+      <h3>4. 默认分类：项目级配置</h3>
+      <p>分类是<b>全局跨项目</b>集合（<code>_lib/index.js:20-22</code> 注释「全局类目，不按项目隔离」），但不同项目热销分类不同（咖啡 vs 清酒）→ 必须项目级。</p>
+      <table class="cmp">
+        <tr><th>层</th><th>改动</th></tr>
+        <tr><td>存储</td><td><code>projects</code> 新增 <code>resultCategoryId</code>（存分类 <code>_id</code>，空串=全部）</td></tr>
+        <tr><td>云函数</td><td><code>updateProject</code> 白名单加字段；<code>getProject:109</code> 加 1 行下发</td></tr>
+        <tr><td>配置页</td><td><code>projectConfig</code> 三处：data.global 声明 / 读回 / saveAll 提交；<code>wxml</code> 加 picker</td></tr>
+      </table>
+      <p><code>getProjectAdmin:89</code> 是 <code>ok({ project, schedules })</code> 整文档直传，<b>无需改动</b>即自动带上新字段。</p>
+
+      <h3>5. 分类失效兜底（三层）</h3>
+      <ul>
+        <li><b>L1 存储</b>：<code>updateProject</code> 存 <code>_id</code> 字符串，分类被删后成悬空引用（不报错）。</li>
+        <li><b>L2 主兜底</b>：<code>result.js</code> 读时校验 <code>categories.some(c =&gt; c._id === want)</code>，无效回退 <code>'all'</code>。</li>
+        <li><b>L3 UI</b>：<code>catOptsIdx = Math.max(0, cats.findIndex(...))</code>，<code>findIndex</code> 返 -1 时落到「全部」。</li>
+      </ul>
+
+      <h3>6. ⚠️ 时序陷阱（本方案最易踩的坑）</h3>
+      <p>首页 <code>index.js:121</code> 是这个写法：</p>
+      <p><code>if (this.data.activeCat === 'all') { patch.products = top; patch.colA = …; patch.colB = … }</code></p>
+      <p>若在 <code>onLoad</code> 就把 <code>activeCat</code> 设成具体分类 id，该分支<b>不执行</b> → 菜单<b>永久空白</b>，且 <code>boot</code> 图片门不结算（只有数据门）→ 用户看到「空菜单 + 无遮罩」的诡异状态。</p>
+      <p class="yes">✅ 正确模式：<code>onLoad</code> 只存<b>实例变量</b> <code>this._wantCat</code>（不进 data），等 <code>categories</code> 返回后校验有效性再决定 <code>activeCat</code>。</p>
+      <p>首页本期不修（<code>?cat=</code> 的唯一来源是结果页返回首页，而已决定不带）→ 会在 <code>index.js:121</code> 加注释指向本页的正确模式，防止未来维护者重蹈。</p>
+
+      <h3>7. 跳转与兜底</h3>
+      <p><code>wx.redirectTo</code>（不是 navigateTo：成功后不该回得到表单页）。参数用 <code>encodeURIComponent</code> 逐字段拼，<b>绝不塞 JSON</b>。</p>
+      <p><b>必须加 fail 兜底</b>：<code>redirectTo</code> 失败时用户停在表单页且看不到成功反馈 → 会以为提交失败而<b>重复下单</b>。所以<b>保留</b> <code>confirm.wxml</code> 的 <code>.success-mask</code> WXML/WXSS 作为 fallback 分支：正常走结果页、异常走原弹层。</p>
+
+      <h3>8. 订阅消息</h3>
+      <p class="yes">✅ <code>confirm.js:201-234</code> 的 <code>requestNotify()</code> <b>完全不动</b>——它在 tap 手势栈内、<code>doSubmit</code> 之前，上下文完整。</p>
+      <p>结果页<b>不能自动申请</b>订阅（跳转后手势上下文必然丢失），且本次<b>不做</b>「开启到店提醒」按钮（96% 用户提交时已授权过，添个用不上的按钮反而是噪音）。将来若需要，加一个 <code>bindtap</code> 同步调 <code>requestSubscribe(tmplIdsOfPlan(plan, subs))</code> 即可——<b>必须用 <code>tmplIdsOfPlan</code> 而非 <code>tmplIdsOf</code></b>，后者返 5 个超微信上限报 20003。</p>
+
+      <h3>9. 待审核态</h3>
+      <p><code>needReview</code> 为真时标题改「提交成功，待审核」、副标题改「店家审核通过后将发送预约成功通知」，其余结构不变（与原弹层一致）。</p>
+
+      <h3>10. 新页面须注册的组件</h3>
+      <p><code>result.json</code> 注册 <code>category-tabs</code> + <code>path-bar</code>（项目约定：新页面必须加路径条）。<code>page-loading</code> 全局已注册，无需重复。<code>app.json</code> 注册位置<b>非 tabBar</b>（tabBar 只有 index/mine）。</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const BRAND = '#7A5230';
+const PHONE_W = 316;              // 340 - padding 12*2
+const GAP = 8, COL_W = (PHONE_W - GAP) / 2, FIXED = 33;
+const DEFAULT_RATIO = 1.30;
+
+const CATS = [
+  { id: 'all', name: '全部' },
+  { id: 'c1', name: '自家煎焙' },
+  { id: 'c2', name: '经典名店' },
+  { id: 'c3', name: '特调' },
+  { id: 'c4', name: '甜品' },
+  { id: 'c5', name: '清酒' }
+];
+
+// ratio 缺失的存量图 → 用 DEFAULT_RATIO 兜底，误差表现为该卡略高/略低
+const P = [
+  { n: '耶加雪菲手冲', p: 38, c: 'c1', r: 1.30 }, { n: '巴西日晒', p: 32, c: 'c1', r: 0.80 },
+  { n: '哥伦比亚', p: 36, c: 'c1', r: 1.10 }, { n: '深烘法兰绒', p: 30, c: 'c1' },
+  { n: '卡布奇诺', p: 28, c: 'c2', r: 1.25 }, { n: '澳白', p: 32, c: 'c2', r: 1.20 },
+  { n: '美式', p: 22, c: 'c2', r: 1.00 }, { n: '拿铁', p: 30, c: 'c2', r: 1.15 },
+  { n: '桂花乌龙拿铁', p: 36, c: 'c3', r: 1.35 }, { n: '海盐焦糖', p: 38, c: 'c3', r: 1.28 },
+  { n: '西柚美式', p: 34, c: 'c3', r: 1.05 }, { n: '提拉米苏', p: 28, c: 'c4', r: 0.75 },
+  { n: '巴斯克', p: 32, c: 'c4', r: 1.00 }, { n: '可颂', p: 18, c: 'c4', r: 0.70 },
+  { n: '纯米大吟酿', p: 88, c: 'c5', r: 1.45 }, { n: '本酿造', p: 58, c: 'c5', r: 1.40 }
+];
+
+// 场景：咖啡项目默认全部；清酒项目默认停留在清酒
+const SCENES = [
+  { k: 'coffee_all',   t: '咖啡项目 · 默认全部',   want: 'all' },
+  { k: 'sake_default', t: '清酒项目 · 默认清酒',   want: 'c5' },
+  { k: 'invalid',      t: '分类被删（兜底回全部）', want: 'deleted_id' }
+];
+
+const INFO = { pn: '法兰绒深烘咖啡', d: '2026-10-05', ss: '14:00', se: '16:00', ps: 2, nr: false, ph: '138****6688', rid: 'a3f9c1e24b8d7e05' };
+
+let scene = SCENES[0].k, cat = 'all';
+
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+function renderSucc() {
+  const i = INFO;
+  const title = i.nr ? '提交成功，待审核' : '已为您留座';
+  const sub = i.nr ? '店家审核通过后将发送预约成功通知' : '我们已收到您的预约，期待与您相见';
+  document.getElementById('succ').innerHTML =
+    '<div class="ic">✓</div>' +
+    '<div class="ti">' + title + '</div>' +
+    '<div class="su">' + sub + '</div>' +
+    '<div class="sdetail">' +
+      row('项目', esc(i.pn)) + row('日期', esc(i.d)) +
+      row('场次', esc(i.ss + ' – ' + esc(i.se))) + row('人数', i.ps + ' 人') +
+    '</div>';
+}
+function row(k, v) { return '<div class="srow"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+
+function cardH(it) {
+  const r = Number(it.r);
+  const ratio = (isFinite(r) && r > 0.2 && r < 5) ? r : DEFAULT_RATIO;
+  return Math.round(COL_W / ratio) + FIXED;
+}
+
+function splitMasonry(list) {
+  const colA = [], colB = []; let hA = 0, hB = 0;
+  list.forEach(it => {
+    const h = cardH(it);
+    if (hA <= hB) { colA.push(it); hA += h; } else { colB.push(it); hB += h; }
+  });
+  return { colA, colB, hA, hB };
+}
+
+function renderTabs() {
+  const el = document.getElementById('tabs'); el.innerHTML = '';
+  CATS.forEach(c => {
+    const b = document.createElement('div');
+    b.textContent = c.name;
+    b.onclick = () => { cat = c.id; renderAll(); };
+    const sel = cat === c.id;
+    b.style.color = sel ? BRAND : 'var(--ink2)';
+    b.style.fontWeight = sel ? '600' : '400';
+    b.style.borderBottom = sel ? ('2px solid ' + BRAND) : '2px solid transparent';
+    el.appendChild(b);
+  });
+}
+
+function renderCols() {
+  const sc = SCENES.find(s => s.k === scene);
+  let want = sc.want;
+  // L2 主兜底：分类有效性校验
+  if (want !== 'all' && !CATS.some(c => c.id === want)) want = 'all';
+
+  const hint = document.getElementById('cathint');
+  hint.textContent = (sc.want === 'all')
+    ? '默认：全部'
+    : (want === 'all' ? '默认分类已失效 → 全部' : '默认：' + CATS.find(c => c.id === want).name);
+
+  // 模拟「切到默认分类」：进页面时 activeCat 由实例变量校验后决定
+  if (cat === 'all' && sc.want !== 'all' && want !== 'all') cat = want;
+
+  const list = cat === 'all' ? P.slice(0, 15) : P.filter(x => x.c === cat);
+  const cols = splitMasonry(list);
+  const box = document.getElementById('cols'); box.innerHTML = '';
+  [cols.colA, cols.colB].forEach(col => {
+    const d = document.createElement('div'); d.className = 'col';
+    col.forEach(it => {
+      const h = cardH(it);
+      const c = document.createElement('div'); c.className = 'card';
+      c.innerHTML = '<div class="img" style="height:' + h + 'px">' + esc(it.n) + '</div>' +
+        '<div class="info"><span class="nm">' + esc(it.n) + '</span><span class="pr">¥' + it.p + '</span></div>';
+      d.appendChild(c);
+    });
+    box.appendChild(d);
+  });
+
+  const gap = document.getElementById('failbar');
+  if (list.length) { gap.innerHTML = ''; return; }
+  gap.innerHTML = '<div>菜单加载失败<div class="no" style="font-size:11px;margin-top:2px;">listProducts 未返回或网络异常</div></div><a onclick="alert(\'重试 call(listProducts)\')">重试</a>';
+}
+
+function renderAll() { renderSucc(); renderTabs(); renderCols(); }
+
+// 切换场景
+const bar = document.createElement('div');
+bar.style.cssText = 'position:fixed;left:0;right:0;bottom:14px;text-align:center;z-index:9';
+bar.innerHTML = SCENES.map(s =>
+  '<button onclick="pickScene(\'' + s.k + '\')" style="margin:0 3px;padding:6px 12px;border-radius:8px;border:1px solid ' +
+  (s.k === scene ? BRAND : '#ccc') + ';background:' + (s.k === scene ? BRAND : '#fff') +
+  ';color:' + (s.k === scene ? '#fff' : '#666') + ';font-size:12px;cursor:pointer">' + s.t + '</button>'
+).join('');
+document.body.appendChild(bar);
+function pickScene(k) { scene = k; cat = 'all'; renderAll(); refreshBar(); }
+function refreshBar() {
+  bar.querySelectorAll('button').forEach((b, i) => {
+    const on = SCENES[i].k === scene;
+    b.style.borderColor = on ? BRAND : '#ccc';
+    b.style.background = on ? BRAND : '#fff';
+    b.style.color = on ? '#fff' : '#666';
+  });
+}
+
+renderAll();
+</script>
+</body>
+</html>

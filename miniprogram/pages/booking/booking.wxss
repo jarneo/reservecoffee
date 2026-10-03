@@ -44,6 +44,22 @@
 .biz { font-size:24rpx; color:var(--ink-2); padding:10rpx 4rpx 18rpx; }
 .card.dis { opacity:.45; }
 .note { color:var(--ink-3); font-size:26rpx; text-align:center; padding:36rpx; }
+/* 管理员视角：场次卡片与其下预约人列表（共用 reservee 组件）之间的分组间距 */
+.sess-wrap { margin-bottom: 18rpx; }
+.sess-wrap .card { margin-bottom: 0; }
+
+/* 管理端场次卡片：可点选以代客预约 */
+.sess-head { transition: border-color .15s, box-shadow .15s; }
+.sess-head:active { opacity: .7; }
+.sess-head.sel { border-color: var(--ink); box-shadow: 0 0 0 2rpx var(--ink); }
+.adm-actions { margin-top: 16rpx; }
+.adm-book-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ink); color: #fff;
+  font-size: 24rpx; line-height: 1;
+  padding: 14rpx 28rpx; border-radius: 999rpx;
+}
+.adm-book-btn:active { opacity: .85; }
 
 /* 关联项目模块（介绍区域延伸，点击跳转其他项目详情） */
 .rel-card { background:#fff; border-radius:16rpx; padding:16rpx 22rpx; margin-bottom:20rpx; border:1rpx solid var(--line); }
@@ -59,3 +75,173 @@
 .rel-name { font-size:28rpx; font-weight:600; color:var(--ink); }
 .rel-desc { font-size:22rpx; color:var(--ink-2); margin-top:4rpx; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .rel-arrow { flex:none; color:var(--ink-3); font-size:36rpx; }
+
+/* ===== 顾客端：场次 3 列自适应网格（超过 3 个自动换行）===== */
+.cust-branch { margin-top: 8rpx; }
+.secttl { font-size: 24rpx; color: var(--ink-3); font-weight: 600; margin: 18rpx 4rpx 12rpx; }
+.sess-grid { display: flex; flex-wrap: wrap; gap: 16rpx; padding: 2rpx 0 8rpx; }
+/* 一排 3 个：2 个 gap(16rpx) = 32rpx，故每项宽度 = (100% - 32rpx) / 3 */
+.schip {
+  flex: 0 0 calc((100% - 32rpx) / 3);
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 14rpx;
+  padding: 14rpx 6rpx 12rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+.schip.on { border-color: var(--ink); background: var(--ink); }
+.schip.on .sc-time { color: #fff; }
+.schip.on .sc-badge { color: #fff; border-color: rgba(255,255,255,.5); }
+.schip.dis { opacity: .45; }
+.sc-time { font-size: 24rpx; font-weight: 600; color: var(--ink); line-height: 1.2; }
+.sc-badge {
+  display: inline-block;
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  line-height: 1;
+  padding: 4rpx 10rpx;
+  border-radius: 8rpx;
+  color: var(--ink-3);
+  border: 1rpx solid var(--line);
+}
+.sc-badge.b-ok { color: var(--ink-2); }
+.sc-badge.b-full { color: #fff; background: #b06a2c; border-color: transparent; }
+.sc-badge.b-pau { color: #fff; background: var(--ink-3); border-color: transparent; }
+.sc-badge.b-exp { color: #fff; background: #8a8f99; border-color: transparent; }
+
+/* 内嵌确认表单容器 */
+.book-form { margin-top: 24rpx; }
+.book-form .card + .card { margin-top: 18rpx; }
+
+/* ===== 管理员专属：本场预约人分组（需求3）+ 进入预约管理入口 ===== */
+.admin-res { margin-top: 28rpx; }
+.res-head { display: flex; align-items: center; justify-content: space-between; }
+.manage-link {
+  font-size: 24rpx;
+  color: var(--brand);
+  border: 1rpx solid var(--brand);
+  border-radius: 999rpx;
+  padding: 8rpx 20rpx;
+  flex: none;
+}
+.manage-link:active { opacity: .6; }
+
+/* ===== 以下样式移植自 confirm 页（内嵌表单共用）===== */
+.field.row { display: flex; align-items: center; }
+
+/* 手机号：输入框 + 微信一键获取按钮 */
+.phone-row { display: flex; align-items: center; gap: 16rpx; }
+.phone-row .phone-input { flex: 1; }
+.phone-row .get-phone { margin: 0; flex: none; font-size: 24rpx; padding: 0 22rpx; height: 64rpx; line-height: 64rpx; }
+
+/* 资料引导条（称呼/手机号缺任一项时）：暖底描边提示，与页面黑白基调和品牌色一致，
+   不使用红色告警色（这不是错误态，只是还差一步） */
+.need-fill {
+  background: #fff8ec;
+  border: 1rpx solid #f0d9a0;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+  margin-bottom: 20rpx;
+}
+.need-fill .nf-title { font-size: 29rpx; font-weight: 600; color: #8a5a1f; }
+.need-fill .nf-text { margin-top: 8rpx; font-size: 25rpx; line-height: 1.6; color: #8a5a1f; }
+
+/* 人数超单次上限说明（与引导条同一暖色系，属提示而非错误） */
+.cap-note {
+  margin-top: 14rpx;
+  padding: 18rpx 22rpx;
+  background: #fff8ec;
+  border: 1rpx solid #f0d9a0;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #8a5a1f;
+}
+
+/* 黑名单 / 场次失效 阻断态：顶部警示块 + 禁用提交按钮 */
+.bl-block {
+  background: rgba(163, 45, 45, .07);
+  border: 1rpx solid rgba(163, 45, 45, .25);
+  border-radius: 16rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 20rpx;
+}
+.bl-block .bl-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--danger);
+}
+.bl-block .bl-text {
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.btn.blk-disabled {
+  background: var(--fill);
+  color: var(--ink-3);
+  border-color: var(--line);
+}
+
+/* 提交按钮下方的说明（通知授权走微信原生弹窗，此处只做提示） */
+.tip {
+  margin-top: 20rpx;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+/* 提交成功页覆盖层（应用内必达确认 UI） */
+.success-mask {
+  position: fixed;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 48rpx;
+}
+.success-card {
+  width: 100%;
+  max-width: 600rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 56rpx 44rpx 40rpx;
+  text-align: center;
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, .18);
+}
+.success-icon {
+  width: 88rpx;
+  height: 88rpx;
+  margin: 0 auto 24rpx;
+  border-radius: 50%;
+  background: #7A5230;
+}
+.success-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: var(--ink-1, #1a1a1a);
+}
+.success-sub {
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  color: var(--ink-3, #999);
+  line-height: 1.6;
+}
+.success-detail {
+  margin: 36rpx 0 24rpx;
+  border-top: 1rpx solid var(--line, #eee);
+  padding-top: 24rpx;
+  text-align: left;
+}
+.sd-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 27rpx;
+  padding: 10rpx 0;
+}
+.sd-k { color: var(--ink-3, #999); }
+.sd-v { color: var(--ink-1, #1a1a1a); }
+.success-card .btn { margin-top: 16rpx; }

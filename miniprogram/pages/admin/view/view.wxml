@@ -19,47 +19,18 @@
   </view>
   <view class="range-label">{{dateRangeLabel}}</view>
 
-  <view class="chips">
-    <view wx:for="{{sessions}}" wx:key="id" class="chip {{item.id===selSession?'on':''}}" bindtap="onSession" data-id="{{item.id}}">
-      <view class="chip-t">{{item.start}}–{{item.end}}</view>
-      <view class="chip-s">剩{{item.remaining}}/{{item.capacity}}</view>
-    </view>
-  </view>
+  <view wx:if="{{sessions.length === 0}}" class="note">该日暂未设置场次，请联系店家</view>
 
-  <view wx:if="{{selSession}}">
-    <view wx:if="{{list.length===0}}" class="note">该场次暂无预约人</view>
-    <view wx:for="{{list}}" wx:key="_id" class="card" bindtap="showDetail" data-id="{{item._id}}">
-      <view class="row between" style="align-items:center">
-        <view class="bold">{{item.name}} <text class="muted">· {{item.partySize}}人</text></view>
-        <view class="head-actions">
-          <view class="badge {{item.review==='pending'?'paused':(item.status==='confirmed'?'ok':'full')}}">{{item.review==='pending'?'待审':(item.status==='confirmed'?'已确认':'已取消')}}</view>
-          <view wx:if="{{!sessionExpired}}" class="cancel-mini" catchtap="onCancel" data-id="{{item._id}}">取消预约</view>
-        </view>
+  <!-- 需求1：选中日期后全部场次一次性展开，各场次下直接挂预约人列表（组件内含详情/拨打/分析） -->
+  <view wx:for="{{sessions}}" wx:key="id" class="session">
+    <view class="session-h">
+      <view class="tm">{{item.start}}–{{item.end}}</view>
+      <view class="session-meta">
+        <text class="cnt">本场 {{item.people.length}} 人</text>
+        <view class="session-badge {{item.remaining<=0?'full':(item.paused?'paused':'')}}">{{item.remaining<=0?'已满':(item.paused?'已暂停':'剩 '+item.remaining+'/'+item.capacity)}}</view>
       </view>
-      <view class="sm muted" style="margin-top:6rpx">{{item.phone}}</view>
     </view>
-  </view>
-  <view wx:else class="note">请选择日期与场次</view>
-
-  <view wx:if="{{detail}}" class="sheet-mask" bindtap="closeDetail">
-    <view class="sheet" catchtap="noop">
-      <view class="bold" style="font-size:32rpx">{{detail.name}}</view>
-      <view class="row" style="margin-top:12rpx;gap:24rpx">
-        <view><view class="xs muted">电话</view><view>{{detail.phone}}</view></view>
-        <view><view class="xs muted">人数</view><view>{{detail.partySize}} 人</view></view>
-      </view>
-      <view class="xs muted" style="margin-top:12rpx">审核：{{detail.review==='pending'?'待审核':(detail.review==='approved'?'已通过':'已拒绝')}}</view>
-      <view wx:if="{{detail.note}}" style="margin-top:14rpx">
-        <view class="xs muted">备注</view>
-        <view style="font-size:28rpx;margin-top:4rpx;line-height:1.5;white-space:pre-wrap">{{detail.note}}</view>
-      </view>
-      <view wx:if="{{detail.wechat || detail.gender || detail.age}}" class="row" style="margin-top:12rpx;gap:28rpx;flex-wrap:wrap">
-        <view wx:if="{{detail.wechat}}"><view class="xs muted">微信号</view><view>{{detail.wechat}}</view></view>
-        <view wx:if="{{detail.gender}}"><view class="xs muted">性别</view><view>{{detail.gender}}</view></view>
-        <view wx:if="{{detail.age}}"><view class="xs muted">年龄</view><view>{{detail.age}} 岁</view></view>
-      </view>
-      <button class="btn block call-lg" style="margin-top:20rpx" bindtap="dial">📞 拨打电话</button>
-    </view>
+    <reservee list="{{item.people}}" canCancel="{{!item.expired}}" bind:cancel="onCancel" />
   </view>
 </view>
 

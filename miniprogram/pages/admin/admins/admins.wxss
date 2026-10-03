@@ -1,3 +1,20 @@
 .sec { font-size:26rpx; color:var(--ink-3); padding:8rpx 4rpx 16rpx; }
 .chip { padding:10rpx 24rpx; border:1rpx solid var(--line); border-radius:999rpx; margin-right:12rpx; font-size:24rpx; }
 .chip.on { border-color:var(--ink); font-weight:600; }
+
+/* 通知范围徽标 */
+.tag.ok { color:#2e7d32; background:#e8f3e9; border-color:#bfe0c2; }
+
+/* 通知分配矩阵弹层 */
+.modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:100; }
+.matrix-sheet { width:88%; max-height:82vh; background:#fff; border-radius:16rpx; padding:28rpx; display:flex; flex-direction:column; box-sizing:border-box; }
+.matrix-scroll { margin-top:8rpx; max-height:54vh; }
+.matrix { display:inline-block; min-width:100%; }
+.m-row { display:flex; }
+.m-cell { flex:none; width:140rpx; min-height:64rpx; display:flex; align-items:center; justify-content:center; border:1rpx solid var(--line); font-size:22rpx; padding:6rpx 4rpx; box-sizing:border-box; text-align:center; }
+.m-corner, .m-rowhead { width:200rpx; justify-content:flex-start; padding-left:12rpx; font-weight:600; background:var(--fill); white-space:nowrap; }
+.m-colhead { background:var(--fill); font-weight:600; }
+.m-toggle { cursor:pointer; }
+.m-toggle.on { background:#f3ece4; color:#7A5230; font-weight:600; }
+.m-toggle:active { opacity:.7; }
+.tip { font-size:22rpx; color:var(--ink-3); text-align:center; margin-top:14rpx; }

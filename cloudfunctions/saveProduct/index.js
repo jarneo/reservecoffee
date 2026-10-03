@@ -6,7 +6,7 @@ exports.main = async (event) => {
   const role = await getRole(OPENID)
   if (role.role !== 'owner' && role.role !== 'manager') return fail('无权限')
 
-  const { projectId, productId, name, image, price, desc, status, sort, categoryId } = event
+  const { projectId, productId, name, image, price, desc, status, sort, categoryId, ratio } = event
   if (!projectId) return fail('缺少 projectId')
   if (!name || !name.trim()) return fail('请填写菜品名称')
   if (!image) return fail('请上传菜品图片')
@@ -16,6 +16,12 @@ exports.main = async (event) => {
   // 分类：空值 / 非字符串 → 落空串（未归类）；合法 → 截断 40 字
   const cat = (typeof categoryId === 'string' && categoryId) ? categoryId.slice(0, 40) : ''
 
+  // 图片宽高比 h/w：首页瀑布流用它估算卡片高度以对齐两列底边。
+  // 合法区间 (0.2, 5]：越界/非数/缺省一律落 0，前端 masonry 会对 0 回退到默认 1.30。
+  // ⚠️ 存量菜品没有该字段（0），属正常：引导店主重传一次图片即补齐。
+  const ratioNum = Number(ratio)
+  const ratioOk = isFinite(ratioNum) && ratioNum > 0.2 && ratioNum <= 5
+
   const patch = {
     name: String(name).trim().slice(0, 40),
     image: String(image).slice(0, 200),
@@ -23,7 +29,8 @@ exports.main = async (event) => {
     desc: String(desc || '').slice(0, 300),
     status: status === 'off' ? 'off' : 'on',
     sort: Number.isFinite(Number(sort)) ? Number(sort) : 0,
-    categoryId: cat
+    categoryId: cat,
+    ratio: ratioOk ? Math.round(ratioNum * 1000) / 1000 : 0
   }
 
   if (productId) {

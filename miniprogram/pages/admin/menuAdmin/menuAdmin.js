@@ -37,20 +37,26 @@ Page({
   loadProducts() {
     call('adminProducts', { projectId: this.data.projectId })
       .then(d => {
-        const products = (d.products || []).map(p => ({ ...p, priceText: '¥' + (p.price || 0), categoryName: this.catName(p.categoryId) }))
+        const products = (d.products || []).map(p => ({
+          ...p,
+          priceText: '¥' + (p.price || 0),
+          categoryName: this.catName(p.categoryId),
+          // 预计算布尔（WXML 禁 JS 调用，Number() 在 WXML 里恒为 falsy/NaN）
+          hasRatio: Number(p.ratio) > 0
+        }))
         this.setData({ products })
       })
       .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },
   openNew() {
     const maxSort = this.data.products.reduce((m, p) => Math.max(m, Number(p.sort) || 0), 0)
-    this.setData({ showForm: true, editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: maxSort + 1, categoryId: '', categoryName: '未分类' } })
+    this.setData({ showForm: true, editingId: '', form: { name: '', price: '', desc: '', status: true, image: '', imageUrl: '', sort: maxSort + 1, categoryId: '', categoryName: '未分类', ratio: 0 } })
   },
   openEdit(e) {
     const p = this.data.products[e.currentTarget.dataset.i]
     this.setData({
       showForm: true, editingId: p._id,
-      form: { name: p.name, price: String(p.price), desc: p.desc || '', status: p.status !== 'off', image: p.image || '', imageUrl: p.imageUrl || '', sort: (p.sort != null ? p.sort : 0), categoryId: p.categoryId || '', categoryName: this.catName(p.categoryId) }
+      form: { name: p.name, price: String(p.price), desc: p.desc || '', status: p.status !== 'off', image: p.image || '', imageUrl: p.imageUrl || '', sort: (p.sort != null ? p.sort : 0), categoryId: p.categoryId || '', categoryName: this.catName(p.categoryId), ratio: Number(p.ratio) > 0 ? Number(p.ratio) : 0 }
     })
   },
   onName(e) { this.setData({ 'form.name': e.detail.value }) },
@@ -63,17 +69,28 @@ Page({
     this.setData({ 'form.categoryId': c._id, 'form.categoryName': c.name })
   },
   pickImage() {
+    // ⚠️ sizeType 必须用 ['original']：微信的 'compressed' 会先压一次（质量不可控、长边限 1080），
+    //    紧接着 img.compress 再压第二次 —— JPEG 两次有损**非线性叠加**，伪影会被二次编码进细节，
+    //    菜品图会明显发糊。改为 original 后由 img.compress 单独负责压缩（唯一压缩点）。
     wx.chooseMedia({
-      count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: 1, mediaType: ['image'], sizeType: ['original'], sourceType: ['album', 'camera'],
       success: async (r) => {
         wx.showLoading({ title: '上传中' })
         try {
           const tp = r.tempFiles[0].tempFilePath
-          const cp = await img.compress(tp, 'card')      // 上传前压到 400w，替代数据万象
+          // 取**压缩后**图片的宽高比（宽高比与原图一致，但按压缩后尺寸算更贴近实际渲染）
+          let ratio = 0
+          try {
+            const info = await wx.getImageInfo({ src: tp })
+            const w = Number(info && info.width)
+            const h = Number(info && info.height)
+            if (w > 0 && h > 0) ratio = Math.round((h / w) * 1000) / 1000
+          } catch (e) { /* 拿不到就留 0，后端与前端都有缺省兜底 */ }
+          const cp = await img.compress(tp, 'card')      // 上传前压到 640w/q80
           const ext = (cp.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
           const cloudPath = `products/${this.data.projectId}/${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`
           const res = await wx.cloud.uploadFile({ cloudPath, filePath: cp })
-          this.setData({ 'form.image': res.fileID })
+          this.setData({ 'form.image': res.fileID, 'form.ratio': ratio })
           const urlRes = await wx.cloud.getTempFileURL({ fileList: [res.fileID] })
           const u = (urlRes.fileList || [])[0]
           this.setData({ 'form.imageUrl': (u && u.tempFileURL) ? u.tempFileURL : '' })
@@ -94,7 +111,10 @@ Page({
     call('saveProduct', {
       projectId: this.data.projectId, productId: this.data.editingId || undefined,
       name: f.name, price: Number(f.price), desc: f.desc, status: f.status ? 'on' : 'off', image: f.image,
-      sort: savedSort, categoryId: f.categoryId || ''
+      sort: savedSort, categoryId: f.categoryId || '',
+      // 图片宽高比（h/w）：首页瀑布流按它估算卡片高度以对齐两列底边。
+      // 0 = 未记录（存量图 / getImageInfo 失败）→ 前端 masonry 用默认 1.30 兜底。
+      ratio: Number(f.ratio) > 0 ? Number(f.ratio) : 0
     })
       .then(() => {
         wx.hideLoading(); wx.showToast({ title: '已保存', icon: 'success' }); this.loadProducts()

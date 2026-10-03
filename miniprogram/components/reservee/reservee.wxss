@@ -1,0 +1,103 @@
+/* components/reservee/reservee.wxss — 自包含样式（:host 定义令牌，隔离模式下不依赖页面级 class） */
+:host {
+  --ink: #1A1A1A;
+  --ink-2: #555555;
+  --ink-3: #999999;
+  --line: #E7E7E7;
+  --fill: #F5F5F5;
+  --fill-2: #FAFAFA;
+  --brand: #7A5230;
+  --ok: #1A1A1A;
+  --danger: #A32D2D;
+  display: block;
+}
+
+.res-list { display: block; padding: 10rpx 12rpx 12rpx; }
+
+/* 布局原子（与 app.wxss 同义，组件内自包含） */
+.row { display: flex; align-items: center; }
+.row.between { justify-content: space-between; }
+.bold { font-weight: 600; }
+.muted { color: var(--ink-3); }
+.sm { font-size: 24rpx; }
+.xs { font-size: 22rpx; }
+.acts { display: flex; align-items: center; gap: 12rpx; flex: none; }
+
+/* 预约人卡片（与 admin/view 原「本场预约人」卡片一致） */
+.pcard { background: #fff; border: 1rpx solid var(--line); border-radius: 12rpx; padding: 18rpx 20rpx; margin-bottom: 12rpx; }
+.pcard:active { background: var(--fill-2); }
+
+/* 状态徽标（双轴：待审=虚线 / 已确认=黑边 / 已取消=灰底） */
+.badge { display: inline-block; padding: 4rpx 14rpx; border-radius: 999rpx; font-size: 22rpx; border: 1rpx solid var(--line); color: var(--ink-2); }
+.badge.ok { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.badge.paused { border-style: dashed; color: var(--ink-3); }
+.badge.full { background: var(--fill); color: var(--ink-3); border-color: var(--line); }
+
+/* 取消按钮（与 admin/view 一致） */
+.cancel-mini { display: inline-flex; align-items: center; font-size: 22rpx; line-height: 1.4; color: #e34d59; border: 1rpx solid #e34d59; border-radius: 999rpx; padding: 4rpx 18rpx; }
+.cancel-mini:active { background: #fdecee; }
+
+/* 黑名单标记（破例用警示红，仅阻断态） */
+.bl-tag { margin-top: 8rpx; font-size: 22rpx; color: var(--danger); }
+.bl-tag.inline { margin: 0 0 0 12rpx; }
+
+/* 待审预约：列表内直接审核（通过 / 不通过） */
+.review-row { display: flex; align-items: center; gap: 16rpx; margin-top: 14rpx; }
+.rev-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 24rpx; line-height: 1.4;
+  border-radius: 999rpx; padding: 8rpx 28rpx;
+  border: 1rpx solid var(--line);
+  background: #fff;
+}
+.rev-btn.approve { color: #07c160; border-color: #07c160; }
+.rev-btn.reject { color: var(--danger); border-color: var(--danger); }
+.rev-btn:active { background: var(--fill); }
+
+/* 详情弹层右上角关闭 */
+.x { flex: none; font-size: 34rpx; color: var(--ink-3); padding: 0 8rpx; }
+
+/* 内联卡片：头像 + 信息区（原「本场预约人」弹层内容已全部内联到列表） */
+.avatar {
+  flex: none; width: 64rpx; height: 64rpx; border-radius: 50%;
+  background: var(--fill); color: var(--ink-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28rpx; font-weight: 600; margin-right: 16rpx;
+}
+.pinfo { flex: 1; min-width: 0; }
+.phone { font-size: 26rpx; color: var(--ink-2); }
+.ph-btn {
+  flex: none; font-size: 22rpx; color: var(--brand);
+  border: 1rpx solid var(--brand); border-radius: 999rpx; padding: 4rpx 18rpx;
+}
+.ph-btn.disabled { color: var(--ink-3); border-color: var(--line); opacity: .6; }
+.ph-btn:active { background: var(--fill); }
+
+/* 黑名单警示条（内联可见） */
+.bl-bar {
+  margin-top: 8rpx; font-size: 22rpx; color: var(--danger);
+  background: rgba(163, 45, 45, .07); border: 1rpx solid rgba(163, 45, 45, .25);
+  border-radius: 8rpx; padding: 8rpx 12rpx; line-height: 1.5;
+}
+/* 列表内直达单用户分析 */
+.cust-link { margin-top: 8rpx; font-size: 22rpx; color: var(--brand); }
+.cust-link:active { opacity: .6; }
+
+.empty { color: var(--ink-3); text-align: center; font-size: 24rpx; padding: 28rpx 0; }
+
+/* 底部详情弹层 */
+.sheet-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; z-index: 50; }
+.sheet { background: #fff; width: 100%; padding: 36rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); border-radius: 24rpx 24rpx 0 0; }
+
+/* 按钮（压原生 button 默认 width:100%） */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ink); color: #fff;
+  border-radius: 12rpx; padding: 18rpx 32rpx;
+  font-size: 28rpx; border: 1rpx solid var(--ink);
+  width: auto !important;
+}
+button.btn { width: auto !important; line-height: 1.4; margin: 0; }
+.btn.block { width: 100% !important; }
+.btn.outline { background: #fff; color: var(--ink); border: 1rpx solid var(--ink); }
+.btn.call-lg { font-size: 32rpx; font-weight: 600; padding: 24rpx 0; }

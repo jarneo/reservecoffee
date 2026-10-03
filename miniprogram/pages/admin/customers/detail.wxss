@@ -7,6 +7,8 @@
 .danger { color: var(--danger); }
 
 .editbox { margin-top: 20rpx; border-top: 1rpx solid var(--line); padding-top: 8rpx; }
+/* 编辑区改用框式输入（.f-inp/.f-ta 自带全边框）→ 去掉 .field 的下划线，避免「框 + 底线」双线叠加 */
+.editbox .field { border-bottom: none; }
 
 .kpi-grid { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: 20rpx; }
 .kpi-grid .kpi { width: calc(50% - 8rpx); box-sizing: border-box; }
@@ -20,7 +22,11 @@
 
 .tagrow { display: flex; flex-wrap: wrap; }
 .tag.fill.rm { cursor: pointer; }
-.tag-input { flex: 1; background: #fff; border: 1rpx solid var(--line); border-radius: 10rpx; padding: 12rpx 18rpx; font-size: 24rpx; }
+/* 外观（背景/边框/圆角/内边距/字号/高度）已统一交给公共 .f-inp.sm，这里只留布局职责 */
+.tag-input { flex: 1; min-width: 0; }
+/* 让「添加」按钮与输入框严格等高（.btn.sm 默认由内容撑开 ≈58rpx，.f-inp.sm = 64rpx），
+   仅作用于这一行，不给全局 .btn.sm 定高以免影响其他页面现有按钮。 */
+.tagadd .btn.sm { height: 64rpx; padding: 0 20rpx; line-height: 38rpx; }
 
 .rev-row { padding: 16rpx 0; border-bottom: 1rpx solid var(--line); }
 .rev-row:last-child { border-bottom: none; }

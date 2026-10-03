@@ -50,6 +50,11 @@ exports.main = async (event) => {
       avgLeadMs: $.avg('$avgLeadMs'),
       perProject: $.push({ projectId: '$_id.projectId', cnt: '$cnt' })
     })
+    // ⚠️ sort 必须在 skip/limit **之前**，否则分页结果不稳定：
+    //   MongoDB 的 $group 输出顺序是未定义的，不加 sort 时同一页两次请求可能返回不同用户
+    //   （前端 customers.js 靠 while(true) 拉完所有页兜住，但那会产生重复/遗漏的观感）。
+    //   total:-1 与前端默认排序一致；_id 作为兜底键，保证全序（否则同 total 的顺序仍不定）。
+    .sort({ total: -1, _id: 1 })
     .skip(skip)
     .limit(size)
     .end()
@@ -119,6 +124,9 @@ exports.main = async (event) => {
       phone: u.phone || '',
       firstLaunchAt: u.firstLaunchAt || 0,
       firstSource: u.firstSource || '',
+      // 最近访问时间（getRole 每次冷启动顺带刷新，10/2 新增）。
+      // 存量用户可能还没有该字段 → 0，前端显示「—」而非 1970 年。
+      lastVisitTime: u.lastVisitTime || 0,
       remark: u.remark || '',
       tags: u.tags || [],
       isBlacklisted: !!u.isBlacklisted,
@@ -137,8 +145,15 @@ exports.main = async (event) => {
     }
   })
 
-  // 默认按累计次数倒序，便于管理
-  list.sort((a, b) => (b.total || 0) - (a.total || 0))
+  // 屏蔽已是管理员的记录（owner + manager 全部排除）。
+  // ⚠️ adminMap 已在 3.5 步批量查好，这里零额外查询。
+  //   原本只把它用于返回 isAdmin（前端据此隐藏「设为管理员」按钮），
+  //   但名录是**顾客视角**，管理员/店主自己出现在「顾客名录」里没有意义，故直接剔除。
+  //   连带影响：blackCount 统计随之变化（管理员被拉黑不再计入黑名单数）—— 这是修正。
+  const visible = list.filter(r => !adminMap[r._id])
 
-  return ok({ list, page, hasMore: rows.length === size })
+  // 默认按累计次数倒序，便于管理
+  visible.sort((a, b) => (b.total || 0) - (a.total || 0))
+
+  return ok({ list: visible, page, hasMore: rows.length === size })
 }

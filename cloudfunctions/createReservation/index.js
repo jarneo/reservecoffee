@@ -1,5 +1,5 @@
 // createReservation — 提交预约（事务防超卖 + 双轴状态）
-const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms, normalizeSubs, subbedOf, notifyWindowCfg, notifyPlan, plannedOf } = require('./lib')
+const { db, _, COL, TPL, ok, fail, wxCtx, addDays, monthDay, getStoreName, sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, shouldSkipSms, normalizeSubs, subbedOf, notifyWindowCfg, notifyPlan, plannedOf, pushInbox } = require('./lib')
 const { sendTemplateSms, loadConfig } = require('./sms')
 
 // AI 预约闭环：用户最终真的提交预约单 → 回写对应 AI 对话日志为「预约成功」。
@@ -172,6 +172,18 @@ exports.main = async (event) => {
     const add = await transaction.collection(COL.reservations).add({ data: reservation })
     await transaction.commit()
 
+    // 管理员收件箱：落一条通知。
+    // 这是订阅消息 / 短信之外的兜底通道——订阅额度耗尽、短信未配、企微未装都不影响它，
+    // 保证「不丢单」（但它不是推送，管理员不打开就看不到）。失败静默，绝不阻断主流程。
+    // ⚠️ 需审核的预约用独立类型 reviewRes（收件箱里换文案 / 换标签 / 跳转直达审核页），
+    //    但仍只有这一条 —— 绝不为同一件事再补一条「待审核」条目（那是重复提醒）。
+    await pushInbox(db, {
+      type: needReview ? 'reviewRes' : 'new', resId: add._id, projectId, projectName: p.name,
+      date, sessionStart: session.start, sessionEnd: session.end,
+      customerName: name.trim(), phone: phone || '', count: pSize,
+      note: note || '', review: needReview ? 'pending' : 'none'
+    })
+
     // 同步顾客资料到 users 集合，使下次预约自动带出；同时合并统一订阅记录（失败不阻断主流程）
     try {
       const up = { name: name.trim(), phone, updatedAt: Date.now() }
@@ -220,6 +232,7 @@ exports.main = async (event) => {
         // 待审：字段须对齐微信后台「待审核提醒」模板（thing1 门店名称 / time2 计划就餐时间 / number3 用餐人数）
         if (subOn(subCfg, 'adminReview')) {
           adminNotify = await notifyAdmins(db, {
+            projectId,
             templateId: TPL.adminReview,
             data: {
               thing1: { value: p.name },
@@ -233,6 +246,7 @@ exports.main = async (event) => {
         // 免审：项目 · 预订人 · 日期场次（thing3 上限 20 字，仅放日期场次 dt，不拼人数）
         if (subOn(subCfg, 'adminNew')) {
           adminNotify = await notifyAdmins(db, {
+            projectId,
             templateId: TPL.adminNew,
             data: {
               thing1: { value: p.name },

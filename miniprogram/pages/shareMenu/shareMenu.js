@@ -14,8 +14,10 @@ Page({
     reviews: []
   },
   onLoad(q) {
-    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
-    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+    // 显式启用右上角「转发」菜单（不调用则菜单置灰不可用）
+    // ⚠️ 刻意不开 shareTimeline（朋友圈）—— 单页模式无登录态/禁路由，本页数据全靠云函数。
+    //     详见 pages/index/index.js:onShow 处的完整说明。
+    wx.showShareMenu({ menus: ['shareAppMessage'] })
     // projectId 可选：指定某预约项目的菜单；缺省展示全店已发布项目
     this.setData({ projectId: q.projectId || '' })
     this.load()
@@ -47,8 +49,4 @@ Page({
     const logo = (this.data.shop && this.data.shop.logo) || '二曜路8号咖啡和清酒'
     return { title: logo + ' · 店铺菜单', path: '/pages/shareMenu/shareMenu?projectId=' + (this.data.projectId || '') }
   },
-  onShareTimeline() {
-    const logo = (this.data.shop && this.data.shop.logo) || '二曜路8号咖啡和清酒'
-    return { title: logo + ' · 店铺菜单', query: 'projectId=' + (this.data.projectId || '') }
-  }
 })

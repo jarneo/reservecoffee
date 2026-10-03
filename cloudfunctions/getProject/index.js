@@ -107,6 +107,8 @@ exports.main = async (event) => {
     subscribeNotify: !!p.subscribeNotify,
     smsEnabled: !!p.smsEnabled,
     showSeatInfo: p.showSeatInfo !== false,
+    // 预约成功结果页的默认菜单分类（_id 字符串，空 = 全部）；结果页读到后仍会校验有效性
+    resultCategoryId: p.resultCategoryId || '',
     fields: p.fields || ['name', 'phone'],
     openDays: p.openDays || [],
     useSlotTemplate: !!p.useSlotTemplate,

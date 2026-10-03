@@ -2,7 +2,13 @@
 // 复用 _lib 的 getMpAccessToken()（公众号 AppSecret 取 token + 缓存/刷新）与 httpsJson()。
 // 入参：{ menu: { button: [...] } }（与微信 cgi-bin/menu/create 报文同构）
 // 出参：{ code, errcode, errmsg }
-const { db, cloud, ok, fail, getMpAccessToken, httpsJson } = require('./lib')
+//
+// 🔒 权限：owner 专属。
+// 本函数原先零角色校验 → 任何微信用户都能 callFunction 覆盖**线上公众号菜单**；
+// 且下方支持 event.accessToken 直传落 config.mpToken 缓存 → 可把缓存污染成攻击者的
+// token，导致后续所有公众号 API（取 token、发消息、菜单读写）都用攻击者凭证。
+// 前端 oaMenu.js 的 guard(['owner']) 只是 UI 门禁，**云函数侧才是唯一安全边界**。
+const { db, cloud, ok, fail, wxCtx, getRole, getMpAccessToken, httpsJson } = require('./lib')
 
 // 【路线 A】云调用：免鉴权 ⇒ 不需要 access_token，直接绕开「服务号 IP 白名单 + 出口 IP 漂移」死局。
 // 官方「公众号云调用」文档确认支持 officialAccount.menu.create（出入参与 HTTPS 调用一致），
@@ -106,6 +112,11 @@ async function createMenu(token, menu) {
 }
 
 exports.main = async (event) => {
+  // 🔒 owner 专属校验（见文件头）。不能只靠前端 guard —— 前端可被开发者工具绕过。
+  const { OPENID } = wxCtx()
+  const role = await getRole(OPENID)
+  if (role.role !== 'owner') return fail('仅超级管理员可操作')
+
   const menu = (event && event.menu) || {}
   const err = validate(menu)
   if (err) return fail(err)

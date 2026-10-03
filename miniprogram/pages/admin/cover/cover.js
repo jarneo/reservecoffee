@@ -36,7 +36,7 @@ Page({
   pickCover() {
     const old = this.data.cover
     wx.chooseMedia({
-      count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: 1, mediaType: ['image'], sizeType: ['original'], sourceType: ['album', 'camera'],
       success: async (r) => {
         wx.showLoading({ title: '上传中' })
         try {

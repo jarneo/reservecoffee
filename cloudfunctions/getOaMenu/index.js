@@ -1,7 +1,12 @@
 // getOaMenu — 管理端「公众号菜单配置」页初始化：返回草稿 +（可选）当前线上菜单
 // 草稿：config 集合文档 _id:'oaMenu' 的 menu 字段。
 // 线上：cgi-bin/menu/get（需公众号 access_token；取不到时降级为 null，不影响草稿加载）。
-const { db, cloud, ok, fail, getMpAccessToken, httpsJson } = require('./lib')
+//
+// 🔒 权限：owner 专属。
+// 本函数原先零角色校验 → 任何微信用户都能 callFunction 读到线上菜单全文，
+// 其中 clickReplies 含公众号被动回复的完整文案（属店铺经营内容，不宜对外泄露）。
+// 前端 oaMenu.js 的 guard(['owner']) 只是 UI 门禁，**云函数侧才是唯一安全边界**。
+const { db, cloud, ok, fail, wxCtx, getRole, getMpAccessToken, httpsJson } = require('./lib')
 
 // 与 setOaMenu 同口径：优先云调用（免鉴权），失败回落 HTTPS 直调
 const OA_APPID = process.env.MP_APP_ID || 'wx4d8d957ee8af6073'
@@ -19,6 +24,11 @@ function pickMsgOf(r) {
   return String(((r.errmsg !== undefined && r.errmsg !== null) ? r.errmsg : r.errMsg) || '')
 }
 exports.main = async () => {
+  // 🔒 owner 专属校验（见文件头）。不能只靠前端 guard —— 前端可被开发者工具绕过。
+  const { OPENID } = wxCtx()
+  const role = await getRole(OPENID)
+  if (role.role !== 'owner') return fail('仅超级管理员可操作')
+
   let draft = null
   try {
     const r = await db.collection('config').doc('oaMenu').get()

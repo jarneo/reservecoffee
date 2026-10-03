@@ -4,7 +4,12 @@
     <view wx:if="{{homepage.intro}}" class="intro">{{homepage.intro}}</view>
   </view>
 
-  <view class="sec-title">预约项目</view>
+  <!-- 「进入管理端」从页面底部大按钮改为**预约项目标题行右侧**的小入口（10-03 拍板）：
+       管理员天天要看的是预约，入口放在最贴近的位置；非管理员（role==='none'）完全不渲染。 -->
+  <view class="sec-title">
+    <text>预约项目</text>
+    <view wx:if="{{role!=='none'}}" class="sec-admin tap" bindtap="goAdmin">进入管理端 ›</view>
+  </view>
   <view wx:if="{{projects.length===0}}" class="note">暂无可预约项目</view>
   <view wx:for="{{projects}}" wx:key="_id" class="card tap proj-card" bindtap="goBooking" data-id="{{item._id}}">
     <image wx:if="{{item.iconUrl}}" class="proj-icon" src="{{item.iconUrl}}" mode="aspectFill"/>
@@ -53,8 +58,6 @@
       </view>
     </view>
   </view>
-
-  <view wx:if="{{role!=='none'}}" class="btn ghost block" bindtap="goAdmin" style="margin-top:24rpx">进入管理端</view>
 
   <aiFab aiEnabled="{{aiEnabled}}" />
 

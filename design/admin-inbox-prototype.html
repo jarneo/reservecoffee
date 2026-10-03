@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>管理员收件箱 · 设计原型 v2</title>
+<style>
+  :root { --brand:#7A5230; --ink:#1a1a1a; --ink2:#666; --ink3:#999; --line:#e7e3dd; --fill:#f3f1ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f5f5; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:960px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--ink3); font-size:13px; margin-bottom:24px; }
+  .layout { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  .phone { width:340px; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .phone .top { display:flex; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .phone .top button { flex:1; border:1px solid var(--brand); border-radius:8px; padding:6px 0; font-size:12px; cursor:pointer; }
+  .phone .top button.on { background:var(--brand); color:#fff; }
+  .phone .top button.off { background:#fff; color:var(--ink2); }
+  .nav { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line); font-size:13px; }
+  .nav .bk { color:var(--brand); cursor:pointer; }
+  .nav .ti { flex:1; text-align:center; font-weight:500; }
+
+  /* ---- hub 头部 ---- */
+  .hd { display:flex; align-items:center; gap:8px; padding:14px 16px 10px; }
+  .hd .bold { font-size:17px; font-weight:600; flex:1; }
+  .role { font-size:11px; padding:2px 8px; border-radius:10px; }
+  .role.ok { background:#eef4ea; color:#4a7a3a; }
+  .role.paused { background:var(--fill); color:var(--ink2); }
+
+  /* ---- 并排两张卡 ---- */
+  .row2 { display:flex; gap:10px; padding:0 12px 12px; }
+  .c2 { flex:1; border:1px solid var(--line); border-radius:12px; padding:12px; cursor:pointer; display:flex; flex-direction:column; }
+  .c2.hi { border-color:var(--brand); background:#fdfaf6; }
+  .c2.bad { border-color:#d98b6a; background:#fdf4ef; }
+  .c2 .t { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; }
+  .c2 .t .dot-bad { width:7px; height:7px; border-radius:50%; background:#c0563a; display:inline-block; }
+  .c2 .n { font-size:26px; font-weight:600; line-height:1.1; margin-top:6px; color:var(--brand); }
+  .c2 .n.zero { color:var(--ink3); }
+  .c2 .d { font-size:11px; color:var(--ink3); margin-top:4px; line-height:1.5; flex:1; }
+  .c2 .b { margin-top:8px; text-align:center; font-size:12px; border-radius:8px; padding:6px 0; }
+  .c2 .b.pri { background:var(--brand); color:#fff; }
+  .c2 .b.danger { background:#c0563a; color:#fff; }
+  .c2 .b.ghost { border:1px solid var(--line); color:var(--ink2); }
+  .tag { font-size:10px; padding:1px 6px; border-radius:4px; background:var(--fill); color:var(--ink2); }
+  .tag.paused { background:#f6ece9; color:#a3562f; }
+
+  /* ---- 菜单列表 ---- */
+  .menu { padding:0 12px; }
+  .mi { display:flex; align-items:center; padding:13px 14px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; font-size:14px; }
+  .mi .mt { flex:1; }
+  .mi .ma { color:var(--ink3); }
+  .exit { margin:4px 12px 18px; padding:11px 0; text-align:center; border:1px solid var(--line); border-radius:10px; font-size:14px; color:var(--ink2); }
+
+  /* ---- 收件箱列表 ---- */
+  .ihead { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .ihead .tabs { display:flex; gap:14px; flex:1; font-size:13px; color:var(--ink2); }
+  .ihead .tabs span { cursor:pointer; }
+  .ihead .tabs span.on { color:var(--brand); font-weight:600; }
+  .ihead .all { font-size:12px; color:var(--brand); cursor:pointer; }
+  .item { display:flex; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .item.un { background:#fdfaf6; }
+  .item .bar { width:3px; border-radius:2px; background:transparent; flex:none; }
+  .item.un .bar { background:var(--brand); }
+  .item .bd { flex:1; min-width:0; }
+  .item .r1 { display:flex; align-items:center; gap:6px; font-size:13px; }
+  .item.un .r1 b { font-weight:600; }
+  .tag.cancel { background:#f6ece9; color:#a3562f; }
+  .item .r2 { font-size:12px; color:var(--ink2); margin-top:4px; }
+  .item .r3 { font-size:11px; color:var(--ink3); margin-top:4px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--brand); flex:none; margin-top:5px; }
+
+  /* ---- 详情 ---- */
+  .dsec { padding:14px 16px 4px; font-size:13px; font-weight:600; }
+  .dl { margin:6px 12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .dl .row { display:flex; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); font-size:13px; }
+  .dl .row:last-child { border-bottom:none; }
+  .dl .row .k { width:74px; color:var(--ink3); flex:none; }
+  .dl .row .v { flex:1; word-break:break-all; }
+  .btn { display:block; margin:14px 12px 0; padding:11px 0; text-align:center; border-radius:10px; font-size:14px; cursor:pointer; }
+  .btn.pri { background:var(--brand); color:#fff; }
+  .btn.sec { background:#fff; border:1px solid var(--line); color:var(--ink2); }
+
+  /* ---- 首页 ---- */
+  .hero { height:96px; background:var(--fill); display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:12px; }
+  .sec-title { display:flex; align-items:center; padding:18px 16px 8px; font-size:15px; font-weight:600; }
+  .sec-title .r { margin-left:auto; font-size:12px; font-weight:400; color:var(--brand); }
+  .sec-title .r.new { background:#fdf6f2; border:1px solid #eadfd4; border-radius:8px; padding:3px 8px; }
+  .proj { display:flex; gap:10px; margin:0 12px 10px; padding:12px; border:1px solid var(--line); border-radius:12px; }
+  .proj .ic { width:52px; height:52px; border-radius:8px; background:var(--fill); flex:none; display:flex; align-items:center; justify-content:center; color:var(--ink3); font-size:11px; }
+  .proj .bd { flex:1; }
+  .proj .nm { font-size:14px; font-weight:600; }
+  .proj .tags { margin-top:5px; font-size:11px; color:var(--ink2); }
+  .proj .tags .chip { display:inline-block; padding:1px 6px; border-radius:4px; background:var(--fill); margin-right:4px; }
+  .proj .tags .ok { background:#eef4ea; color:#4a7a3a; }
+  .proj .intro { font-size:11px; color:var(--ink3); margin-top:5px; }
+  .ghostline { margin:14px 12px 20px; padding:11px 0; text-align:center; border:1px dashed var(--line); border-radius:10px; font-size:12px; color:var(--ink3); }
+
+  .hint { font-size:11px; color:var(--ink3); text-align:center; padding:12px 16px 20px; line-height:1.6; }
+  .empty { text-align:center; color:var(--ink3); font-size:13px; padding:48px 0; }
+
+  .side { flex:1; min-width:300px; }
+  .side h2 { font-size:15px; margin:18px 0 8px; }
+  .side h2:first-child { margin-top:0; }
+  .side p, .side li { font-size:13px; color:#333; line-height:1.75; }
+  .side code { background:#f0ece6; padding:1px 6px; border-radius:5px; font-size:12px; color:var(--brand); }
+  .demo { margin-top:10px; padding:10px 12px; border:1px dashed var(--brand); border-radius:10px; font-size:12px; color:var(--ink2); }
+  .demo button { margin:8px 6px 0 0; border:1px solid var(--brand); background:#fff; color:var(--brand); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer; }
+  .warn { background:#fdf6f2; border:1px solid #eadfd4; border-radius:10px; padding:10px 12px; font-size:12px; color:#7a5230; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>管理员收件箱 · 设计原型 v2</h1>
+  <div class="sub">① 收件箱 + 管理推送授权<b>并排置顶</b>　② 首页「进入管理端」移到<b>预约项目</b>标题行右侧</div>
+
+  <div class="layout">
+    <div class="phone">
+      <div class="top">
+        <button id="b-home" class="off" onclick="go('home')">首页</button>
+        <button id="b-hub" class="on" onclick="go('hub')">管理台</button>
+        <button id="b-inbox" class="off" onclick="go('inbox')">收件箱</button>
+      </div>
+
+      <!-- ============ 首页 ============ -->
+      <div id="s-home" style="display:none">
+        <div class="hero">首图 / 店铺介绍</div>
+        <div class="sec-title">预约项目<span class="r new">进入管理端 ›</span></div>
+        <div class="proj">
+          <div class="ic">图标</div>
+          <div class="bd">
+            <div class="nm">法兰绒深烘咖啡</div>
+            <div class="tags"><span class="chip ok">可预约</span><span class="chip">10-03</span><span class="chip">10-04</span><span class="chip">10-05</span></div>
+            <div class="intro">手冲法兰绒，慢萃深烘</div>
+          </div>
+        </div>
+        <div class="proj">
+          <div class="ic">图标</div>
+          <div class="bd">
+            <div class="nm">清酒品鉴</div>
+            <div class="tags"><span class="chip ok">可预约</span><span class="chip">10-04</span><span class="chip">10-05</span></div>
+            <div class="intro">六款清酒对比品鉴</div>
+          </div>
+        </div>
+        <div class="sec-title">店铺菜单</div>
+        <div class="ghostline">（分类栏 + 瀑布流菜品，保持不变）</div>
+        <div class="hint">原「进入管理端」大按钮已从页面底部移除，改为放在<b>「预约项目」标题行右侧</b>的小入口。</div>
+      </div>
+
+      <!-- ============ 管理台 ============ -->
+      <div id="s-hub">
+        <div class="hd">
+          <div class="bold">管理台</div>
+          <div class="role ok">超级管理员</div>
+        </div>
+
+        <!-- 并排：管理推送授权（左） | 收件箱（右） —— 左右顺序按 10-03 拍板 -->
+        <div class="row2">
+          <div class="c2" id="push-card">
+            <div class="t" id="push-t">管理推送</div>
+            <div class="n" id="push-n" style="font-size:15px;margin-top:8px">微信通知</div>
+            <div class="d" id="push-d">一次性授权，发完即失效，失效后需续订</div>
+            <div class="b pri" id="push-b" onclick="togglePush()">续订管理推送</div>
+          </div>
+          <div class="c2 hi" onclick="go('inbox')">
+            <div class="t">收件箱</div>
+            <div class="n" id="hub-n">0</div>
+            <div class="d" id="hub-nd">暂无新通知</div>
+            <div class="b ghost">查看全部 ›</div>
+          </div>
+        </div>
+
+        <div class="menu" id="menus"></div>
+        <div class="exit">退出管理端</div>
+      </div>
+
+      <!-- ============ 收件箱列表 ============ -->
+      <div id="s-inbox" style="display:none">
+        <div class="ihead">
+          <div class="tabs"><span id="t-all" class="on">全部</span><span id="t-un">未读</span></div>
+          <div class="all" onclick="readAll()">全部已读</div>
+        </div>
+        <div id="list"></div>
+        <div class="hint">已读状态<b>按管理员各自独立</b>，互不影响。</div>
+      </div>
+
+      <!-- ============ 详情 ============ -->
+      <div id="s-detail" style="display:none">
+        <div class="nav"><span class="bk" onclick="go('inbox')">‹ 返回</span><span class="ti">通知详情</span></div>
+        <div id="detail"></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <h2>本次两处改动</h2>
+      <ul>
+        <li><b>管理台顶部并排两卡</b>：左「管理推送授权」（保留原有的一次性 / 已失效两态与续订按钮）、右「收件箱」（大字未读数，<b>0 时照常显示</b>只是转灰）。两卡等宽、等高。</li>
+        <li><b>首页「进入管理端」移位</b>：从页面底部大按钮，改为「<b>预约项目</b>」标题行右侧的小入口，仅管理员可见（<code>role!=='none'</code> 时渲染）。</li>
+      </ul>
+
+      <h2>收件箱能解决什么</h2>
+      <div class="warn">
+        <b>✅ 不丢单</b>：订阅额度用尽、短信没发、企微没装——只要写了库，管理员打开就一定看得到。<br/>
+        <b>❌ 不实时</b>：不是推送，不打开就不知道。实时提醒仍需企业微信 / 订阅消息 / 短信。
+      </div>
+
+      <h2>数据设计（已落地）</h2>
+      <ul>
+        <li><code>adminInbox</code>：<code>type(new|cancel) / resId / projectId / projectName / date / sessionStart~End / customerName / phone / count / note / byAdmin / createdAt / readBy[]</code></li>
+        <li>写入点：<code>createReservation</code>、<code>cancelReservation</code>（失败静默，绝不阻断预约主流程）</li>
+        <li>已读态：<b>内嵌 <code>readBy:[openid]</code></b>；未读 = 库侧 <code>readBy: _.neq(openid)</code>，计数 / 筛选 / 分页同源</li>
+        <li>云函数：<code>getInbox</code>（列表 + 单条详情 + 未读数）、<code>markInboxRead</code>（带 id=单条 / 不带=全部）</li>
+        <li>⚠️ 曾考虑单独建 <code>adminInboxRead</code> 集合存 lastReadAt + readIds，但「未读筛选 + 分页 + 计数」无法在库侧同时成立，故改为内嵌数组</li>
+      </ul>
+
+      <h2>演示</h2>
+      <div class="demo">
+        切换推送卡状态 / 模拟新预约到达
+        <button onclick="togglePush()">切换「已失效」态</button>
+        <button onclick="pushNew()">模拟新预约到达</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var menus = ['项目管理','项目配置','首图及介绍','场次模版','店铺菜单管理','菜单分类管理','菜品评价管理','预约管理','审核','数据分析','顾客名录','黑名单','管理员管理','全局通知配置'];
+  document.getElementById('menus').innerHTML = menus.map(function (t) {
+    return '<div class="mi"><div class="mt">' + t + '</div><div class="ma">›</div></div>';
+  }).join('');
+
+  var items = [
+    { id:'i1', type:'new',    project:'法兰绒深烘咖啡', date:'10-03', s:'14:00', e:'16:00', name:'张先生', phone:'138****5678', count:2, note:'靠窗位，两位',   ts:'10 分钟前', read:false },
+    { id:'i2', type:'cancel', project:'清酒品鉴',       date:'10-03', s:'19:00', e:'21:00', name:'李女士', phone:'159****2341', count:4, note:'临时有事',       ts:'32 分钟前', read:false },
+    { id:'i3', type:'new',    project:'法兰绒研习社',   date:'10-04', s:'10:00', e:'12:00', name:'王先生', phone:'186****9002', count:1, note:'首次参加',       ts:'1 小时前',  read:false },
+    { id:'i4', type:'new',    project:'法兰绒深烘咖啡', date:'10-02', s:'15:00', e:'17:00', name:'陈女士', phone:'137****1120', count:3, note:'',              ts:'昨天 09:12', read:true },
+    { id:'i5', type:'new',    project:'清酒品鉴',       date:'10-02', s:'19:30', e:'21:30', name:'刘先生', phone:'133****7788', count:2, note:'生日，想坐吧台', ts:'昨天 16:40', read:true }
+  ];
+  var filter = 'all';
+  var pushBad = false;
+
+  function unread() { return items.filter(function (x) { return !x.read; }).length; }
+
+  function go(s) {
+    ['home','hub','inbox','detail'].forEach(function (k) {
+      document.getElementById('s-' + k).style.display = (k === s) ? '' : 'none';
+    });
+    document.getElementById('b-home').className = (s === 'home') ? 'on' : 'off';
+    document.getElementById('b-hub').className = (s === 'hub') ? 'on' : 'off';
+    document.getElementById('b-inbox').className = (s === 'inbox' || s === 'detail') ? 'on' : 'off';
+  }
+
+  function togglePush() {
+    pushBad = !pushBad;
+    var c = document.getElementById('push-card');
+    c.className = 'c2' + (pushBad ? ' bad' : '');
+    document.getElementById('push-t').innerHTML = pushBad ? '<span class="dot-bad"></span>推送已失效' : '管理推送';
+    var n = document.getElementById('push-n');
+    n.textContent = pushBad ? '收不到通知' : '微信通知';
+    n.style.color = pushBad ? '#c0563a' : '';
+    document.getElementById('push-d').textContent = pushBad
+      ? '一次性授权已用尽，有预约你也收不到，请续订'
+      : '一次性授权，发完即失效，失效后需续订';
+    var b = document.getElementById('push-b');
+    b.className = 'b ' + (pushBad ? 'danger' : 'pri');
+    b.textContent = pushBad ? '立即续订' : '续订管理推送';
+  }
+
+  function render() {
+    var n = unread();
+    var el = document.getElementById('hub-n');
+    el.textContent = n;
+    el.className = 'n' + (n ? '' : ' zero');
+    document.getElementById('hub-nd').textContent = n ? (n + ' 条未读') : '暂无新通知';
+
+    var arr = items.filter(function (x) { return filter === 'all' || !x.read; });
+    var box = document.getElementById('list');
+    if (!arr.length) { box.innerHTML = '<div class="empty">暂无通知</div>'; return; }
+    box.innerHTML = arr.map(function (x) {
+      return '<div class="item ' + (x.read ? '' : 'un') + '" onclick="openD(\'' + x.id + '\')">'
+        + '<div class="bar"></div><div class="bd">'
+        + '<div class="r1">' + (x.read ? '' : '<div class="dot"></div>')
+        + '<b>' + (x.type === 'cancel' ? '取消预约' : '新预约') + ' · ' + x.project + '</b>'
+        + '<span class="tag ' + (x.type === 'cancel' ? 'cancel' : '') + '">' + (x.type === 'cancel' ? '取消' : '新建') + '</span></div>'
+        + '<div class="r2">' + x.date + ' ' + x.s + '-' + x.e + '　' + x.name + '　' + x.count + ' 人</div>'
+        + '<div class="r3">' + x.ts + (x.note ? '　·　' + x.note : '') + '</div>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  function openD(id) {
+    var cur = items.filter(function (x) { return x.id === id; })[0];
+    if (!cur) return;
+    cur.read = true;
+    document.getElementById('detail').innerHTML =
+      '<div class="dsec">' + (cur.type === 'cancel' ? '取消预约' : '新预约') + '</div><div class="dl">'
+      + row('项目', cur.project) + row('日期', cur.date) + row('场次', cur.s + ' - ' + cur.e)
+      + row('预订人', cur.name) + row('人数', cur.count + ' 人') + row('手机号', cur.phone)
+      + row('备注', cur.note || '—') + row('到达时间', cur.ts) + '</div>'
+      + '<div class="btn pri" onclick="go(\'inbox\')">查看该预约</div>'
+      + '<div class="btn sec" onclick="go(\'inbox\')">返回列表</div>'
+      + '<div class="hint">打开详情即视为已读。</div>';
+    go('detail'); render();
+  }
+  function row(k, v) { return '<div class="row"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
+
+  function readAll() { items.forEach(function (x) { x.read = true; }); render(); }
+  function pushNew() {
+    items.unshift({ id:'n' + Date.now(), type:'new', project:'法兰绒深烘咖啡', date:'10-03',
+      s:'16:00', e:'18:00', name:'周女士', phone:'135****2468', count:2, note:'刚下单，需确认', ts:'刚刚', read:false });
+    filter = 'all';
+    document.getElementById('t-all').className = 'on';
+    document.getElementById('t-un').className = '';
+    render();
+  }
+
+  document.getElementById('t-all').onclick = function () { filter = 'all'; this.className = 'on'; document.getElementById('t-un').className = ''; render(); };
+  document.getElementById('t-un').onclick = function () { filter = 'un'; this.className = 'on'; document.getElementById('t-all').className = ''; render(); };
+  render();
+</script>
+</body>
+</html>

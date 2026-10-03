@@ -5,7 +5,7 @@
 //         实际发送由已装短信 SDK 的 remindReservation 定时补发，并在发前复校该预约仍为 cancelled；
 //         若 skipSmsIfWxOk 开启且顾客的微信订阅卡片已送达，则不再安排短信（微信优先降级）
 const { db, _, COL, TPL, ok, fail, wxCtx, getRole, monthDay, getStoreName,
-  sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, loadSmsSwitch, shouldSkipSms, effStatus, subbedOf, loadUserSubs } = require('./lib')
+  sendSubscribe, notifyAdmins, loadSubscribeSwitch, subOn, loadSmsSwitch, shouldSkipSms, effStatus, subbedOf, loadUserSubs, pushInbox } = require('./lib')
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -55,6 +55,14 @@ exports.main = async (event) => {
     // 读取顾客统一订阅记录（users.subscriptions），用于对「顾客取消」按用户勾选收敛
     const userSubs = await loadUserSubs(r.openid)
 
+    // 管理员收件箱：落一条「取消」通知（兜底通道，保证不丢单；失败静默不阻断）
+    await pushInbox(db, {
+      type: 'cancel', resId: reservationId, projectId: r.projectId, projectName: pName,
+      date: r.date, sessionStart: r.sessionStart, sessionEnd: r.sessionEnd,
+      customerName: r.name || '', phone: r.phone || '', count: r.partySize || 1,
+      note: r.note || '', byAdmin: role.role === 'owner' || role.role === 'manager'
+    })
+
     // A 线 · 顾客取消（订阅）：管理员代顾客取消时同样发给顾客
     let cancelNotify = null
     if (subOn(subCfg, 'reserveCancel') && subbedOf(userSubs, 'reserveCancel')) cancelNotify = await sendSubscribe({ openid: r.openid, templateId: TPL.reserveCancel, data: {
@@ -66,6 +74,7 @@ exports.main = async (event) => {
     // B 线 · 管理员取消（订阅）：含联系方式
     let adminNotify = null
     if (subOn(subCfg, 'adminCancel')) adminNotify = await notifyAdmins(db, {
+      projectId: r.projectId,
       templateId: TPL.adminCancel,
       data: {
         thing5: { value: pName },

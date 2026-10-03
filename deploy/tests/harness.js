@@ -14,7 +14,8 @@ const S = global.__store
 const OPS = {
   neq: v => ({ __op: 'neq', v }), lte: v => ({ __op: 'lte', v }), lt: v => ({ __op: 'lt', v }),
   gte: v => ({ __op: 'gte', v }), gt: v => ({ __op: 'gt', v }), eq: v => ({ __op: 'eq', v }),
-  in: v => ({ __op: 'in', v }), and: v => ({ __op: 'and', v }), nin: v => ({ __op: 'nin', v })
+  in: v => ({ __op: 'in', v }), and: v => ({ __op: 'and', v }), nin: v => ({ __op: 'nin', v }),
+  or: v => ({ __op: 'or', v }), exists: v => ({ __op: 'exists', v })
 }
 function cmp(o, v, val) {
   switch (o) {
@@ -30,10 +31,25 @@ function cmp(o, v, val) {
   }
 }
 function test(doc, q) {
+  // q 本身是顶层 op（real CloudBase 支持 db.where(_.or([...]) / _.and([...])）；与字段嵌套 op 不同路由。
+  if (q && typeof q === 'object' && q.__op) {
+    if (q.__op === 'and') return (q.v || []).every(c => test(doc, c))
+    if (q.__op === 'or') return (q.v || []).some(c => test(doc, c))
+    return true // 其他裸 op 不会出现，兜底不误拦
+  }
   for (const k of Object.keys(q || {})) {
     const cond = q[k]
     if (cond && typeof cond === 'object' && cond.__op === 'and') {
-      if (!cond.v.every(c => Object.keys(c).every(kk => test(doc, { [kk]: c[kk] })))) return false
+      // c 可能是字段条件（{projectId:_.exists(false)}）或顶层 op（{__op:'or',v:[...]}），统一交给 test 递归
+      if (!cond.v.every(c => test(doc, c))) return false
+      continue
+    }
+    if (cond && typeof cond === 'object' && cond.__op === 'or') {
+      if (!cond.v.some(c => test(doc, c))) return false
+      continue
+    }
+    if (cond && typeof cond === 'object' && cond.__op === 'exists') {
+      if ((doc[k] !== undefined) !== !!cond.v) return false
       continue
     }
     const val = doc[k]
@@ -96,8 +112,10 @@ function makeApi(name) {
         remove: async () => { delete col[id] }
       }
     },
-    add: async ({ data }) => { const id = data._id || 'id' + (Object.keys(col).length + 1); col[id] = Object.assign({}, data); S.writes.push({ name, id, data }); return { _id: id } },
-    count: async () => ({ total: Object.keys(col).length })
+    add: async ({ data }) => { const id = data._id || 'id' + (Object.keys(col).length + 1); col[id] = Object.assign({}, data); S.writes.push({ name, id, data }); return { _id: id } }
+    // ⚠️ 不要在此覆盖 count：query({}) 已提供「带 where 的 chained count」。
+    //    原 base count（Object.keys(col).length）会让 .where(...).count() 忽略 where，
+    //    导致 getInbox 等依赖「范围计数」的逻辑在离线测试里被错误绕过。
   })
 }
 const db = {
@@ -160,6 +178,11 @@ function makeTmp(fnName) {
   fs.writeFileSync(path.join(tmpDir, 'node_modules/wx-server-sdk/index.js'), STUB_SDK)
   fs.writeFileSync(path.join(tmpDir, 'sms.js'), STUB_SMS)
   fs.copyFileSync(path.join(ROOT, 'cloudfunctions/_lib/index.js'), path.join(tmpDir, 'lib-src.js'))
+  // ⚠️ _lib/index.js 会 require('./notifyLog')（通知流水打点），必须一并拷入，
+  // 否则沙箱里 require 解析不到 → 所有依赖共享库的测试全部崩在 MODULE_NOT_FOUND。
+  // （2026-10-02 排查：notifyLog 是 2026-09 加入的，harness 未同步补，导致 remind 等
+  //   既有测试在 mac 上已全部失效，但因一直是「已知坏」状态而没被发现。）
+  fs.copyFileSync(path.join(ROOT, 'cloudfunctions/_lib/notifyLog.js'), path.join(tmpDir, 'notifyLog.js'))
   fs.writeFileSync(path.join(tmpDir, 'lib.js'), "module.exports = require('./lib-src.js')\n")
   if (fnName) fs.copyFileSync(path.join(ROOT, 'cloudfunctions', fnName, 'index.js'), path.join(tmpDir, 'index.js'))
   return tmpDir
@@ -171,6 +194,28 @@ function makeTmp(fnName) {
  */
 function loadLib() {
   return require(path.join(makeTmp(null), 'lib.js'))
+}
+
+/**
+ * 加载【真实】共享库并同时返回一个绑定到可控内存库的 db 句柄。
+ * 适用于直接单测依赖 db 的库函数（如 notifyAdmins / resolveNotifyScope / pushInbox）。
+ * 返回的 store 与 lib 内部使用的 cloud.database() 指向同一份 __store，
+ * 因此调用方写入 store.cols 后，lib 的查询即可命中。
+ * @param {function} [setup] (store)=>void  预置 cols / openid / wx 等
+ * @returns {{ lib:object, db:object, store:object, cloud:object }}
+ */
+function loadLibWithDb(setup) {
+  const tmpDir = makeTmp(null)
+  const store = {
+    cols: {}, writes: [], subscribeCalls: [], smsCalls: [],
+    wx: {}, smsTemplates: {}, smsFail: false, openid: 'oTest'
+  }
+  global.__store = store
+  if (setup) setup(store)
+  const cloud = require(path.join(tmpDir, 'node_modules/wx-server-sdk/index.js'))
+  const lib = require(path.join(tmpDir, 'lib.js'))
+  const db = cloud.database()
+  return { lib, db, store, cloud }
 }
 
 /**
@@ -223,4 +268,4 @@ function hhmmFromMin(min) {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
-module.exports = { runFunction, loadLib, makeChecker, bjNow, plusDays, hhmmFromMin }
+module.exports = { runFunction, loadLib, loadLibWithDb, makeChecker, bjNow, plusDays, hhmmFromMin }

@@ -2,6 +2,7 @@
   "navigationBarTitleText": "选择日期与场次",
   "usingComponents": {
     "aiFab": "/components/aiFab/aiFab",
-    "path-bar": "/components/pathBar/pathBar"
+    "path-bar": "/components/pathBar/pathBar",
+    "reservee": "/components/reservee/reservee"
   }
 }

@@ -27,6 +27,10 @@ Page({
     // 提交成功页（应用内必达确认 UI）：成功后展示留座信息覆盖层
     success: false,
     successInfo: null,
+    // 「显示剩余/已约座位」开关（项目配置页可控，默认开）。
+    // ⚠️ 必须首帧声明：booking.js:12 已有同类防御。不声明则首帧绑定 undefined → 先不渲染、
+    // 下一帧才出现 = 一次真实重排（同 index.js:23-25 记录过的白闪/重排问题）。
+    showSeatInfo: true,
     booting: true
   },
 
@@ -70,6 +74,10 @@ Page({
           session: sess ? { ...sess, remaining: sess.capacity - sess.booked } : null,
           maxParty: p.maxParty || 2,
           fields,
+          // 座位信息开关：与预约页（booking.js:49）同口径，缺省为开。
+          // ⚠️ 只隐藏「还剩几个」这行展示；session.remaining 仍照常算好供下方人数夹取用
+          //    （隐藏的是经营信息，不是表单约束 —— 隐藏夹取会让超限用户失去提示依据）。
+          showSeatInfo: p.showSeatInfo !== false,
           // 预计算各可选字段显隐标志：WXML 不支持方法调用（如 .indexOf），故用 JS 预算布尔，避免字段不显示
           showPhone: fields.indexOf('phone') >= 0,
           showWechat: fields.indexOf('wechat') >= 0,
@@ -299,20 +307,38 @@ Page({
         wx.hideLoading()
         // 提交成功页（应用内必达确认）：展示留座信息；待审核项目显示「待审核」态
         const needReview = res && res.review === 'pending'
-        this.setData({
-          success: true,
-          successInfo: {
-            projectName: this.data.projectName,
-            date: this.data.date,
-            session: this.data.session,
-            partySize: this.data.partySize,
-            needReview
-          }
-        })
+        const info = {
+          projectName: this.data.projectName,
+          date: this.data.date,
+          session: this.data.session,
+          partySize: this.data.partySize,
+          needReview
+        }
         // 持久化顾客资料，下次预约自动带出（失败不阻断主流程）
         const prof = { name: this.data.name.trim() }
         if (this.data.phone) prof.phone = this.data.phone
         call('saveProfile', prof).catch(() => {})
+
+        // 跳独立结果页（替代原弹层）。⚠️ 必须在 saveProfile 之前发起 ——
+        //   redirectTo 会销毁本页，异步的 saveProfile 可能来不及发出。
+        // 参数逐字段 encodeURIComponent，**绝不塞 JSON**（塞 JSON 是分享链路的高危点）。
+        const sess = info.session || {}
+        const qs = [
+          'pid=' + encodeURIComponent(this.data.projectId || ''),
+          'pn=' + encodeURIComponent(info.projectName || ''),
+          'd=' + encodeURIComponent(info.date || ''),
+          'ss=' + encodeURIComponent(sess.start || ''),
+          'se=' + encodeURIComponent(sess.end || ''),
+          'ps=' + (info.partySize || 1),
+          'nr=' + (needReview ? 1 : 0),
+          'ph=' + encodeURIComponent(this.data.phone || '')
+        ].join('&')
+        wx.redirectTo({
+          url: '/pages/result/result?' + qs,
+          // ⚠️ 必须有 fail 兜底：跳转失败时用户停在表单页且看不到任何成功反馈，
+          //   会以为提交失败而**重复下单**。此时回退到原有成功弹层。
+          fail: () => this.setData({ success: true, successInfo: info })
+        })
       })
       .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message || '提交失败', icon: 'none' }) })
   },

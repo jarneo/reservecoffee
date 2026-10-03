@@ -1,0 +1,116 @@
+/* 提醒（页名沿革：收件箱 → 预约提醒 → 提醒）—— 顶部预约情况 + 待处理 + 下方通知列表
+   设计稿：design/admin-remind-prototype.html */
+
+/* ===== 顶部「预约情况」看板 ===== */
+.bkcard {
+  background: #fff; border: 1rpx solid var(--line); border-radius: 16rpx;
+  margin-bottom: 20rpx; overflow: hidden;
+}
+.bkhd { display: flex; align-items: center; padding: 20rpx 24rpx 14rpx; }
+.bktt { font-size: 28rpx; font-weight: 600; flex: 1; }
+.bksum { font-size: 22rpx; color: var(--ink-3); flex: none; }
+
+/* 日期条：横向滚动（沿用管理端「预约管理」的 inline-block 模式，不依赖 enable-flex） */
+.dstrip { white-space: nowrap; padding: 0 24rpx 16rpx; }
+.dchip {
+  display: inline-block; width: 88rpx; text-align: center;
+  border: 1rpx solid var(--line); border-radius: 12rpx;
+  padding: 10rpx 0; margin-right: 12rpx; vertical-align: top;
+}
+.dchip:last-child { margin-right: 0; }
+.dwk { font-size: 20rpx; color: var(--ink-3); }
+.ddd { font-size: 26rpx; font-weight: 600; margin-top: 2rpx; }
+.dtag { font-size: 18rpx; color: var(--brand); margin-top: 2rpx; }
+/* 无场次的日期灰掉但仍占位 —— 保留星期对齐，避免日期条「跳格」 */
+.dchip.off { opacity: .38; }
+.dchip.on { background: var(--brand); border-color: var(--brand); }
+.dchip.on .dwk { color: rgba(255, 255, 255, .8); }
+.dchip.on .ddd, .dchip.on .dtag { color: #fff; }
+
+/* 表格：行 = 场次时段，列 = 已发布项目。列用 flex:1 平分屏宽（项目数少，无需横向滚动）
+   🔴 行高必须用**硬 height** 锁死，绝不能用 min-height / 靠内容撑：
+      ① 表头 .bkc 里是纯文字（高 ≈ 行高），数据行 .bkc 里是带 padding 的 .cnt 胶囊（更高），
+         合计行又是纯文字 —— 三类行内容高度天生不同；
+      ② min-height 只是**下限**，内容一旦超过它那行照样变高，等于没约束（这是上一版没修好的原因）。
+   现在：.bkrow 定死 height + 所有单元格 padding 上下为 0、由 flex 居中 + 内容行高定值，
+        任何一行的实际高度都恒等于 HEIGHT，与内容是文字还是胶囊无关。 */
+.bkrow { display: flex; align-items: stretch; height: 76rpx; border-top: 1rpx solid var(--line); overflow: hidden; }
+.bktm {
+  width: 168rpx; flex: none;
+  display: flex; align-items: center;            /* 时间列同样居中，避免贴顶错行 */
+  padding: 0 16rpx;
+  font-size: 22rpx; line-height: 1; color: var(--ink-2); background: #fff;
+  white-space: nowrap; overflow: hidden;         /* 时间文字永不换行撑高 */
+  border-right: 1rpx solid var(--line);
+}
+.bkc {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 6rpx;                               /* 上下不留 padding：高度完全交给 .bkrow */
+  font-size: 22rpx; line-height: 1; text-align: center;
+  border-right: 1rpx solid var(--line);
+  overflow: hidden;
+}
+.bkc:last-child { border-right: none; }
+/* 表头只换配色与字重，**绝不改 padding/height** → 与数据行严格等高 */
+.bkhead .bktm, .bkhead .bkc { background: var(--fill); color: var(--ink-2); font-weight: 600; font-size: 20rpx; }
+/* 项目名单行省略。⚠️ 必须 display:block —— <text> 默认 inline，max-width/overflow/ellipsis 全都无效 */
+.bkc-name { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkfoot .bktm, .bkfoot .bkc { background: #FCFAF7; color: var(--ink-3); }
+/* 人数胶囊：高度同样锁死（不靠 padding 撑），保证有背景 / 无背景（「—」）的格子完全等高。
+   满场=实心品牌色；有客=浅底；空场=灰字；暂停；无此场次「—」 */
+.cnt {
+  display: block; height: 44rpx; line-height: 44rpx; min-width: 76rpx;
+  border-radius: 8rpx; font-size: 22rpx; text-align: center; padding: 0;
+}
+.cnt.full { background: var(--brand); color: #fff; font-weight: 600; }
+.cnt.has { background: rgba(122, 82, 48, .1); color: var(--brand); font-weight: 600; }
+.cnt.empty { color: var(--ink-3); }
+.cnt.pause { color: var(--ink-3); font-size: 20rpx; }
+.cnt.none { color: #C8C8C8; }
+.bkempty { text-align: center; font-size: 24rpx; color: var(--ink-3); padding: 40rpx 0; }
+.bkhint { font-size: 20rpx; color: var(--ink-3); padding: 14rpx 24rpx 18rpx; line-height: 1.6; }
+
+/* ===== 待处理（实时计数）=====
+   两行入口：左「名称 + 副说明」、右「数字 + 去处理 ›」。
+   数字为 0 时整行 .zero 转灰（保留可点，只是点它只提示不跳页）。 */
+.todo { background: #fff; border: 1rpx solid var(--line); border-radius: 16rpx; margin-bottom: 20rpx; overflow: hidden; }
+.tdhd { padding: 14rpx 24rpx; font-size: 22rpx; color: var(--ink-3); background: #FCFAF7; border-bottom: 1rpx solid var(--line); }
+.tdrow { display: flex; align-items: center; padding: 22rpx 24rpx; border-bottom: 1rpx solid var(--line); }
+.tdrow:last-child { border-bottom: none; }
+.tdrow .tdk { font-size: 28rpx; flex: none; }
+.tdrow .tds { font-size: 22rpx; color: var(--ink-3); margin-left: 16rpx; flex: 1; min-width: 0; }
+.tdrow .tdn { font-size: 32rpx; font-weight: 600; color: var(--brand); flex: none; margin-right: 20rpx; }
+.tdrow .tda { font-size: 24rpx; color: var(--brand); flex: none; }
+.tdrow.zero .tdk, .tdrow.zero .tds, .tdrow.zero .tdn, .tdrow.zero .tda { color: var(--ink-3); font-weight: 400; }
+
+/* ===== 通知列表 ===== */
+.ihead { display: flex; align-items: center; padding: 0 4rpx 16rpx; }
+.tabs { display: flex; flex: 1; }
+.tb { font-size: 28rpx; color: var(--ink-3); margin-right: 32rpx; }
+.tb.on { color: var(--brand); font-weight: 600; }
+.allread { font-size: 26rpx; color: var(--brand); }
+
+/* 单条通知：左侧 3rpx 竖条，未读时点亮为品牌色 */
+.it { display: flex; background: #fff; border: 1rpx solid var(--line); border-radius: 16rpx; margin-bottom: 16rpx; overflow: hidden; }
+.it.un { background: #FDFAF6; }
+.bar { width: 6rpx; background: transparent; flex: none; }
+.it.un .bar { background: var(--brand); }
+.bd { flex: 1; min-width: 0; padding: 22rpx 24rpx; }
+.r1 { display: flex; align-items: center; font-size: 28rpx; }
+.r1 .ti { font-weight: 600; }
+.it.un .r1 .ti { font-weight: 600; }
+.dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: var(--brand); flex: none; margin-right: 12rpx; }
+.tag { margin-left: 12rpx; font-size: 20rpx; padding: 2rpx 10rpx; border-radius: 6rpx; background: var(--fill); color: var(--ink-2); flex: none; }
+.tag.cancel { background: #F6ECE9; color: #A3562F; }
+/* 「预约审核」用品牌色实心 —— 它占用名额，是四类里最需要立刻处理的 */
+.tag.wait { background: var(--brand); color: #fff; font-weight: 600; }
+/* 「评论审核」用品牌色浅底 —— 与预约审核区分，但不抢视觉焦点（不影响名额） */
+.tag.dish { background: rgba(122, 82, 48, .14); color: var(--brand); font-weight: 600; }
+.tag.admin { background: var(--fill); color: var(--ink-3); }
+.r2 { font-size: 24rpx; color: var(--ink-2); margin-top: 8rpx; }
+.r3 { font-size: 22rpx; color: var(--ink-3); margin-top: 8rpx; }
+
+.more { text-align: center; font-size: 26rpx; color: var(--brand); padding: 24rpx 0; }
+.foot { text-align: center; font-size: 22rpx; color: var(--ink-3); padding: 16rpx 0 8rpx; line-height: 1.7; }
+.empty { text-align: center; font-size: 26rpx; color: var(--ink-3); padding: 120rpx 0; }

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "提醒",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

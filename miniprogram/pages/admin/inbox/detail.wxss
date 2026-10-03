@@ -1,0 +1,17 @@
+.dsec { padding:8rpx 4rpx 16rpx; font-size:30rpx; font-weight:600; }
+.dl { background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; }
+.dl .r { display:flex; padding:22rpx 24rpx; border-bottom:1rpx solid var(--line); font-size:28rpx; }
+.dl .r:last-child { border-bottom:none; }
+.dl .r .k { width:150rpx; color:var(--ink-3); flex:none; }
+.dl .r .v { flex:1; word-break:break-all; }
+/* 手机号行：号码 + 两个小操作（原生 button 默认 width:100%，自建按钮类须完整复位） */
+.dl .r .ops { flex:none; display:flex; align-items:center; }
+.mini {
+  display:flex; align-items:center; width:auto !important; flex:none;
+  line-height:1; padding:0; margin:0 0 0 20rpx;
+  font-size:24rpx; color:var(--brand); background:transparent; border:none;
+}
+.mini::after { border:none; }
+.acts { margin-top:24rpx; }
+.foot { text-align:center; font-size:22rpx; color:var(--ink-3); padding:20rpx 0 8rpx; line-height:1.7; }
+.empty { text-align:center; font-size:26rpx; color:var(--ink-3); padding:160rpx 0; }

@@ -9,7 +9,9 @@
 //    此后真实访问即可累积；如集合被误删需重建。
 const { db, ok, fail, wxCtx } = require('./lib')
 
-const TYPES = ['visit', 'view_project', 'click_book']
+// ⚠️ type 白名单：新增类型必须同时更新 getAnalytics 的聚合口径，否则该类型只入库不参与统计。
+//    share_timeline / open_from_share 用于区分「从分享卡片进入」；spm_enter 用于单页模式（scene 1154）排查。
+const TYPES = ['visit', 'view_project', 'click_book', 'share_timeline', 'open_from_share', 'spm_enter']
 
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
@@ -23,12 +25,20 @@ exports.main = async (event) => {
         openid: OPENID,
         type,
         projectId: (event && event.projectId) || '',
+        // scene：入口场景值（1154=朋友圈单页模式 / 1007-1008=聊天分享 / 1107=订阅消息…）
+        // 此前完全没记，导致「用户从哪来」这个问题无法回答。
+        scene: Number(event && event.scene) || 0,
+        // route：来源页面路由，便于定位是哪条分享链路
+        route: String((event && event.route) || '').slice(0, 200),
         createdAt: Date.now()
       }
     })
     return ok({ tracked: true })
   } catch (e) {
     // 埋点绝不能影响业务：写失败也返回成功态（tracked:false 便于排查），避免前端报警
+    // ⚠️ 这里**必须 console.warn**：原先完全静默，导致「集合被删/权限异常」时
+    //    UV 恒为 0 却毫无察觉（踩坑 2026-09-06）。前端仍拿成功态，不会被打扰。
+    console.warn('[trackEvent] write failed (ignored):', (e && e.message) || e)
     return ok({ tracked: false, msg: (e && e.message) || '写入失败' })
   }
 }

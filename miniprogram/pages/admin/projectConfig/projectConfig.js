@@ -1,7 +1,7 @@
 const { call } = require('../../../utils/cloud')
 const guard = require('../../../components/adminGuard/adminGuard.js')
 const { requestSubscribe } = require('../../../utils/util')
-const { ADMIN_TPLS } = require('../../../utils/subscribe')
+const { ADMIN_TPLS, ADMIN_SUBS } = require('../../../utils/subscribe')
 const img = require('../../../utils/img')
 
 // 归一化截止规则为新模型 { mode:'before'|'after', minutes }，兼容旧 {type,hours,time}
@@ -20,7 +20,9 @@ Page({
     year: 2026, month: 8,
     showAdd: false, addDate: '', addForm: { start: '10:00', end: '11:30', capacity: 8 },
     iconFileId: '', iconUrl: '', _oldIconFileId: '',
-    global: { needReview: false, paused: false, dailyLimit: 1, advanceDays: 7, maxParty: 2, subscribeNotify: true, smsEnabled: false, showSeatInfo: true, cutoff: { mode: 'before', minutes: 30 }, fields: ['name', 'phone'] },
+    global: { needReview: false, paused: false, dailyLimit: 1, advanceDays: 7, maxParty: 2, subscribeNotify: true, smsEnabled: false, showSeatInfo: true, resultCategoryId: '', cutoff: { mode: 'before', minutes: 30 }, fields: ['name', 'phone'] },
+    // 预约成功结果页的默认分类选择器数据源（全局分类 + 「全部」选项）
+    catOpts: [{ id: '', name: '全部' }], catOptsIdx: 0, catOptsText: '全部',
     cutoffText: '', fieldsText: '',
     showCutoff: false, cutoffDraft: { mode: 'before', minutes: 30 },
     showFields: false, fieldsDraft: ['name', 'phone'],
@@ -31,7 +33,9 @@ Page({
       { key: 'note', label: '备注', lock: false, req: false },
       { key: 'gender', label: '性别', lock: false, req: false },
       { key: 'age', label: '年龄', lock: false, req: false }
-    ]
+    ],
+    // 通知管理员分配（项目维度，与 admins 页矩阵同源）：弹层里逐管理员勾选
+    admins: [], showNotify: false, notifyDraft: [], notifyAll: true, notifySummary: '全部管理员'
   },
 
   onLoad(options) { this.guard(['owner']).then(r => { if (r) this.loadProjects(options && options.projectId) }) },
@@ -80,6 +84,7 @@ Page({
         maxParty: p.maxParty || 2, subscribeNotify: !!p.subscribeNotify,
         smsEnabled: !!p.smsEnabled,
         showSeatInfo: p.showSeatInfo !== false,
+        resultCategoryId: p.resultCategoryId || '',
         cutoff: normCutoff(p.cutoff),
         fields: p.fields || ['name', 'phone']
       }
@@ -87,7 +92,43 @@ Page({
     this.computeCutoffText()
     this.computeFieldsText()
     this.buildRelatedList()
+    this.loadCatOpts(p.resultCategoryId || '')
+    // 通知管理员分配：从项目文档的 notifyAdmins 推导摘要文案
+    const na = p.notifyAdmins
+    const ns = (na == null || na === 'all' || !Array.isArray(na)) ? 'all' : 'list'
+    const notifySummary = ns === 'all' ? '全部管理员' : `指定 ${na.length} 人`
+    this.setData({ notifySummary })
+    this.loadAdmins()
     await this.refreshSchedules()
+  },
+
+  // 载入「结果页默认分类」选项：全局分类 + 首项「全部」。
+  // ⚠️ 存的是**索引** + 预计算文本（catOptsText），不用 {{catOpts[catOptsIdx].name}} ——
+  //    分类列表为空时那个表达式会崩（WXML 访问不存在下标）。
+  loadCatOpts(curId) {
+    call('listCategories').then(d => {
+      const cats = (d && d.categories) || []
+      const opts = [{ id: '', name: '全部' }].concat(cats.map(c => ({ id: c._id, name: c.name })))
+      // 找不到 = 该分类已被删除（悬空引用）→ 回退「全部」
+      let idx = opts.findIndex(o => o.id === (curId || ''))
+      if (idx < 0) idx = 0
+      this.setData({
+        catOpts: opts,
+        catOptsIdx: idx,
+        catOptsText: opts[idx].name,
+        'global.resultCategoryId': opts[idx].id
+      })
+    }).catch(() => { /* 分类读不到时保持「全部」，不阻断配置页 */ })
+  },
+  // picker 的 value 必须是索引
+  onResultCatPick(e) {
+    const idx = Number(e.detail.value) || 0
+    const opt = this.data.catOpts[idx] || this.data.catOpts[0]
+    this.setData({
+      catOptsIdx: idx,
+      catOptsText: opt.name,
+      'global.resultCategoryId': opt.id
+    })
   },
 
   // 由 relatedProjectIds 映射出展示用名称（依赖已加载的 projects 列表）
@@ -121,7 +162,7 @@ Page({
     const remain = 9 - this.data.introImages.length
     if (remain <= 0) return wx.showToast({ title: '最多 9 张', icon: 'none' })
     wx.chooseMedia({
-      count: Math.min(remain, 9), mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: Math.min(remain, 9), mediaType: ['image'], sizeType: ['original'], sourceType: ['album', 'camera'],
       success: async (r) => {
         wx.showLoading({ title: '上传中' })
         try {
@@ -144,7 +185,7 @@ Page({
     const i = e.currentTarget.dataset.i
     const old = this.data.introImages[i]
     wx.chooseMedia({
-      count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: 1, mediaType: ['image'], sizeType: ['original'], sourceType: ['album', 'camera'],
       success: async (r) => {
         wx.showLoading({ title: '替换中' })
         try {
@@ -221,7 +262,7 @@ Page({
   pickIcon() {
     const old = this.data.iconFileId
     wx.chooseMedia({
-      count: 1, mediaType: ['image'], sizeType: ['compressed'], sourceType: ['album', 'camera'],
+      count: 1, mediaType: ['image'], sizeType: ['original'], sourceType: ['album', 'camera'],
       success: async (r) => {
         wx.showLoading({ title: '上传中' })
         try {
@@ -307,10 +348,26 @@ Page({
     const v = Math.max(1, Math.min(20, (this.data.global.maxParty || 2) + d))
     this.setData({ 'global.maxParty': v })
   },
+  // 项目级「有新预约时通知管理员」开关。
+  // 打开时顺带申请一次管理推送的微信订阅，并**落库**（saveAdminSubs）——
+  // 旧实现只弹窗不记录，导致额度用尽后管理台无法感知（表现为「以前收得到、现在收不到」）。
   gSub(e) {
     const v = e.detail.value
     this.setData({ 'global.subscribeNotify': v })
-    if (v) requestSubscribe(ADMIN_TPLS)
+    if (!v) return
+    requestSubscribe(ADMIN_TPLS).then(r => {
+      // 只上报本次微信给了明确结果的键，未表态的保持原值（后端逐键合并）
+      const patch = {}
+      const hit = id => (r.accepted || []).indexOf(id) >= 0
+      const miss = id => (r.rejected || []).indexOf(id) >= 0 || (r.failed || []).indexOf(id) >= 0
+      ADMIN_SUBS.forEach(s => {
+        if (hit(s.tmplId)) patch[s.key] = true
+        else if (miss(s.tmplId)) patch[s.key] = false
+      })
+      if (!Object.keys(patch).length) return
+      // 落库失败不阻断：订阅已在微信侧生效，只是本地未记状态
+      call('saveAdminSubs', { subs: patch }).catch(() => {})
+    })
   },
   // 底部统一保存：保存整个项目的配置信息（全局设定区 + 顶部已改动的字段，均随此次提交）
   saveAll() {
@@ -323,6 +380,7 @@ Page({
       dailyLimit: g.dailyLimit, advanceDays: g.advanceDays,
       maxParty: g.maxParty, subscribeNotify: g.subscribeNotify,
       smsEnabled: g.smsEnabled, showSeatInfo: g.showSeatInfo,
+      resultCategoryId: g.resultCategoryId || '',
       cutoff: g.cutoff, fields: g.fields,
       relatedProjectIds: this.data.relatedProjectIds,
       intro: this.data.intro
@@ -447,6 +505,52 @@ Page({
   },
   closeAdd() { this.setData({ showAdd: false }) },
   noop() {},
+
+  // ===== 通知管理员分配（项目维度：projects.notifyAdmins）=====
+  // 在「通知管理员」卡片点「编辑接收人」打开弹层；复用本页 modal 样式。
+  loadAdmins() {
+    call('listAdmins').then(d => this.setData({ admins: d.list || [] }))
+      .catch(e => wx.showToast({ title: e.message, icon: 'none' }))
+  },
+  openNotify() {
+    if (!(this.data.admins || []).length) this.loadAdmins()
+    const admins = this.data.admins || []
+    const p = this.data.project || {}
+    const na = p.notifyAdmins
+    const scope = (na == null || na === 'all' || !Array.isArray(na)) ? 'all' : 'list'
+    const set = scope === 'all' ? null : new Set(na)
+    const draft = admins.map(a => (scope === 'all' ? true : set.has(a.openid)))
+    this.setData({ showNotify: true, notifyAll: scope === 'all', notifyDraft: draft })
+  },
+  closeNotify() { this.setData({ showNotify: false }) },
+  toggleNotifyAll(e) {
+    const all = !!(e && e.detail && e.detail.value)
+    const draft = (this.data.admins || []).map(() => all)
+    this.setData({ notifyAll: all, notifyDraft: draft })
+  },
+  toggleNotifyAdmin(e) {
+    const i = e.currentTarget.dataset.i
+    const v = !!(e.detail && e.detail.value)
+    const draft = this.data.notifyDraft.slice()
+    draft[i] = v
+    const all = draft.length > 0 && draft.every(Boolean)
+    this.setData({ [`notifyDraft[${i}]`]: v, notifyAll: all })
+  },
+  saveNotify() {
+    const admins = this.data.admins || []
+    const draft = this.data.notifyDraft
+    const all = draft.length === admins.length && draft.every(Boolean)
+    const value = all ? 'all' : admins.filter((a, i) => draft[i]).map(a => a.openid)
+    wx.showLoading({ title: '保存中' })
+    call('updateProject', { projectId: this.data.projectId, notifyAdmins: value })
+      .then(() => {
+        const summary = all ? '全部管理员' : `指定 ${value.length} 人`
+        wx.hideLoading()
+        wx.showToast({ title: '已保存', icon: 'success' })
+        this.setData({ showNotify: false, notifySummary: summary, 'project.notifyAdmins': value })
+      })
+      .catch(e => { wx.hideLoading(); wx.showToast({ title: e.message, icon: 'none' }) })
+  },
   onAddStart(e) { this.setData({ 'addForm.start': e.detail.value }) },
   onAddEnd(e) { this.setData({ 'addForm.end': e.detail.value }) },
   onAddCap(e) { this.setData({ 'addForm.capacity': Number(e.detail.value) || 8 }) },

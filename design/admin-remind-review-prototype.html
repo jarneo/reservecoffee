@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>提醒 · 新增两类审核提醒（设计原型）</title>
+<style>
+  :root { --brand:#7A5230; --ink:#1a1a1a; --ink2:#666; --ink3:#999; --line:#e7e3dd; --fill:#f3f1ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f5f5; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:1220px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--ink3); font-size:13px; margin-bottom:20px; }
+
+  /* ---- 方案摘要 ---- */
+  .spec { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:24px; }
+  .spec h2 { font-size:14px; margin:0 0 10px; }
+  table.sp { border-collapse:collapse; width:100%; font-size:12.5px; }
+  table.sp th, table.sp td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; line-height:1.65; }
+  table.sp thead th { background:var(--fill); font-weight:600; white-space:nowrap; }
+  table.sp td.k { background:#fcfaf7; white-space:nowrap; color:var(--ink2); font-weight:600; width:96px; }
+  .spec .note { font-size:12px; color:var(--ink2); line-height:1.8; margin:12px 0 0; padding-top:10px; border-top:1px dashed var(--line); }
+  code { background:var(--fill); padding:1px 5px; border-radius:4px; font-size:11.5px; font-family:ui-monospace,Menlo,monospace; }
+
+  /* ---- 手机框 ---- */
+  .layout { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .col { width:340px; }
+  .colcap { font-size:12px; color:var(--ink3); margin:0 0 8px 2px; }
+  .phone { background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .nav { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line); font-size:13px; }
+  .nav .bk { color:var(--brand); }
+  .nav .ti { flex:1; text-align:center; font-weight:500; }
+  .nav .more { color:var(--ink3); }
+
+  /* ---- 顶部看板（占位） ---- */
+  .bkcard { margin:10px 12px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .bkhd { display:flex; align-items:center; padding:10px 12px; }
+  .bkhd .tt { font-size:13px; font-weight:600; flex:1; }
+  .bkhd .sum { font-size:11px; color:var(--ink3); }
+  .dstrip { display:flex; gap:6px; overflow:hidden; padding:0 12px 10px; }
+  .dchip { flex:none; width:44px; text-align:center; border:1px solid var(--line); border-radius:8px; padding:5px 0; }
+  .dchip .wk { font-size:10px; color:var(--ink3); }
+  .dchip .dd { font-size:12px; font-weight:600; margin-top:1px; }
+  .dchip.on { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .dchip.on .wk { color:rgba(255,255,255,.8); }
+  .dim { opacity:.35; }
+  .foldnote { text-align:center; font-size:11px; color:var(--ink3); padding:14px 0 16px; border-top:1px dashed var(--line); margin:0 12px 4px; }
+
+  /* ---- 🆕 待处理条 ---- */
+  .todo { margin:0 12px 12px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .tdhd { padding:7px 12px; font-size:11px; color:var(--ink3); background:#fcfaf7; border-bottom:1px solid var(--line); }
+  .tdrow { display:flex; align-items:center; gap:8px; padding:11px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .tdrow:last-child { border-bottom:none; }
+  .tdrow .tdk { font-size:13px; flex:1; }
+  .tdrow .tds { font-size:11px; color:var(--ink3); }
+  .tdrow .tdn { font-size:16px; font-weight:600; color:var(--brand); min-width:22px; text-align:right; }
+  .tdrow .tda { font-size:12px; color:var(--brand); white-space:nowrap; }
+  .tdrow.zero .tdk, .tdrow.zero .tda, .tdrow.zero .tdn, .tdrow.zero .tds { color:var(--ink3); }
+
+  /* ---- 通知列表 ---- */
+  .ihead { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .ihead .tabs { display:flex; gap:14px; flex:1; font-size:13px; color:var(--ink2); }
+  .ihead .tabs span.on { color:var(--brand); font-weight:600; }
+  .ihead .all { font-size:12px; color:var(--brand); }
+  .item { display:flex; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
+  .item.un { background:#fdfaf6; }
+  .item .bar { width:3px; border-radius:2px; background:transparent; flex:none; }
+  .item.un .bar { background:var(--brand); }
+  .item .bd { flex:1; min-width:0; }
+  .item .r1 { display:flex; align-items:center; gap:6px; font-size:13px; flex-wrap:wrap; }
+  .item .r1 .dot { width:6px; height:6px; border-radius:50%; background:var(--brand); flex:none; }
+  .item .r1 .ti { font-weight:600; }
+  .item .r2 { font-size:12px; color:var(--ink2); margin-top:5px; line-height:1.5; }
+  .item .r3 { font-size:11px; color:var(--ink3); margin-top:4px; }
+
+  /* ---- 标签 ---- */
+  .tag { font-size:10px; padding:1px 6px; border-radius:4px; background:var(--fill); color:var(--ink2); flex:none; white-space:nowrap; }
+  .tag.wait { background:var(--brand); color:#fff; font-weight:600; }
+  .tag.dish { background:rgba(122,82,48,.14); color:var(--brand); font-weight:600; }
+  .tag.cancel { background:#F6ECE9; color:#A3562F; }
+  .tag.admin { background:var(--fill); color:var(--ink3); }
+  .foot { text-align:center; font-size:11px; color:var(--ink3); padding:14px 16px; line-height:1.7; }
+
+  /* ---- 详情页 ---- */
+  .dsec { font-size:15px; font-weight:600; padding:16px 16px 8px; }
+  .dl { padding:0 16px; }
+  .dl .r { display:flex; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); font-size:13px; align-items:flex-start; }
+  .dl .k { width:76px; flex:none; color:var(--ink3); font-size:12.5px; }
+  .dl .v { flex:1; min-width:0; line-height:1.55; word-break:break-all; }
+  .dl .ops { flex:none; display:flex; gap:6px; }
+  .dl .ops .mini { font-size:11px; padding:3px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink2); }
+  .st-wait { color:var(--brand); font-weight:600; }
+  .rtext { background:#fcfaf7; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:12.5px; line-height:1.65; color:var(--ink2); }
+  .rimgs { display:flex; gap:6px; margin-top:6px; }
+  .rimg { width:54px; height:54px; border-radius:6px; background:linear-gradient(135deg,#efeae3,#ded6cb); }
+  .stars { color:var(--brand); letter-spacing:1px; }
+  .acts { padding:18px 16px 0; }
+  .btn { text-align:center; border-radius:10px; padding:11px 0; font-size:14px; }
+  .btn.pri { background:var(--brand); color:#fff; }
+  .btn.ghost { border:1px solid var(--line); color:var(--ink2); }
+  .flow { font-size:11px; color:var(--ink3); text-align:center; padding:10px 16px 16px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>提醒 · 新增两类审核提醒</h1>
+  <div class="sub">项目预约审核通知 + 菜品审核通知 ｜ 触发条件 · 展示位置 · 通知内容 · 跳转去向 ｜ 2026-10-03</div>
+
+  <!-- ============ 方案摘要 ============ -->
+  <div class="spec">
+    <h2>方案摘要</h2>
+    <table class="sp">
+      <thead>
+        <tr><th>维度</th><th>① 项目预约审核通知</th><th>② 菜品审核通知</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="k">触发条件</td>
+          <td>顾客提交预约，且项目开启「需审核」（<code>p.needReview === true</code>）→ 预约落库 <code>review:'pending'</code>。<br/>落点：<code>createReservation</code> 的 needReview 分支。</td>
+          <td>顾客发表菜品评价，通过微信内容安全机器检测（文字 + 图片）→ 评价落库 <code>reviewStatus:'pending'</code>。<br/>落点：<code>addReview</code> 入库之后。</td>
+        </tr>
+        <tr>
+          <td class="k">不触发</td>
+          <td>项目免审（走原「新预约」）；管理员代取消不涉及。</td>
+          <td>机器检测未通过 → 直接拦截、不入库；已审核过的评价不会二次提醒。</td>
+        </tr>
+        <tr>
+          <td class="k">展示位置</td>
+          <td colspan="2">
+            ① 管理台「提醒」页 → 列表新增条目类型（与「新预约 / 取消」同列，按时间倒序自然排序）；<br/>
+            ② 同页新增 <b>「待处理」实时条</b>（两行入口，显示当前真实待办数）；<br/>
+            ③ 管理台 hub 右卡「提醒」未读角标已自动包含这两类，无需改动。
+          </td>
+        </tr>
+        <tr>
+          <td class="k">通知内容</td>
+          <td>标题 <b>预约审核 · 项目名</b> ｜ 标签「预约审核」<br/>副行：日期 场次 　预订人 　N 人<br/>时间行：相对时间（如「5 分钟前」）</td>
+          <td>标题 <b>评论审核 · 菜品名</b> ｜ 标签「评论审核」<br/>副行：★★★☆☆ 　评价人 　评价摘要<br/>时间行：相对时间 · N 张图</td>
+        </tr>
+        <tr>
+          <td class="k">跳转去向</td>
+          <td>点条目 → 通知详情页（与现有交互一致）→ 底部主按钮「去审核 ›」→ <code>pages/admin/review/review</code>（预约审核页）</td>
+          <td>点条目 → 通知详情页 → 底部主按钮「去评价管理 ›」→ <code>pages/admin/reviewAdmin/reviewAdmin</code>（默认落在「待审核」tab）</td>
+        </tr>
+        <tr>
+          <td class="k">微信推送</td>
+          <td>复用<b>已有</b> <code>adminReview</code> 模板（「待审核提醒」，<code>createReservation</code> 已在发，跳转页也正是审核页）—— <b>零改动</b>。</td>
+          <td><b>⚠️ 微信侧暂无对应模板</b>。要推送须先去微信公众平台申请一个「评价待审核提醒」模板（字段建议：门店名称 / 菜品名称 / 待审核条数），拿到 tmplId 后再接入 <code>ADMIN_SUBS</code>。<br/>本次可先只做收件箱通道（不依赖新增模板）。</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">
+      <b>两个关键设计决定：</b><br/>
+      1️⃣ <b>预约待审不新增第二条条目</b>——现有 <code>createReservation</code> 在需审核时已经落了一条 <code>type:'new'</code>（带 <code>review:'pending'</code>）。若再补一条「待审核」就是同一件事提醒两次。改为把这条的 <code>type</code> 直接置为 <code>reviewRes</code>：条目数量不变，只是换文案、换标签、换跳转。<br/>
+      2️⃣ <b>「已处理」用实时计数，不在条目上回写状态</b>——条目是<b>事件留痕</b>（处理完不需要消失），若在条目上标「待审核」，管理员处理完标签还亮着会误导。因此另设顶部「待处理」实时条：数字由 <code>getInbox</code> 顺带查 <code>reservations.where(review:'pending')</code> 与 <code>reviews.where(reviewStatus:'pending')</code> 得出，处理完回来自动归零。<br/>
+      <span style="color:var(--brand)">✅ 这样 <code>reviewReservation</code> / <code>reviewAllReservations</code> / <code>setReview</code> / <code>cancelReservation</code> 四个函数<b>全部无需改动</b>，改动面最小、也最不容易漏（批量审核、顾客自行取消这些边角路径天生覆盖）。</span>
+    </p>
+  </div>
+
+  <!-- ============ 原型 ============ -->
+  <div class="layout">
+
+    <!-- ---------- 1. 提醒页 ---------- -->
+    <div class="col">
+      <p class="colcap">① 管理台 › 提醒（列表区）</p>
+      <div class="phone">
+        <div class="nav"><span class="bk">‹</span><span class="ti">提醒</span><span class="more">⋯</span></div>
+
+        <!-- 顶部看板（本文不重复展示） -->
+        <div class="bkcard">
+          <div class="bkhd"><span class="tt">预约情况</span><span class="sum">10-05 · 合计 11 人 / 7 场</span></div>
+          <div class="dstrip">
+            <div class="dchip on"><div class="wk">周六</div><div class="dd">10-05</div></div>
+            <div class="dchip"><div class="wk">周日</div><div class="dd">10-06</div></div>
+            <div class="dchip"><div class="wk">周一</div><div class="dd">10-07</div></div>
+            <div class="dchip"><div class="wk">周二</div><div class="dd">10-08</div></div>
+            <div class="dchip"><div class="wk">周三</div><div class="dd">10-09</div></div>
+            <div class="dchip dim"><div class="wk">周四</div><div class="dd">10-10</div></div>
+          </div>
+          <div class="foldnote">（表格同上版，此原型不重复展示）</div>
+        </div>
+
+        <!-- 🆕 待处理实时条 -->
+        <div class="todo">
+          <div class="tdhd">待处理（实时）</div>
+          <div class="tdrow">
+            <span class="tdk">预约审核</span>
+            <span class="tds">影响名额占用</span>
+            <span class="tdn">3</span>
+            <span class="tda">去审核 ›</span>
+          </div>
+          <div class="tdrow">
+            <span class="tdk">评论审核</span>
+            <span class="tds">未对外展示</span>
+            <span class="tdn">5</span>
+            <span class="tda">去处理 ›</span>
+          </div>
+        </div>
+
+        <!-- 通知列表 -->
+        <div class="ihead">
+          <div class="tabs"><span class="on">全部</span><span>未读</span></div>
+          <span class="all">全部已读</span>
+        </div>
+
+        <div class="item un">
+          <div class="bar"></div>
+          <div class="bd">
+            <div class="r1"><span class="dot"></span><span class="ti">预约审核 · 法兰绒深烘咖啡</span><span class="tag wait">预约审核</span></div>
+            <div class="r2">10-05 14:00-15:30　张先生　2 人</div>
+            <div class="r3">5 分钟前</div>
+          </div>
+        </div>
+
+        <div class="item un">
+          <div class="bar"></div>
+          <div class="bd">
+            <div class="r1"><span class="dot"></span><span class="ti">评论审核 · 提拉米苏</span><span class="tag dish">评论审核</span></div>
+            <div class="r2"><span class="stars">★★★★★</span>　小李　这款甜品口感细腻，甜度刚好…</div>
+            <div class="r3">12 分钟前　·　2 张图</div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="bar"></div>
+          <div class="bd">
+            <div class="r1"><span class="ti">新预约 · 清酒品鉴</span><span class="tag">新建</span></div>
+            <div class="r2">10-05 19:00-20:00　王小姐　2 人</div>
+            <div class="r3">1 小时前</div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="bar"></div>
+          <div class="bd">
+            <div class="r1"><span class="ti">取消预约 · 法兰绒深烘咖啡</span><span class="tag cancel">取消</span><span class="tag admin">管理员取消</span></div>
+            <div class="r2">10-06 10:00-11:30　陈先生　3 人</div>
+            <div class="r3">今天 14:05</div>
+          </div>
+        </div>
+
+        <div class="foot">已读状态按管理员各自独立，互不影响。<br/>提醒只保证「不丢单」——实时提醒仍靠微信订阅推送。</div>
+      </div>
+    </div>
+
+    <!-- ---------- 2. 详情：预约审核 ---------- -->
+    <div class="col">
+      <p class="colcap">② 通知详情 › 预约审核</p>
+      <div class="phone" style="min-height:600px">
+        <div class="nav"><span class="bk">‹</span><span class="ti">预约审核</span><span class="more">⋯</span></div>
+
+        <div class="dsec">预约审核</div>
+        <div class="dl">
+          <div class="r"><div class="k">项目</div><div class="v">法兰绒深烘咖啡</div></div>
+          <div class="r"><div class="k">日期</div><div class="v">2026-10-05</div></div>
+          <div class="r"><div class="k">场次</div><div class="v">14:00 - 15:30</div></div>
+          <div class="r"><div class="k">预订人</div><div class="v">张先生</div></div>
+          <div class="r"><div class="k">人数</div><div class="v">2 人</div></div>
+          <div class="r">
+            <div class="k">手机号</div><div class="v">138****8001</div>
+            <div class="ops"><span class="mini">拨打</span><span class="mini">复制</span></div>
+          </div>
+          <div class="r"><div class="k">备注</div><div class="v">—</div></div>
+          <div class="r"><div class="k">审核状态</div><div class="v st-wait">待审核（名额已暂时占用）</div></div>
+          <div class="r"><div class="k">提交时间</div><div class="v">2026-10-03 03:18</div></div>
+        </div>
+
+        <div class="acts">
+          <div class="btn pri">去审核 ›</div>
+          <div class="btn ghost" style="margin-top:12px">查看该预约</div>
+          <div class="btn ghost" style="margin-top:12px">返回列表</div>
+        </div>
+        <div class="flow">去审核 → pages/admin/review/review<br/>打开详情即视为已读（只影响你自己）</div>
+      </div>
+    </div>
+
+    <!-- ---------- 3. 详情：评论审核 ---------- -->
+    <div class="col">
+      <p class="colcap">③ 通知详情 › 评论审核</p>
+      <div class="phone" style="min-height:600px">
+        <div class="nav"><span class="bk">‹</span><span class="ti">评论审核</span><span class="more">⋯</span></div>
+
+        <div class="dsec">评论审核</div>
+        <div class="dl">
+          <div class="r"><div class="k">菜品</div><div class="v">提拉米苏</div></div>
+          <div class="r"><div class="k">所属项目</div><div class="v">店铺菜单</div></div>
+          <div class="r"><div class="k">评分</div><div class="v"><span class="stars">★★★★★</span> 5.0</div></div>
+          <div class="r"><div class="k">评价人</div><div class="v">小李</div></div>
+          <div class="r">
+            <div class="k">评价内容</div>
+            <div class="v"><div class="rtext">这款甜品口感细腻，甜度刚好，配手冲很搭。下次还想再来试试别的。</div></div>
+          </div>
+          <div class="r">
+            <div class="k">图片</div>
+            <div class="v"><div class="rimgs"><span class="rimg"></span><span class="rimg"></span></div></div>
+          </div>
+          <div class="r"><div class="k">审核状态</div><div class="v st-wait">待审核（暂不对外展示、不计入评分）</div></div>
+          <div class="r"><div class="k">提交时间</div><div class="v">2026-10-03 03:11</div></div>
+        </div>
+
+        <div class="acts">
+          <div class="btn pri">去评价管理 ›</div>
+          <div class="btn ghost" style="margin-top:12px">返回列表</div>
+        </div>
+        <div class="flow">去评价管理 → pages/admin/reviewAdmin/reviewAdmin<br/>默认落在「待审核」tab，角标已显示待审总数</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

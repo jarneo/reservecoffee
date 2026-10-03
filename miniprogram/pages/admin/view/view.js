@@ -7,7 +7,7 @@ const STEP = 5   // 箭头每按一次滚动的日期个数
 
 Page({
   behaviors: [guard],
-  data: { projects: [], projectId: '', projectName: '', dates: [], dateChips: [], dateAnchorIdx: 0, scrollInto: '', canPrev: false, canNext: false, dateRangeLabel: '', selDate: '', sessions: [], selSession: '', list: [], detail: null, sessionExpired: false },
+  data: { projects: [], projectId: '', projectName: '', dates: [], dateChips: [], dateAnchorIdx: 0, scrollInto: '', canPrev: false, canNext: false, dateRangeLabel: '', selDate: '', sessions: [], groups: {}, detail: null },
   onLoad(q) { this.q = q || {}; this.guard(['owner', 'manager']).then(r => { if (r) this.loadProjects() }) },
   loadProjects() {
     call('listProjects').then(d => {
@@ -74,27 +74,26 @@ Page({
     const idx = Math.max(0, Math.min(n - 1, this.data.dateAnchorIdx + delta * STEP))
     this.setData({ dateAnchorIdx: idx, canPrev: idx > 0, canNext: idx < n - 1, scrollInto: 'dc' + idx })
   },
+  // 选中某日：一次性取出当日全部场次 + 当日全部预约人（按 sessionId 分组），挂到各场次下
   async loadDate(date) {
-    this.setData({ selDate: date, selSession: '', list: [], detail: null })
+    this.setData({ selDate: date, detail: null, groups: {} })
     const chips = this.data.dateChips.map(c => ({ ...c, sel: c.ymd === date }))
     const idx = this.data.dateChips.findIndex(c => c.ymd === date)
     this.setData({ dateChips: chips, scrollInto: idx >= 0 ? 'dc' + idx : '' })
+
     const d = await call('getSchedule', { projectId: this.data.projectId, date })
     const sch = (d.schedules || []).find(x => x.date === date)
     const sessions = (sch ? sch.sessions : []).map(x => ({ ...x, remaining: x.capacity - x.booked }))
-    this.setData({ sessions })
-    const sid = (this.q.sessionId && sessions.find(x => x.id === this.q.sessionId)) ? this.q.sessionId : ''
-    if (sid) this.loadList(sid)
+
+    // 需求1：一次性加载当日全部场次的预约人（新增分组云函数），避免逐场点击
+    const g = await call('listDateReservations', { projectId: this.data.projectId, date })
+    const groups = (g && g.groups) || {}
+    const withPeople = sessions.map(s => {
+      const expired = this.isSessionPast(date, s.end)
+      return { ...s, people: groups[s.id] || [], expired }
+    })
+    this.setData({ sessions: withPeople })
     this.q = {}   // 仅首次从「预约管理」跳入时自动定位，之后用户手动浏览不再强制
-  },
-  onSession(e) { this.loadList(e.currentTarget.dataset.id) },
-  async loadList(sessionId) {
-    this.setData({ selSession: sessionId, detail: null })
-    const d = await call('listSessionReservations', { projectId: this.data.projectId, date: this.data.selDate, sessionId })
-    // 场次是否已过（结束时间早于现在）→ 过期场次不可取消
-    const sess = (this.data.sessions || []).find(x => x.id === sessionId)
-    const expired = sess ? this.isSessionPast(this.data.selDate, sess.end) : true
-    this.setData({ list: d.list || [], sessionExpired: expired })
   },
   // 场次是否已成过去（按场次结束时间判断）；用于决定是否展示「取消预约」
   isSessionPast(dateStr, endStr) {
@@ -105,41 +104,29 @@ Page({
     return Date.now() > end.getTime()
   },
   // 管理员代取消本场某条预约（释放名额 + 通知双方）；仅未过期场次可取消
+  // 事件来自 reservee 组件（triggerEvent('cancel', { id })）
   onCancel(e) {
-    const id = e.currentTarget.dataset.id
-    const item = (this.data.list || []).find(x => x._id === id)
+    const id = e.detail.id
+    const sess = (this.data.sessions || []).find(s => (s.people || []).some(p => p._id === id))
+    const person = sess ? sess.people.find(p => p._id === id) : null
+    const name = person ? person.name : '该顾客'
     wx.showModal({
       title: '取消预约',
-      content: `确认取消「${item ? item.name : '该顾客'}」本场预约？将释放名额并通知双方。`,
+      content: `确认取消「${name}」本场预约？将释放名额并通知双方。`,
       confirmText: '取消预约', confirmColor: '#e34d59',
       success: async (r) => {
         if (!r.confirm) return
         wx.showLoading({ title: '取消中', mask: true })
         try {
           await call('cancelReservation', { reservationId: id })
-          const list = this.data.list.filter(x => x._id !== id)
-          const detail = (this.data.detail && this.data.detail._id === id) ? null : this.data.detail
-          this.setData({ list, detail })
-          await this.refreshSessions()
-          wx.hideLoading(); wx.showToast({ title: '已取消', icon: 'success' })
+          wx.hideLoading()
+          wx.showToast({ title: '已取消', icon: 'success' })
+          await this.loadDate(this.data.selDate)   // 重取分组 + 场次（含剩余名额）
         } catch (err) {
-          wx.hideLoading(); wx.showToast({ title: (err && err.message) || '取消失败', icon: 'none' })
+          wx.hideLoading()
+          wx.showToast({ title: (err && err.message) || '取消失败', icon: 'none' })
         }
       }
     })
-  },
-  // 重新拉取当前日期场次（刷新已约 / 剩余名额）
-  async refreshSessions() {
-    const d = await call('getSchedule', { projectId: this.data.projectId, date: this.data.selDate })
-    const sch = (d.schedules || []).find(x => x.date === this.data.selDate)
-    const sessions = (sch ? sch.sessions : []).map(x => ({ ...x, remaining: x.capacity - x.booked }))
-    this.setData({ sessions })
-  },
-  showDetail(e) {
-    const id = e.currentTarget.dataset.id
-    const r = (this.data.list || []).find(x => x._id === id)
-    this.setData({ detail: r })
-  },
-  closeDetail() { this.setData({ detail: null }) },
-  dial() { if (this.data.detail) wx.makePhoneCall({ phoneNumber: this.data.detail.phone }) }
+  }
 })

@@ -1,0 +1,97 @@
+<view class="page">
+  <!-- ===== 顶部：预约情况（管理员进页面的第一眼） =====
+       日期条 = 所有**已发布**项目有场次的日期并集（今天起 14 天，无场次的灰掉）；
+       表格 = 行「场次时段并集」× 列「已发布项目」，单元格「已约/容量」。 -->
+  <view class="bkcard">
+    <view class="bkhd">
+      <view class="bktt">预约情况</view>
+      <view wx:if="{{bkSum && !bkEmpty}}" class="bksum">{{bkSum}}</view>
+    </view>
+
+    <scroll-view wx:if="{{bkDays.length}}" class="dstrip" scroll-x="true" enhanced="{{true}}" show-scrollbar="{{false}}">
+      <view wx:for="{{bkDays}}" wx:key="date"
+        class="dchip {{item.sel?'on':''}} {{item.has?'':'off'}} {{item.today?'today':''}}"
+        data-d="{{item.date}}" bindtap="onBkDate">
+        <view class="dwk">{{item.wk}}</view>
+        <view class="ddd">{{item.md}}</view>
+        <view wx:if="{{item.today}}" class="dtag">今</view>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{bkLoading}}" class="bkempty">加载中…</view>
+    <view wx:elif="{{bkEmpty}}" class="bkempty">{{bkEmpty}}</view>
+    <view wx:else="">
+      <view class="bkrow bkhead">
+        <view class="bktm">场次</view>
+        <view wx:for="{{bkProjs}}" wx:key="_id" class="bkc"><text class="bkc-name">{{item.name}}</text></view>
+      </view>
+      <view wx:for="{{bkRows}}" wx:key="tm" class="bkrow">
+        <view class="bktm">{{item.tm}}</view>
+        <view wx:for="{{item.cells}}" wx:for-item="c" wx:key="k" class="bkc">
+          <view class="cnt {{c.cls}}">{{c.txt}}</view>
+        </view>
+      </view>
+      <view class="bkrow bkfoot">
+        <view class="bktm">合计</view>
+        <view wx:for="{{bkTotals}}" wx:for-item="t" wx:for-index="ti" wx:key="ti" class="bkc">{{t}}</view>
+      </view>
+      <view class="bkhint">单元格 = 已约 / 容量；「—」= 该项目当日无此场次。满场为实心品牌色。</view>
+    </view>
+  </view>
+
+  <!-- ===== 待处理（实时计数）=====
+       数字由 getInbox 实时查库得出（reservations.review=pending / reviews.reviewStatus=pending），
+       不是条目上的状态回写 —— 条目只做「事件留痕」，处理完不必消失；
+       若在条目上标「待审核」，管理员处理完标签还亮着会误导。
+       这样 reviewReservation / reviewAllReservations / setReview / cancelReservation
+       四个函数全部无需改动，批量审核、顾客自行取消等边角路径天生被覆盖。
+       数字为 0 时整行转灰、点击只提示（不跳空页面）。 -->
+  <view class="todo">
+    <view class="tdhd">待处理（实时）</view>
+    <view class="tdrow {{pendRes?'':'zero'}} tap" bindtap="goReview">
+      <view class="tdk">预约审核</view>
+      <view class="tds">影响名额占用</view>
+      <view class="tdn">{{pendRes}}</view>
+      <view class="tda">去审核 ›</view>
+    </view>
+    <view class="tdrow {{pendDish?'':'zero'}} tap" bindtap="goReviewDish">
+      <view class="tdk">评论审核</view>
+      <view class="tds">未对外展示</view>
+      <view class="tdn">{{pendDish}}</view>
+      <view class="tda">去处理 ›</view>
+    </view>
+  </view>
+
+  <!-- ===== 通知列表 ===== -->
+  <view class="ihead">
+    <view class="tabs">
+      <view class="tb {{tab==='all'?'on':''}}" bindtap="switchTab" data-t="all">全部</view>
+      <view class="tb {{tab==='unread'?'on':''}}" bindtap="switchTab" data-t="unread">未读</view>
+    </view>
+    <view class="allread tap" bindtap="readAll">全部已读</view>
+  </view>
+
+  <view wx:if="{{!list.length}}" class="empty">{{emptyText}}</view>
+  <view wx:else="">
+    <view wx:for="{{list}}" wx:key="_id" class="it {{item.unread?'un':''}} tap" bindtap="open" data-i="{{index}}">
+      <view class="bar"></view>
+      <view class="bd">
+        <view class="r1">
+          <view wx:if="{{item.unread}}" class="dot"></view>
+          <text class="ti">{{item.title}}</text>
+          <view class="tag {{item.tagCls}}">{{item.tagText}}</view>
+          <view wx:if="{{item.byAdminText}}" class="tag admin">{{item.byAdminText}}</view>
+        </view>
+        <view class="r2">{{item.sub}}</view>
+        <view class="r3">{{item.time}}<text wx:if="{{item.note}}">　·　{{item.note}}</text></view>
+      </view>
+    </view>
+
+    <view wx:if="{{hasMore}}" class="more tap" bindtap="more">{{loading?'加载中…':'加载更多'}}</view>
+    <view wx:else="" class="foot">已显示全部 {{total}} 条</view>
+  </view>
+
+  <view class="foot">已读状态按管理员各自独立，互不影响。<br/>提醒只保证「不丢单」——实时提醒仍靠微信订阅推送。</view>
+</view>
+
+<path-bar />

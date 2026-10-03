@@ -33,6 +33,9 @@ exports.main = async (event) => {
     subscribeNotify: true,
     showSeatInfo: true,
     openDays: [],
+    // 通知管理员分配：默认全体管理员可接收本项目通知（与现状一致、零丢单）；店主随后可在矩阵里收窄。
+    // 采用项目维度存储，新增项目天然全员，避免「白名单模型下新项目漏通知被收窄管理员」的坑。
+    notifyAdmins: 'all',
     ownerOpenid: OPENID,
     createdAt: Date.now(),
     updatedAt: Date.now()

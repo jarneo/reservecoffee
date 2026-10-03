@@ -1,0 +1,78 @@
+/* pages/result/result.wxss — 预约成功结果页
+   成功卡样式沿用 pages/confirm/confirm.wxss 的 .success-* 命名与视觉，
+   差别仅两处：① 去掉 fixed 遮罩改为文档流内块（无 z-index 冲突）
+              ② 成功卡本身不再是「居中浮层」，而是页面顶部的通栏卡片。 */
+
+/* ── 留座信息卡 ── */
+.succ {
+  margin: 24rpx 24rpx 0;
+  padding: 48rpx 44rpx 40rpx;
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 24rpx;
+  text-align: center;
+}
+.succ-icon {
+  width: 88rpx;
+  height: 88rpx;
+  margin: 0 auto 24rpx;
+  border-radius: 50%;
+  background: var(--brand);
+}
+.succ-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: var(--ink-1, #1a1a1a);
+}
+.succ-sub {
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  color: var(--ink-3, #999);
+  line-height: 1.6;
+}
+.succ-detail {
+  margin: 36rpx 0 0;
+  border-top: 1rpx solid var(--line, #eee);
+  padding-top: 24rpx;
+}
+.sd-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 27rpx;
+  padding: 10rpx 0;
+}
+.sd-k { color: var(--ink-3, #999); flex-shrink: 0; }
+.sd-v { color: var(--ink-1, #1a1a1a); text-align: right; padding-left: 24rpx; }
+
+/* ── 菜单区（双列瀑布流，结构与 index.wxml 一致）── */
+.menu-cats { margin: 4rpx 0 16rpx; }
+.menu-cols { display: flex; gap: 16rpx; align-items: flex-start; padding: 0 24rpx; }
+.menu-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16rpx; }
+.menu-card { width: 100%; background: #fff; border: 1rpx solid var(--line); border-radius: 16rpx; overflow: hidden; box-sizing: border-box; }
+.menu-img-wrap { width: 100%; background: var(--fill); overflow: hidden; }
+.menu-img { width: 100%; height: auto; display: block; }
+.menu-img.ph { width: 100%; height: 220rpx; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 24rpx; border: 1rpx dashed var(--line); box-sizing: border-box; }
+.menu-info { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 16rpx; }
+.menu-name { flex: 1; min-width: 0; font-size: 28rpx; font-weight: 600; line-height: 1.35; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.menu-price { flex-shrink: 0; font-size: 26rpx; font-weight: 600; color: var(--brand); text-align: right; }
+
+/* ── 加载失败条 ── */
+.failbar {
+  margin: 0 24rpx 16rpx;
+  padding: 18rpx 20rpx;
+  background: #fdf6f2;
+  border: 1rpx dashed var(--brand);
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: var(--ink-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.failbar .retry { color: var(--brand); font-weight: 600; padding-left: 24rpx; }
+
+/* ── 底部按钮 ── */
+/* .btn 及其 width 复位（覆盖原生 button 的 width:100%）已由 app.wxss 全局提供，
+   本页只负责纵向间距，不重复定义按钮样式以免与全局规则打架。 */
+.acts { padding: 32rpx 24rpx 48rpx; }
+.acts .btn + .btn { margin-top: 20rpx; }

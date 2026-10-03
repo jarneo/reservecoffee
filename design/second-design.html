@@ -997,6 +997,9 @@ function aConfig(id){
       <div class="field row between"><div class="label">预约页显示剩余/已约座位信息</div><div class="switch ${(p.g.showSeatInfo!==false)?'on':''}" onclick="gSeat()"></div></div>
     </div>
 
+    <!-- 全局设定区保存：与底部「保存」同为 aSave（保存整个项目配置） -->
+    <button class="btn block" onclick="aSave()">保存</button>
+
     <!-- ① 项目时间设置：日历多选 -->
     <div class="card">
       <div class="sec">项目时间设置 <span class="pill tag-brand">最先配置</span></div>

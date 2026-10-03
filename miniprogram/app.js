@@ -19,6 +19,10 @@ App({
       env: ENV_ID,
       traceUser: true
     })
+    // 全局错误上报（onError + 未捕获 Promise 拒绝）→ errorLogs 集合。
+    // 必须在 cloud.init 之后：上报走 wx.cloud.callFunction。
+    // 此前项目无任何全局错误日志，线上报错（如分享到朋友圈打开失败）只能靠用户口述。
+    try { require('./utils/errlog').install() } catch (e) { /* 埋点失败不阻断启动 */ }
     // 进入即探测角色（用于底部 tab / 入口自适应）
     this.refreshRole()
     // 首启采集来源 scene（用于顾客「初次来源」标签）；失败静默，不阻断启动

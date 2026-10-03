@@ -20,6 +20,9 @@
         <view class="price">{{item.priceText}}</view>
         <view class="badge {{item.status==='off'?'paused':'ok'}}" style="margin-top:6rpx">{{item.status==='off'?'已下架':'在售'}}</view>
         <view class="sm muted" style="margin-top:6rpx">排序 {{item.sort}} · {{item.categoryName}}</view>
+        <!-- 存量图提示：ratio 缺失说明这张图是旧版压缩链路的产物（双重有损压缩后原图已丢）。
+             点「编辑」重新选一次原图即可修复清晰度并补齐 ratio（首页瀑布流靠它对齐两列底边）。 -->
+        <view wx:if="{{!item.hasRatio}}" class="tag warn" style="margin-top:6rpx">建议重传图片</view>
       </view>
     </view>
     <view class="ops">

@@ -1,13 +1,7 @@
 .searchbar {
   padding: 8rpx 0 16rpx;
 }
-.search-input {
-  background: #fff;
-  border: 1rpx solid var(--line);
-  border-radius: 12rpx;
-  padding: 18rpx 24rpx;
-  font-size: 28rpx;
-}
+/* .search-input 已上提到 app.wxss 的公共 .f-inp（黑名单页与本页面原先各写一份同样规则） */
 .empty {
   text-align: center;
   padding: 60rpx 0;

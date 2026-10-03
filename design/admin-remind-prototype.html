@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>提醒 · 设计原型 v1（收件箱改名 + 顶部预约情况）</title>
+<style>
+  :root { --brand:#7A5230; --ink:#1a1a1a; --ink2:#666; --ink3:#999; --line:#e7e3dd; --fill:#f3f1ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f5f5; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:980px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--ink3); font-size:13px; margin-bottom:24px; }
+  .layout { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  .phone { width:340px; background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .phone .top { display:flex; gap:6px; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .phone .top button { flex:1; border:1px solid var(--brand); border-radius:8px; padding:6px 0; font-size:12px; cursor:pointer; }
+  .phone .top button.on { background:var(--brand); color:#fff; }
+  .phone .top button.off { background:#fff; color:var(--ink2); }
+  .nav { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line); font-size:13px; }
+  .nav .bk { color:var(--brand); cursor:pointer; }
+  .nav .ti { flex:1; text-align:center; font-weight:500; }
+
+  /* ---- 管理台头部 ---- */
+  .hd { display:flex; align-items:center; gap:8px; padding:14px 16px 10px; }
+  .hd .bold { font-size:17px; font-weight:600; flex:1; }
+  .role { font-size:11px; padding:2px 8px; border-radius:10px; background:#eef4ea; color:#4a7a3a; }
+  .row2 { display:flex; gap:10px; padding:0 12px 12px; }
+  .c2 { flex:1; border:1px solid var(--line); border-radius:12px; padding:12px; cursor:pointer; display:flex; flex-direction:column; }
+  .c2.hi { border-color:var(--brand); background:#fdfaf6; }
+  /* flex-wrap：右卡标签要列 4 类，半屏卡片一行放不下 → 整体折到标题下一行（左卡标签短，不触发） */
+  .c2 .t { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:13px; font-weight:600; }
+  .c2tag { margin-left:auto; font-size:9px; line-height:1.5; padding:1px 6px; border-radius:4px; background:var(--fill); color:var(--ink3); max-width:100%; box-sizing:border-box; }
+  .c2 .n { font-size:26px; font-weight:600; line-height:1.1; margin-top:6px; color:var(--brand); }
+  .c2 .n.zero { color:var(--ink3); }
+  .c2 .d { font-size:11px; color:var(--ink3); margin-top:4px; line-height:1.5; flex:1; }
+  .c2 .b { margin-top:8px; text-align:center; font-size:12px; border-radius:8px; padding:6px 0; }
+  .c2 .b.pri { background:var(--brand); color:#fff; }
+  .c2 .b.ghost { border:1px solid var(--line); color:var(--ink2); }
+  .tag { font-size:10px; padding:1px 6px; border-radius:4px; background:var(--fill); color:var(--ink2); }
+  .menu { padding:0 12px; }
+  .mi { display:flex; align-items:center; padding:13px 14px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; font-size:14px; }
+  .mi .mt { flex:1; }
+  .mi .ma { color:var(--ink3); }
+  .exit { margin:4px 12px 18px; padding:11px 0; text-align:center; border:1px solid var(--line); border-radius:10px; font-size:14px; color:var(--ink2); }
+
+  /* ---- 预约情况（顶部新卡片） ---- */
+  .bkcard { margin:0 12px 12px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .bkhd { display:flex; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .bkhd .tt { font-size:13px; font-weight:600; flex:1; }
+  .bkhd .sum { font-size:11px; color:var(--ink3); }
+  /* 日期条：横向滚动，最近可预约日期 */
+  .dstrip { display:flex; gap:6px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .dstrip::-webkit-scrollbar { display:none; }
+  .dchip { flex:none; width:46px; text-align:center; border:1px solid var(--line); border-radius:8px; padding:5px 0; cursor:pointer; }
+  .dchip .wk { font-size:10px; color:var(--ink3); }
+  .dchip .dd { font-size:13px; font-weight:600; margin-top:1px; }
+  .dchip.off { opacity:.4; }
+  .dchip.on { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .dchip.on .wk { color:rgba(255,255,255,.8); }
+  .dchip.today::after { content:'今'; display:block; font-size:9px; color:var(--brand); }
+  .dchip.on.today::after { color:#fff; }
+
+  /* ---- 场次 × 项目 表格 ---- */
+  .tblwrap { overflow-x:auto; }
+  .tblwrap::-webkit-scrollbar { display:none; }
+  table.bk { border-collapse:collapse; width:100%; font-size:12px; }
+  table.bk th, table.bk td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:8px 6px; text-align:center; }
+  table.bk th:last-child, table.bk td:last-child { border-right:none; }
+  table.bk thead th { background:var(--fill); font-weight:600; color:var(--ink2); font-size:11px; }
+  table.bk th.tm, table.bk td.tm { text-align:left; white-space:nowrap; color:var(--ink2); font-size:11px; background:#fff; position:sticky; left:0; }
+  table.bk td.none { color:#ccc; }
+  /* 人数：已约/容量。满场=品牌色实心，有客=品牌色文字，空=灰 */
+  .cnt { display:inline-block; min-width:38px; border-radius:6px; padding:2px 4px; font-size:11px; }
+  .cnt.has { background:rgba(122,82,48,.1); color:var(--brand); font-weight:600; }
+  .cnt.full { background:var(--brand); color:#fff; font-weight:600; }
+  .cnt.empty { color:#bbb; }
+  tfoot td { font-size:11px; color:var(--ink3); background:#fcfaf7; }
+  .hint { font-size:11px; color:var(--ink3); text-align:center; padding:10px 12px 12px; line-height:1.6; }
+
+  /* ---- 待处理（实时计数，新增） ----
+     数字由 getInbox 实时查库得出，不是条目状态回写：条目只做事件留痕，处理完不必消失。
+     为 0 时整行转灰、点击只提示不跳页。 */
+  .todo { margin:0 12px 12px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .tdhd { padding:7px 12px; font-size:11px; color:var(--ink3); background:#fcfaf7; border-bottom:1px solid var(--line); }
+  .tdrow { display:flex; align-items:center; gap:8px; padding:11px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .tdrow:last-child { border-bottom:none; }
+  .tdk { font-size:13px; flex:none; }
+  .tds { font-size:11px; color:var(--ink3); flex:1; }
+  .tdn { font-size:16px; font-weight:600; color:var(--brand); }
+  .tda { font-size:12px; color:var(--brand); white-space:nowrap; }
+  .tdrow.zero .tdk, .tdrow.zero .tds, .tdrow.zero .tdn, .tdrow.zero .tda { color:var(--ink3); font-weight:400; }
+  /* 「预约审核」= 品牌色实心（占名额，最需立刻处理）；「评论审核」= 品牌色浅底（区分但不抢焦点） */
+  .tag.wait { background:var(--brand); color:#fff; font-weight:600; }
+  .tag.dish { background:rgba(122,82,48,.14); color:var(--brand); font-weight:600; }
+  .stars { color:var(--brand); letter-spacing:1px; }
+  .st-wait { color:var(--brand); font-weight:600; }
+  .rtext { background:#fcfaf7; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:12.5px; line-height:1.65; color:var(--ink2); }
+
+  /* ---- 通知列表（改名后仍在下方） ---- */
+  .ihead { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); }
+  .ihead .tabs { display:flex; gap:14px; flex:1; font-size:13px; color:var(--ink2); }
+  .ihead .tabs span { cursor:pointer; }
+  .ihead .tabs span.on { color:var(--brand); font-weight:600; }
+  .ihead .all { font-size:12px; color:var(--brand); cursor:pointer; }
+  .item { display:flex; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .item.un { background:#fdfaf6; }
+  .item .bar { width:3px; border-radius:2px; background:transparent; flex:none; }
+  .item.un .bar { background:var(--brand); }
+  .item .bd { flex:1; min-width:0; }
+  .item .r1 { display:flex; align-items:center; gap:6px; font-size:13px; }
+  .item.un .r1 b { font-weight:600; }
+  .tag.cancel { background:#f6ece9; color:#a3562f; }
+  .item .r2 { font-size:12px; color:var(--ink2); margin-top:4px; }
+  .item .r3 { font-size:11px; color:var(--ink3); margin-top:4px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--brand); flex:none; margin-top:5px; }
+
+  /* ---- 详情 ---- */
+  .dsec { padding:14px 16px 4px; font-size:13px; font-weight:600; }
+  .dl { margin:6px 12px 0; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .dl .row { display:flex; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); font-size:13px; }
+  .dl .row:last-child { border-bottom:none; }
+  .dl .row .k { width:74px; color:var(--ink3); flex:none; }
+  .dl .row .v { flex:1; word-break:break-all; }
+  .btn { display:block; margin:14px 12px 0; padding:11px 0; text-align:center; border-radius:10px; font-size:14px; cursor:pointer; }
+  .btn.pri { background:var(--brand); color:#fff; }
+  .btn.sec { background:#fff; border:1px solid var(--line); color:var(--ink2); }
+
+  .side { flex:1; min-width:300px; }
+  .side h2 { font-size:15px; margin:18px 0 8px; }
+  .side h2:first-child { margin-top:0; }
+  .side p, .side li { font-size:13px; color:#333; line-height:1.75; }
+  .side code { background:#f0ece6; padding:1px 6px; border-radius:5px; font-size:12px; color:var(--brand); }
+  .warn { background:#fdf6f2; border:1px solid #eadfd4; border-radius:10px; padding:10px 12px; font-size:12px; color:#7a5230; line-height:1.7; }
+  .demo { margin-top:10px; padding:10px 12px; border:1px dashed var(--brand); border-radius:10px; font-size:12px; color:var(--ink2); }
+  .demo button { margin:8px 6px 0 0; border:1px solid var(--brand); background:#fff; color:var(--brand); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>提醒 · 设计原型 v1</h1>
+  <div class="sub">①「收件箱」改名<b>「提醒」</b>　② 顶部新增<b>预约情况</b>：日期条 + 场次 × 项目 人数表</div>
+
+  <div class="layout">
+    <div class="phone">
+      <div class="top">
+        <button id="b-hub" class="off" onclick="go('hub')">管理台</button>
+        <button id="b-inbox" class="on" onclick="go('inbox')">提醒</button>
+        <button id="b-detail" class="off" onclick="go('detail')">详情</button>
+      </div>
+
+      <!-- ============ 管理台 ============ -->
+      <div id="s-hub" style="display:none">
+        <div class="hd"><div class="bold">管理台</div><div class="role">超级管理员</div></div>
+        <div class="row2">
+          <div class="c2"><div class="t">管理推送</div>
+            <div class="n" style="font-size:15px;margin-top:8px">微信通知</div>
+            <div class="d">发完即失效，失效后需续订</div>
+            <div class="b pri">续订推送</div>
+          </div>
+          <!-- 改名：收件箱 → 提醒 -->
+          <div class="c2 hi" onclick="go('inbox')">
+            <div class="t">提醒<span class="c2tag">新预约 · 取消 · 预约审核 · 评论审核</span></div>
+            <div class="n" id="hub-n">3</div>
+            <div class="d" id="hub-nd">3 条未读</div>
+            <div class="b ghost">查看全部 ›</div>
+          </div>
+        </div>
+        <div class="menu" id="menus"></div>
+        <div class="exit">退出管理端</div>
+      </div>
+
+      <!-- ============ 提醒（主屏） ============ -->
+      <div id="s-inbox">
+        <!-- ★ 新增：顶部预约情况 -->
+        <div class="bkcard">
+          <div class="bkhd">
+            <div class="tt">预约情况</div>
+            <div class="sum" id="bk-sum">10-03 · 合计 11 人 / 2 场</div>
+          </div>
+          <!-- 日期条：最近所有项目的**可预约日期**（全部项目场次日期的并集，只取今天及以后） -->
+          <div class="dstrip" id="dstrip"></div>
+          <!-- 表格：行 = 场次时段（当日全部项目时段并集，升序），列 = 项目 -->
+          <div class="tblwrap"><table class="bk" id="bktbl"></table></div>
+          <div class="hint">单元格 = <b>已约 / 容量</b>；「—」= 该项目当日无此场次。满场高亮为实心品牌色。</div>
+        </div>
+
+        <!-- ★ 新增：待处理（实时计数）—— 两类审核提醒的快捷入口。
+             数字是「当前真实待办」，处理完回来自动归零（不走条目状态回写）。 -->
+        <div class="todo">
+          <div class="tdhd">待处理（实时）</div>
+          <div class="tdrow">
+            <div class="tdk">预约审核</div>
+            <div class="tds">影响名额占用</div>
+            <div class="tdn">3</div>
+            <div class="tda">去审核 ›</div>
+          </div>
+          <div class="tdrow">
+            <div class="tdk">评论审核</div>
+            <div class="tds">未对外展示</div>
+            <div class="tdn">5</div>
+            <div class="tda">去处理 ›</div>
+          </div>
+        </div>
+
+        <div class="ihead">
+          <div class="tabs"><span id="t-all" class="on">全部</span><span id="t-un">未读</span></div>
+          <div class="all" onclick="readAll()">全部已读</div>
+        </div>
+        <div id="list"></div>
+        <div class="hint">已读状态按管理员各自独立，互不影响。</div>
+      </div>
+
+      <!-- ============ 详情 ============ -->
+      <div id="s-detail" style="display:none">
+        <div class="nav"><span class="bk" onclick="go('inbox')">‹ 返回</span><span class="ti">通知详情</span></div>
+        <div id="detail"></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <h2>本次改动</h2>
+      <ul>
+        <li><b>改名</b>：页面标题、管理台卡片、<code>app.json</code> 导航名一律「收件箱」→<b>「提醒」</b>。收录范围 = <b>新预约 · 取消 · 预约审核 · 评论审核</b>（四类）。</li>
+        <li><b>顶部新增「预约情况」卡片</b>，位于 tab（全部/未读）之上，是管理员进页面的第一眼。</li>
+        <li><b>日期条</b>：横向滚动，取<b>所有项目</b>有场次的日期并集，只显示今天及以后；灰掉的日期 = 该日无任何场次。默认选中<b>今天</b>。</li>
+        <li><b>表格</b>：行 = 当日全部项目的<b>时段并集</b>（升序去重），列 = 项目；单元格 <code>已约/容量</code>，无此场次显示「—」。</li>
+      </ul>
+
+      <h2>新增：两类审核提醒（v6.6.108）</h2>
+      <ul>
+        <li><b>预约审核</b>（<code>type:'reviewRes'</code>）：<code>createReservation</code> 在项目开启「需审核」时落这条 —— <b>不额外补一条</b>，只是把原来的 <code>type='new'</code> 换成新类型（否则同一件事提醒两次）。跳 <code>pages/admin/review/review</code>。</li>
+        <li><b>评论审核</b>（<code>type:'reviewDish'</code>）：<code>addReview</code> 机器检测通过、进入人工审核队列后落这条。跳 <code>pages/admin/reviewAdmin/reviewAdmin</code>（默认「待审核」tab）。</li>
+        <li><b>待处理（实时）</b>：数字由 <code>getInbox</code> 查 <code>reservations.review='pending'</code> / <code>reviews.reviewStatus='pending'</code> 实时得出，<b>不在条目上回写状态</b> → 处理完自动归零，且 reviewReservation / reviewAllReservations / setReview / cancelReservation <b>四个函数全部无需改动</b>（批量审核、顾客自行取消等边角路径天生覆盖）。</li>
+        <li>⚠️ 微信侧暂无「评价待审核」订阅模板（现有 <code>adminReview</code> 是「门店名称/计划就餐时间/用餐人数」的预约语义，不可复用）→ 本次只做收件箱通道。预约侧则复用已有 <code>adminReview</code>，零改动。</li>
+      </ul>
+
+      <h2>数据来源（已确认）</h2>
+      <ul>
+        <li><code>schedules</code>：<code>{ projectId, date, closed, sessions:[{id,start,end,capacity,booked,paused}] }</code></li>
+        <li><code>booked</code> = <b>已预约人数</b>（createReservation 按 <code>partySize</code> 加、cancel 减），<code>capacity</code> = 名额上限</li>
+        <li>项目数少（3–4 个）→ 做<b>列</b>；时段数随日期变化 → 做<b>行</b>。这样列数稳定、行数自适应</li>
+      </ul>
+
+      <h2>待确认</h2>
+      <div class="warn">
+        ① 表格列要不要加一行<b>「当日合计」</b>（现原型只放标题右侧汇总）？<br/>
+        ② 未排场、已暂停的场次是否显示（现原型：暂停场次标灰斜体，仍占位）？<br/>
+        ③ 点单元格要不要直接跳该场次的预约人名单？<br/>
+        ④ 日期条默认取未来多少天（现原型 14 天，与管理端「预约管理」一致）？
+      </div>
+
+      <h2>演示</h2>
+      <div class="demo">
+        切日期看表格变化
+        <button onclick="pickDate(0)">10-03</button>
+        <button onclick="pickDate(1)">10-04</button>
+        <button onclick="pickDate(2)">10-05</button>
+        <button onclick="pickDate(4)">10-07（空）</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var menus = ['项目管理','项目配置','首图及介绍','场次模版','店铺菜单管理','预约管理','审核','数据分析','顾客名录','黑名单','管理员管理','全局通知配置'];
+  document.getElementById('menus').innerHTML = menus.map(function (t) {
+    return '<div class="mi"><div class="mt">' + t + '</div><div class="ma">›</div></div>';
+  }).join('');
+
+  var PROJ = ['法兰绒深烘咖啡', '清酒品鉴', '法兰绒研习社'];
+
+  // 日期：下标 0 = 今天(10-03)
+  var DAYS = [
+    { wk:'周六', dd:'10-03', today:true,  has:true },
+    { wk:'周日', dd:'10-04', has:true },
+    { wk:'周一', dd:'10-05', has:true },
+    { wk:'周二', dd:'10-06', has:false },
+    { wk:'周三', dd:'10-07', has:false },
+    { wk:'周四', dd:'10-08', has:true },
+    { wk:'周五', dd:'10-09', has:true }
+  ];
+
+  // rows: [时段, [每个项目: null 或 {b:已约, c:容量, paused:bool}]]
+  var DATA = {
+    '10-03': [
+      ['14:00-16:00', [{b:5,c:8},  {b:6,c:10}, null]],
+      ['19:00-21:00', [null,       {b:10,c:10,full:true}, null]]
+    ],
+    '10-04': [
+      ['10:00-12:00', [{b:3,c:8},  null,       {b:4,c:6}]],
+      ['14:00-16:00', [{b:0,c:8},  {b:2,c:10}, null]],
+      ['19:00-21:00', [null,       {b:7,c:10}, null]]
+    ],
+    '10-05': [
+      ['10:00-12:00', [{b:8,c:8,full:true}, null, {b:1,c:6}]],
+      ['14:00-16:00', [{b:2,c:8,paused:true}, {b:0,c:10}, null]]
+    ],
+    '10-08': [ ['14:00-16:00', [{b:1,c:8}, null, null]] ],
+    '10-09': [ ['19:00-21:00', [null, {b:3,c:10}, null]] ]
+  };
+
+  var sel = '10-03';
+
+  function renderStrip() {
+    document.getElementById('dstrip').innerHTML = DAYS.map(function (d) {
+      var cls = 'dchip' + (d.dd === sel ? ' on' : '') + (d.today ? ' today' : '') + (d.has ? '' : ' off');
+      return '<div class="' + cls + '" onclick="pickDateByKey(\'' + d.dd + '\')">'
+        + '<div class="wk">' + d.wk + '</div><div class="dd">' + d.dd.slice(5) + '</div></div>';
+    }).join('');
+  }
+
+  function renderTable() {
+    var rows = DATA[sel] || [];
+    var el = document.getElementById('bktbl');
+    if (!rows.length) {
+      el.innerHTML = '<tbody><tr><td class="tm" style="border-right:none">该日所有项目均无场次</td></tr></tbody>';
+      document.getElementById('bk-sum').textContent = sel + ' · 无可预约场次';
+      return;
+    }
+    var people = 0, sess = 0;
+    rows.forEach(function (r) {
+      r[1].forEach(function (c) { if (c) { people += c.b; sess++; } });
+    });
+    document.getElementById('bk-sum').textContent = sel + ' · 合计 ' + people + ' 人 / ' + sess + ' 场';
+
+    var h = '<thead><tr><th class="tm">场次</th>' + PROJ.map(function (p) { return '<th>' + p + '</th>'; }).join('') + '</tr></thead>';
+    var b = '<tbody>' + rows.map(function (r) {
+      return '<tr><td class="tm">' + r[0] + '</td>' + r[1].map(function (c) {
+        if (!c) return '<td class="none">—</td>';
+        var cls = c.paused ? 'empty' : (c.full || c.b >= c.c ? 'full' : (c.b > 0 ? 'has' : 'empty'));
+        var txt = c.paused ? '暂停' : c.b + '/' + c.c;
+        return '<td><span class="cnt ' + cls + '">' + txt + '</span></td>';
+      }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    // 合计行：每项目当日已约人数
+    var tot = PROJ.map(function (_, i) {
+      var s = 0, any = false;
+      rows.forEach(function (r) { if (r[1][i]) { s += r[1][i].b; any = true; } });
+      return '<td>' + (any ? s + ' 人' : '—') + '</td>';
+    }).join('');
+    var f = '<tfoot><tr><td class="tm">合计</td>' + tot + '</tr></tfoot>';
+    el.innerHTML = h + b + f;
+  }
+
+  function pickDateByKey(k) { sel = k; renderStrip(); renderTable(); }
+  function pickDate(i) { pickDateByKey(DAYS[i].dd); }
+
+  // ---- 通知列表（含新增的两类审核提醒） ----
+  var items = [
+    { id:'i0',  type:'reviewRes',  project:'法兰绒深烘咖啡', date:'10-05', s:'14:00', e:'15:30', name:'张先生', phone:'138****8001', count:2, note:'',     ts:'5 分钟前',  read:false },
+    { id:'i0b', type:'reviewDish', project:'提拉米苏',       proj:'店铺菜单', rating:5, text:'这款甜品口感细腻，甜度刚好，配手冲很搭。', imgs:2, name:'小李', ts:'12 分钟前', read:false },
+    { id:'i1',  type:'new',        project:'法兰绒深烘咖啡', date:'10-03', s:'14:00', e:'16:00', name:'张先生', phone:'138****5678', count:2, note:'靠窗位，两位',   ts:'1 小时前',  read:false },
+    { id:'i2',  type:'cancel',     project:'清酒品鉴',       date:'10-03', s:'19:00', e:'21:00', name:'李女士', phone:'159****2341', count:4, note:'临时有事',       ts:'2 小时前',  read:false },
+    { id:'i3',  type:'new',        project:'法兰绒研习社',   date:'10-04', s:'10:00', e:'12:00', name:'王先生', phone:'186****9002', count:1, note:'首次参加',       ts:'昨天 18:20', read:true },
+    { id:'i4',  type:'new',        project:'法兰绒深烘咖啡', date:'10-02', s:'15:00', e:'17:00', name:'陈女士', phone:'137****1120', count:3, note:'',               ts:'昨天 09:12', read:true }
+  ];
+  function star(n) { var c = Math.max(0, Math.min(5, Math.round(n || 0))); return '★★★★★'.slice(0, c) + '☆☆☆☆☆'.slice(0, 5 - c); }
+  var filter = 'all';
+  function unread() { return items.filter(function (x) { return !x.read; }).length; }
+  function render() {
+    var n = unread();
+    var el = document.getElementById('hub-n');
+    el.textContent = n; el.className = 'n' + (n ? '' : ' zero');
+    document.getElementById('hub-nd').textContent = n ? (n + ' 条未读') : '暂无新通知';
+    var arr = items.filter(function (x) { return filter === 'all' || !x.read; });
+    document.getElementById('list').innerHTML = arr.length ? arr.map(function (x) {
+      var dot = x.read ? '' : '<div class="dot"></div>';
+      var un = x.read ? '' : 'un';
+      // 评价类：字段与预约类完全不同，单独一条支路
+      if (x.type === 'reviewDish') {
+        return '<div class="item ' + un + '" onclick="openD(\'' + x.id + '\')">'
+          + '<div class="bar"></div><div class="bd">'
+          + '<div class="r1">' + dot + '<b>评论审核 · ' + x.project + '</b><span class="tag dish">评论审核</span></div>'
+          + '<div class="r2"><span class="stars">' + star(x.rating) + '</span>　' + x.name + '　' + x.text + '</div>'
+          + '<div class="r3">' + x.ts + (x.imgs ? '　·　' + x.imgs + ' 张图' : '') + '</div></div></div>';
+      }
+      var isRev = x.type === 'reviewRes';
+      var isCancel = x.type === 'cancel';
+      var title = isCancel ? '取消预约' : (isRev ? '预约审核' : '新预约');
+      var tagCls = isCancel ? 'cancel' : (isRev ? 'wait' : '');
+      var tagTx = isCancel ? '取消' : (isRev ? '预约审核' : '新建');
+      return '<div class="item ' + un + '" onclick="openD(\'' + x.id + '\')">'
+        + '<div class="bar"></div><div class="bd">'
+        + '<div class="r1">' + dot
+        + '<b>' + title + ' · ' + x.project + '</b>'
+        + '<span class="tag ' + tagCls + '">' + tagTx + '</span></div>'
+        + '<div class="r2">' + x.date + ' ' + x.s + '-' + x.e + '　' + x.name + '　' + x.count + ' 人</div>'
+        + '<div class="r3">' + x.ts + (x.note ? '　·　' + x.note : '') + '</div></div></div>';
+    }).join('') : '<div class="hint" style="padding:40px 0">暂无通知</div>';
+  }
+  function openD(id) {
+    var cur = items.filter(function (x) { return x.id === id; })[0];
+    if (!cur) return;
+    cur.read = true;
+    var html;
+    // ---- 评论审核 ----
+    if (cur.type === 'reviewDish') {
+      html = '<div class="dsec">评论审核</div><div class="dl">'
+        + row('菜品', cur.project) + row('所属项目', cur.proj || '—')
+        + row('评分', '<span class="stars">' + star(cur.rating) + '</span> ' + cur.rating + '.0')
+        + row('评价人', cur.name) + row('评价内容', '<div class="rtext">' + cur.text + '</div>')
+        + row('图片', cur.imgs ? cur.imgs + ' 张（去评价管理页查看）' : '无')
+        + row('审核状态', '<span class="st-wait">待审核（暂不对外展示、不计入评分）</span>')
+        + row('提交时间', cur.ts) + '</div>'
+        + '<div class="btn pri">去评价管理 ›</div>'
+        + '<div class="btn sec" onclick="go(\'inbox\')">返回列表</div>'
+        + '<div class="hint">去评价管理 → pages/admin/reviewAdmin/reviewAdmin（默认落「待审核」tab）</div>';
+      document.getElementById('detail').innerHTML = html;
+      go('detail'); render();
+      return;
+    }
+    // ---- 预约类（新 / 取消 / 待审核）----
+    var isRev = cur.type === 'reviewRes';
+    var isCancel = cur.type === 'cancel';
+    var title = isCancel ? '取消预约' : (isRev ? '预约审核' : '新预约');
+    html = '<div class="dsec">' + title + '</div><div class="dl">'
+      + row('项目', cur.project) + row('日期', cur.date) + row('场次', cur.s + ' - ' + cur.e)
+      + row('预订人', cur.name) + row('人数', cur.count + ' 人') + row('手机号', cur.phone)
+      + row('备注', cur.note || '—')
+      // 待审核把「操作方」换成「审核状态」——它最有用的信息是「还没定，名额暂被占着」
+      + (isRev
+        ? row('审核状态', '<span class="st-wait">待审核（名额已暂时占用，通过后转为确认）</span>')
+        : row('操作方', isCancel ? '顾客取消' : '顾客下单'))
+      + row('提交时间', cur.ts) + '</div>'
+      + (isRev
+        ? '<div class="btn pri">去审核 ›</div><div class="btn sec">查看该预约</div>'
+        : '<div class="btn pri">查看该预约</div>')
+      + '<div class="btn sec" onclick="go(\'inbox\')">返回列表</div>'
+      + '<div class="hint">打开详情即视为已读。' + (isRev ? '去审核 → pages/admin/review/review' : '') + '</div>';
+    document.getElementById('detail').innerHTML = html;
+    go('detail'); render();
+  }
+  function row(k, v) { return '<div class="row"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
+  function readAll() { items.forEach(function (x) { x.read = true; }); render(); }
+
+  function go(s) {
+    ['hub','inbox','detail'].forEach(function (k) {
+      document.getElementById('s-' + k).style.display = (k === s) ? '' : 'none';
+    });
+    document.getElementById('b-hub').className = (s === 'hub') ? 'on' : 'off';
+    document.getElementById('b-inbox').className = (s === 'inbox') ? 'on' : 'off';
+    document.getElementById('b-detail').className = (s === 'detail') ? 'on' : 'off';
+  }
+  document.getElementById('t-all').onclick = function () { filter = 'all'; this.className = 'on'; document.getElementById('t-un').className = ''; render(); };
+  document.getElementById('t-un').onclick = function () { filter = 'un'; this.className = 'on'; document.getElementById('t-all').className = ''; render(); };
+
+  renderStrip(); renderTable(); render(); go('inbox');
+</script>
+</body>
+</html>

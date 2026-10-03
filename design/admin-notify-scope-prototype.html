@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员通知按项目分配 · 改造原型（含新增项目处理）</title>
+<style>
+  :root{
+    --bg:#fafafa; --card:#fff; --ink:#1a1a1a; --muted:#8a8a8a;
+    --line:#e8e8e8; --accent:#7A5230; --accent-soft:#f3ece4;
+    --ok:#2e7d32; --ok-soft:#e8f3e9; --warn:#b3621d; --warn-soft:#fbf0e2;
+    --bad:#b3261e; --bad-soft:#fbe9e7; --chip:#f0f0f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.6;font-size:14px}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 18px 80px}
+  header h1{font-size:22px;margin:0 0 4px}
+  header p{color:var(--muted);margin:0 0 18px;max-width:780px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 22px;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+  nav{position:sticky;top:0;z-index:20;background:var(--bg);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);margin-bottom:22px}
+  nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;
+    border-radius:20px;cursor:pointer;font-size:13px;transition:.15s}
+  nav button:hover{border-color:var(--accent)}
+  nav button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  section{display:none;animation:fade .2s ease}
+  section.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+  .card h3{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h3 .n{background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+  .muted{color:var(--muted)}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--chip);color:#555}
+  .tag.accent{background:var(--accent-soft);color:var(--accent)}
+  .tag.ok{background:var(--ok-soft);color:var(--ok)}
+  .tag.warn{background:var(--warn-soft);color:var(--warn)}
+  .tag.bad{background:var(--bad-soft);color:var(--bad)}
+
+  .arch{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .flow{display:flex;flex-direction:column;gap:0;margin-top:6px}
+  .node{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;font-size:13px}
+  .node.trigger{background:var(--accent-soft);border-color:#e3d5c5}
+  .node.fn{background:#fff;border-color:var(--accent)}
+  .node.out{background:var(--ok-soft);border-color:#cfe6d1}
+  .arrow{text-align:center;color:var(--accent);font-size:16px;line-height:1.4;margin:-2px 0}
+  .note-inline{font-size:12px;color:var(--muted);margin-top:8px;padding-left:2px}
+  code{background:#f3f3f3;border-radius:4px;padding:1px 5px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+
+  .matrix{width:100%;border-collapse:collapse;font-size:13px}
+  .matrix th,.matrix td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:center}
+  .matrix th.rowhead,.matrix td.rowhead{text-align:left;min-width:120px}
+  .matrix thead th{background:#faf7f3;color:var(--accent);font-weight:600;font-size:12px}
+  .matrix thead th .scope-toggle{margin-top:5px}
+  .adm-name{font-weight:600}
+  .cell{cursor:pointer;border-radius:6px;padding:6px;margin:0 auto;width:34px;height:34px;
+    display:flex;align-items:center;justify-content:center;border:1px solid transparent;transition:.12s}
+  .cell.on{background:var(--ok-soft);border-color:#bfe0c2;color:var(--ok)}
+  .cell.off{background:#f6f6f6;color:#bbb}
+  .cell.locked{background:var(--accent-soft);border-color:#e3d5c5;color:var(--accent);cursor:default}
+  .cell:hover:not(.locked){border-color:var(--accent)}
+  .scope-toggle{display:inline-flex;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:11px}
+  .scope-toggle button{border:0;background:#fff;padding:3px 9px;cursor:pointer;color:var(--muted)}
+  .scope-toggle button.on{background:var(--accent);color:#fff}
+  .col-actions{display:flex;gap:8px;justify-content:flex-start;flex-wrap:wrap;margin:8px 0}
+  .col-actions button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer}
+  .col-actions button.pri{border-color:var(--accent);color:var(--accent)}
+  .col-actions button:hover{border-color:var(--accent);color:var(--accent)}
+
+  .sim{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+  .ctrl-row{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+  .ctrl-row label{font-size:12px;color:var(--muted);min-width:64px}
+  select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:13px;min-width:170px}
+  .recipient{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;min-height:40px}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--ok-soft);color:var(--ok);
+    border:1px solid #bfe0c2;border-radius:16px;padding:4px 12px;font-size:12px}
+  .pill .role{font-size:10px;opacity:.7}
+  .diff-box{border:1px dashed var(--line);border-radius:8px;padding:10px;font-size:12px;color:var(--muted)}
+  .diff-box b{color:var(--ink)}
+
+  .step{display:flex;gap:12px;margin-bottom:10px}
+  .step .num{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px}
+  pre{background:#1e1e1e;color:#e6e6e6;border-radius:10px;padding:14px;overflow:auto;font-size:12.5px;line-height:1.5;
+    font-family:ui-monospace,Menlo,monospace}
+  .pre .c{color:#6b7a85}.pre .s{color:#c3e88d}.pre .f{color:#82aaff}.pre .k{color:#c792ea}
+
+  .mock{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .phone{border:1px solid var(--line);border-radius:18px;background:#fff;padding:0;overflow:hidden;max-width:340px}
+  .phone .bar{background:var(--accent);color:#fff;font-size:13px;padding:10px 14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .phone .body{padding:12px}
+  .m-card{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
+  .m-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:3px 0}
+  .m-sec{font-size:12px;font-weight:600;margin:6px 0 4px}
+  .m-btn{border:1px solid var(--accent);color:var(--accent);background:#fff;border-radius:8px;padding:5px 10px;font-size:12px}
+  .m-btn.ghost{border-color:var(--line);color:#666}
+  .m-add{border:1px dashed var(--accent);color:var(--accent);border-radius:8px;padding:8px;text-align:center;font-size:12px;cursor:pointer}
+  .hl{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px;position:relative}
+  .hl::before{content:"新增";position:absolute;top:-9px;left:8px;background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:6px}
+  .cap{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
+  .foot{font-size:12px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+  @media(max-width:760px){.arch,.sim,.mock{grid-template-columns:1fr}.matrix{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>管理员通知「按项目分配」改造 · 交互原型（含新增项目处理）</h1>
+    <p>当前所有 owner/manager 都会收到<b>全部项目</b>的通知。本次改造在<b>管理员配置页</b>内新增「按项目分配」能力：指定「哪些管理员接收哪些项目」的新预约 / 取消 / 待审核通知。关键边界——<b>新增项目默认通知全体管理员</b>（与现状一致、零丢单），店主随后可收窄。下方原型展示结构差异、可交互矩阵、分配逻辑、新增项目处理与前后页面差异。</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--accent)"></i>品牌色 #7A5230</span>
+      <span><i class="dot" style="background:var(--ok)"></i>接收通知</span>
+      <span><i class="dot" style="background:#bbb"></i>不接收</span>
+      <span><i class="dot" style="background:var(--accent-soft)"></i>全部项目（默认）</span>
+    </div>
+  </header>
+
+  <nav>
+    <button data-tab="s1" class="active">① 结构对比</button>
+    <button data-tab="s2">② 配置入口（可交互）</button>
+    <button data-tab="s3">③ 分配逻辑</button>
+    <button data-tab="s4">④ 新增项目处理</button>
+    <button data-tab="s5">⑤ 页面差异</button>
+  </nav>
+
+  <!-- ============ 1. 结构对比 ============ -->
+  <section id="s1" class="active">
+    <div class="card">
+      <h3><span class="n">1</span>现状结构（全部管理员 ↔ 全部项目）</h3>
+      <div class="arch">
+        <div>
+          <div class="flow">
+            <div class="node trigger">触发：createReservation / cancelReservation / 审核通过 / setReview</div>
+            <div class="arrow">↓</div>
+            <div class="node fn"><code>notifyAdmins(db, { templateId, data, page })</code><br><span class="muted">遍历 admins 中 role ∈ [owner, manager] 的<b>全部</b>人，逐个 sendSubscribe</span></div>
+            <div class="arrow">↓</div>
+            <div class="node out">收件人 = 全部 3 owner + 5 manager（共 8 人）<br><span class="muted">pushInbox 兜底同样面向全部人</span></div>
+          </div>
+          <div class="note-inline">⚠️ 函数签名<b>无 projectId</b>，无法区分项目；任何项目有新预约，8 人全收。</div>
+        </div>
+        <div>
+          <h3 style="margin-top:0"><span class="n">2</span>改造后结构（项目维度可配）</h3>
+          <div class="flow">
+            <div class="node trigger">触发：同上，已携带 projectId，并读取 <code>project.notifyAdmins</code></div>
+            <div class="arrow">↓</div>
+            <div class="node fn"><code>notifyAdmins(db, { projectId, templateId, data, page })</code><br><span class="muted">若项目 <code>notifyAdmins==='all'</code> → 全部；否则只发在名单内的 owner/manager</span></div>
+            <div class="arrow">↓</div>
+            <div class="node out">收件人 = 该项目 notifyAdmins 指定的人</div>
+          </div>
+          <div class="note-inline">✅ 新项目 <code>notifyAdmins</code> 默认 <code>'all'</code> → 自动全员通知，<b>零丢单</b>；店主随后收窄。</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>数据模型变更（projects 集合文档）</h3>
+      <pre class="pre">// 在 projects 文档新增字段（缺失 = 'all'，兼容旧数据 / 新项目）
+{
+  _id: 'p1', name: '法兰绒深烘咖啡', ...,
+  notifyAdmins: 'all' | ['openid1','openid3']   // ★ 新增：谁收本项目通知
+}
+// 管理员文档无需改动（角色门控 + 订阅额度仍在 admins 文档）
+// admins: { openid, role, nickname, note, subscriptions:{adminNew,adminCancel,adminReview} }</pre>
+      <div class="note-inline">采用<b>项目维度</b>存储而非管理员维度：新增项目天然默认全员（安全），避免「白名单模型下新项目漏通知被收窄管理员」的坑；管理员维度的「通知范围」编辑视图由前端跨项目计算得出，写入各 project 文档。</div>
+    </div>
+  </section>
+
+  <!-- ============ 2. 配置入口（可交互） ============ -->
+  <section id="s2">
+    <div class="card">
+      <h3><span class="n">2</span>通知分配矩阵（可交互 · 列=项目，行=管理员）</h3>
+      <p class="muted" style="margin-top:0">在 <b>管理员管理页（admins）</b> 每位管理员卡片上加「通知范围」→ 弹出此矩阵；同样可在 <b>projectConfig（每项目「通知管理员」）</b> 编辑，二者写回同一个 <code>projects.notifyAdmins</code>。点格子试改，右侧模拟器实时显示某项目事件会通知到谁。</p>
+      <div class="col-actions">
+        <button onclick="allOn()">全部项目（一键还原为 all）</button>
+        <button onclick="allCustom()">全部改为指定（全员）</button>
+        <button class="pri" onclick="addProject()">＋ 模拟新增项目</button>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="matrix" id="matrix"></table>
+      </div>
+      <div class="note-inline">⚠️ 列头自带「全部 / 指定」开关：切到「指定」后逐管理员勾选；新增项目默认「全部」→ 整列默认全勾（见 ④）。</div>
+    </div>
+
+    <div class="card">
+      <h3>实时模拟：某项目发生事件 → 谁会收到通知</h3>
+      <div class="sim">
+        <div>
+          <div class="ctrl-row">
+            <label>项目</label>
+            <select id="simProject"></select>
+          </div>
+          <div class="ctrl-row">
+            <label>事件类型</label>
+            <select id="simEvent">
+              <option value="new">新预约（adminNew）</option>
+              <option value="cancel">预约取消（adminCancel）</option>
+              <option value="review">待审核（adminReview）</option>
+            </select>
+          </div>
+          <div class="ctrl-row">
+            <label>改造开关</label>
+            <span class="scope-toggle">
+              <button id="modeNew" class="on" onclick="setMode('new')">按项目分配（新）</button>
+              <button id="modeOld" onclick="setMode('old')">全部管理员（旧）</button>
+            </span>
+          </div>
+          <div class="recipient" id="recipients"></div>
+        </div>
+        <div>
+          <div class="diff-box" id="diffBox"></div>
+          <div class="note-inline">说明：旧逻辑下，无论哪个项目、何种事件，通知都发给全部 8 名管理员；新逻辑下按该项目 <code>notifyAdmins</code> 过滤。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. 分配逻辑 ============ -->
+  <section id="s3">
+    <div class="card">
+      <h3><span class="n">3</span>通知分配逻辑（后端 notifyAdmins 改造）</h3>
+      <div class="step"><div class="num">1</div><div>触发函数已携带 <code>projectId</code>，并读取该项目文档的 <code>notifyAdmins</code> 字段。</div></div>
+      <div class="step"><div class="num">2</div><div><code>listAdminsFull(db)</code> 取出全部 owner+manager（角色门控<b>不变</b>）。</div></div>
+      <div class="step"><div class="num">3</div><div>若 <code>notifyAdmins==='all'</code> → 全部发送；否则只保留 <code>openid ∈ notifyAdmins</code> 的管理员进入后续发送。</div></div>
+      <div class="step"><div class="num">4</div><div><code>pushInbox</code> 兜底同步按同一名单过滤，保证「不丢单」留痕也只对该项目范围内管理员可见。</div></div>
+      <div class="step"><div class="num">5</div><div>字段缺失 / 非法 → 按 <code>'all'</code> 处理，历史项目与新增项目均零改动全收（向后兼容 + 新项目安全）。</div></div>
+      <pre class="pre"><span class="c">// _lib/index.js  notifyAdmins 改动（伪代码）</span>
+<span class="k">async function</span> <span class="f">notifyAdmins</span>(db, { projectId, templateId, data, page }) {
+  <span class="k">const</span> proj = <span class="k">await</span> db.collection(<span class="s">'projects'</span>).doc(projectId).get()
+  <span class="k">const</span> na = (proj.data &amp;&amp; proj.data.notifyAdmins) || <span class="s">'all'</span>  <span class="c">// 缺失=all（含新项目）</span>
+  <span class="k">const</span> allowed = na === <span class="s">'all'</span> ? <span class="k">null</span> : <span class="k">new</span> Set(na)
+
+  <span class="k">const</span> admins = <span class="k">await</span> listAdminsFull(db)          <span class="c">// role ∈ owner/manager</span>
+  <span class="k">for</span> (<span class="k">const</span> a <span class="k">of</span> admins) {
+    <span class="c">// ★ 按项目名单过滤</span>
+    <span class="k">if</span> (allowed &amp;&amp; !allowed.has(a.openid)) {
+      results.push({ skipped: <span class="k">true</span>, reason: <span class="s">'not-in-scope'</span>, openid: a.openid })
+      <span class="k">continue</span>
+    }
+    <span class="c">// 既有逻辑：订阅额度校验 + sendSubscribe（不变）</span>
+    <span class="k">if</span> (subKey &amp;&amp; !adminSubbedOf(a.subscriptions, subKey)) <span class="k">continue</span>
+    <span class="k">const</span> r = <span class="k">await</span> sendSubscribe({ openid: a.openid, templateId, data, page })
+    <span class="k">if</span> (r.errCode === <span class="s">43101</span>) <span class="k">await</span> markAdminSubInvalid(db, a._id, subKey)
+    results.push(r)
+  }
+  <span class="k">return</span> results
+}</pre>
+      <div class="note-inline">权限：配置入口保持 <b>owner 专属</b>（与 notifyConfig / admins 页一致）。manager 仍正常接收其被授权的项目通知，但不能改分配规则。</div>
+    </div>
+  </section>
+
+  <!-- ============ 4. 新增项目处理 ============ -->
+  <section id="s4">
+    <div class="card">
+      <h3><span class="n">4</span>新增项目怎么办？——默认全员，随后收窄</h3>
+      <div class="step"><div class="num">1</div><div><b>创建项目</b>（createProject / publishProject）时，新文档 <code>notifyAdmins</code> 字段默认写为 <code>'all'</code>。</div></div>
+      <div class="step"><div class="num">2</div><div>因此新项目一旦有人预约，<b>全体 owner+manager 都会收到通知</b>——与现状完全一致，<b>不会丢单</b>。</div></div>
+      <div class="step"><div class="num">3</div><div>店主随后在矩阵里把该项目从「全部」切到「指定」，剔除不需要的管理员；被剔除者从此不再收到该项目通知。</div></div>
+      <div class="step"><div class="num">4</div><div>对比「管理员白名单」模型：那种模型下新项目不在任何人白名单 → 被收窄的管理员收不到，需手工补；「项目维度 + 默认 all」天然规避此坑。</div></div>
+      <div class="col-actions">
+        <button class="pri" onclick="addProject();document.querySelector('nav button[data-tab=s2]').click()">＋ 模拟新增项目并查看矩阵</button>
+      </div>
+      <div class="diff-box" id="newProjBox">点击上方按钮，将在矩阵末尾追加一列「新项目·甜品品鉴」，其「全部/指定」默认 <b>全部</b> → 整列全勾、全体管理员都会收到它的通知；你再把它切到「指定」即可收窄。</div>
+    </div>
+  </section>
+
+  <!-- ============ 5. 页面差异 ============ -->
+  <section id="s5">
+    <div class="card">
+      <h3><span class="n">5</span>页面差异：管理员管理页（admins）</h3>
+      <div class="mock">
+        <div>
+          <div class="phone">
+            <div class="bar"><span>管理员管理</span><span>owner</span></div>
+            <div class="body">
+              <div class="m-sec">管理员列表</div>
+              <div class="m-card">
+                <div class="m-row"><b>超级管理员</b><span class="tag accent">owner</span></div>
+                <div class="m-row"><span class="muted" style="font-size:12px">倪师傅</span></div>
+                <div class="m-row">
+                  <button class="m-btn ghost">升/降权</button>
+                  <button class="m-btn ghost">移除</button>
+                  <button class="m-btn">设置昵称</button>
+                </div>
+              </div>
+              <div class="m-card">
+                <div class="m-row"><b>普通管理员</b><span class="tag">manager</span></div>
+                <div class="m-row"><span class="muted" style="font-size:12px">苏打</span></div>
+                <div class="m-row">
+                  <button class="m-btn ghost">升为超级</button>
+                  <button class="m-btn ghost">移除</button>
+                  <button class="m-btn">设置昵称</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="cap">改造前：无通知范围概念</div>
+        </div>
+        <div>
+          <div class="phone">
+            <div class="bar"><span>管理员管理</span><span>owner</span></div>
+            <div class="body">
+              <div class="m-sec">管理员列表</div>
+              <div class="m-card hl">
+                <div class="m-row"><b>超级管理员</b><span class="tag accent">owner</span></div>
+                <div class="m-row"><span class="muted" style="font-size:12px">倪师傅</span></div>
+                <div class="m-row"><span class="tag ok">通知范围：全部项目</span></div>
+                <div class="m-row">
+                  <button class="m-btn ghost">升/降权</button>
+                  <button class="m-btn ghost">移除</button>
+                  <button class="m-btn">设置昵称</button>
+                  <button class="m-btn">通知范围</button>
+                </div>
+              </div>
+              <div class="m-card hl">
+                <div class="m-row"><b>普通管理员</b><span class="tag">manager</span></div>
+                <div class="m-row"><span class="muted" style="font-size:12px">苏打</span></div>
+                <div class="m-row"><span class="tag warn">通知范围：指定 2 项</span></div>
+                <div class="m-row">
+                  <button class="m-btn ghost">升为超级</button>
+                  <button class="m-btn ghost">移除</button>
+                  <button class="m-btn">设置昵称</button>
+                  <button class="m-btn">通知范围</button>
+                </div>
+              </div>
+              <div class="m-add">＋ 点「通知范围」弹出项目分配矩阵</div>
+            </div>
+          </div>
+          <div class="cap">改造后：卡片新增「通知范围」按钮 + 范围徽标（高亮=新增）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>页面差异：项目配置页（projectConfig）新增「通知管理员」</h3>
+      <div class="mock">
+        <div>
+          <div class="phone">
+            <div class="bar"><span>项目配置 · 法兰绒深烘咖啡</span></div>
+            <div class="body">
+              <div class="m-card"><div class="m-sec">项目名称 / 介绍</div></div>
+              <div class="m-card"><div class="m-sec">场次模版</div></div>
+              <div class="m-card"><div class="m-sec">预约开关 / 短信开关</div></div>
+              <button class="m-btn" style="width:100%">保存</button>
+            </div>
+          </div>
+          <div class="cap">改造前</div>
+        </div>
+        <div>
+          <div class="phone">
+            <div class="bar"><span>项目配置 · 法兰绒深烘咖啡</span></div>
+            <div class="body">
+              <div class="m-card"><div class="m-sec">项目名称 / 介绍</div></div>
+              <div class="m-card"><div class="m-sec">场次模版</div></div>
+              <div class="m-card hl">
+                <div class="m-sec">通知管理员 <span class="tag accent">新</span></div>
+                <div class="m-row"><span class="tag ok">全部管理员</span><span class="muted" style="font-size:12px">点按编辑</span></div>
+                <button class="m-btn" style="width:100%">编辑接收人 ›</button>
+              </div>
+              <div class="m-card"><div class="m-sec">预约开关 / 短信开关</div></div>
+              <button class="m-btn" style="width:100%">保存</button>
+            </div>
+          </div>
+          <div class="cap">改造后：新增「通知管理员」入口（同数据源）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>改造清单（落地时执行）</h3>
+      <table class="matrix" style="text-align:left">
+        <thead><tr><th class="rowhead">模块</th><th>改动</th><th>兼容性</th></tr></thead>
+        <tbody>
+          <tr><td class="rowhead">_lib/index.js</td><td><code>notifyAdmins</code> 读取 <code>project.notifyAdmins</code> 并按名单过滤；<code>pushInbox</code> 同步过滤</td><td class="tag ok">缺省 all</td></tr>
+          <tr><td class="rowhead">createReservation / cancelReservation / review* / setReview</td><td>调用处补传 <code>projectId</code></td><td class="tag ok">仅加参</td></tr>
+          <tr><td class="rowhead">createProject / publishProject</td><td>新项目 <code>notifyAdmins</code> 默认写入 <code>'all'</code></td><td class="tag ok">新项目安全</td></tr>
+          <tr><td class="rowhead">listProjects / getProject</td><td>返回中携带 <code>notifyAdmins</code></td><td class="tag ok">缺省补全</td></tr>
+          <tr><td class="rowhead">admins 页（前端）</td><td>卡片加「通知范围」按钮 → 弹出矩阵（跨项目计算该管理员范围，写回各 project）</td><td class="tag accent">新增</td></tr>
+          <tr><td class="rowhead">projectConfig 页（前端）</td><td>每项目「通知管理员」多选（写 <code>projects.notifyAdmins</code>）</td><td class="tag accent">新增</td></tr>
+          <tr><td class="rowhead">notifyConfig 页（前端）</td><td>新增「管理员通知分配」摘要卡 + 跳转</td><td class="tag accent">新增</td></tr>
+          <tr><td class="rowhead">存储</td><td><code>projects</code> 集合文档加 <code>notifyAdmins</code> 字段（缺失='all'）</td><td class="tag ok">宽松读取</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="foot">
+    原型基于代码核实：<code>_lib/index.js:395 notifyAdmins</code>、<code>admins</code> 集合（3 owner + 5 manager）、
+    <code>notifyConfig</code>/<code>admins</code>/<code>projectConfig</code> 页。真实管理员：倪师傅/刘师傅/唐甜（owner），二曜路8号店铺/苏打/棠棠/邓玄业/小古（manager）；
+    项目：法兰绒深烘咖啡 / 清酒品鉴 / 法兰绒研习社 / 店铺菜单。本原型仅用于方案评审，落地前以代码为准。
+  </div>
+</div>
+
+<script>
+  const ADMINS = [
+    {id:'a1', name:'倪师傅', role:'owner', openid:'o1'},
+    {id:'a2', name:'刘师傅', role:'owner', openid:'o2'},
+    {id:'a3', name:'唐甜', role:'owner', openid:'o3'},
+    {id:'a4', name:'二曜路8号店铺', role:'manager', openid:'o4'},
+    {id:'a5', name:'苏打', role:'manager', openid:'o5'},
+    {id:'a6', name:'棠棠', role:'manager', openid:'o6'},
+    {id:'a7', name:'邓玄业', role:'manager', openid:'o7'},
+    {id:'a8', name:'小古', role:'manager', openid:'o8'},
+  ];
+  let PROJECTS = [
+    {id:'p1', name:'法兰绒深烘咖啡'},
+    {id:'p2', name:'清酒品鉴'},
+    {id:'p3', name:'法兰绒研习社'},
+    {id:'p4', name:'店铺菜单'},
+  ];
+  let nextPid = 5;
+
+  // 项目维度状态：pid -> {mode:'all'|'custom', admins:Set(adminId)}
+  const projState = {};
+  function initProj(id){ projState[id] = { mode:'all', admins:new Set(ADMINS.map(a=>a.id)) }; }
+  PROJECTS.forEach(p => initProj(p.id));
+
+  function renderMatrix(){
+    const t = document.getElementById('matrix');
+    let html = '<thead><tr><th class="rowhead">管理员</th>';
+    PROJECTS.forEach(p => {
+      const s = projState[p.id];
+      html += `<th>${p.name}<br><span class="scope-toggle" style="margin-top:5px">
+        <button class="${s.mode==='all'?'on':''}" data-pmode="all" data-p="${p.id}">全部</button>
+        <button class="${s.mode==='custom'?'on':''}" data-pmode="custom" data-p="${p.id}">指定</button></span></th>`;
+    });
+    html += '<th>角色</th></tr></thead><tbody>';
+    ADMINS.forEach(a => {
+      html += `<tr><td class="rowhead"><span class="adm-name">${a.name}</span></td>`;
+      PROJECTS.forEach(p => {
+        const s = projState[p.id];
+        const on = s.mode==='all' || s.admins.has(a.id);
+        const cls = s.mode==='all' ? 'cell locked on' : (on ? 'cell on' : 'cell off');
+        html += `<td><div class="${cls}" data-a="${a.id}" data-p="${p.id}">${on?'✓':''}</div></td>`;
+      });
+      html += `<td><span class="tag">${a.role}</span></td></tr>`;
+    });
+    html += '</tbody>';
+    t.innerHTML = html;
+
+    t.querySelectorAll('.cell').forEach(c => {
+      c.onclick = () => {
+        const a = c.dataset.a, p = c.dataset.p, s = projState[p];
+        if(s.mode==='all'){ s.mode='custom'; s.admins = new Set(ADMINS.map(x=>x.id)); s.admins.delete(a); }
+        else {
+          if(s.admins.has(a)) s.admins.delete(a); else s.admins.add(a);
+          if(s.admins.size === ADMINS.length) s.mode='all';
+        }
+        renderMatrix(); renderSim();
+      };
+    });
+    t.querySelectorAll('.scope-toggle button[data-pmode]').forEach(b => {
+      b.onclick = () => {
+        const p = b.dataset.p, s = projState[p];
+        if(b.dataset.pmode==='all') s.mode='all';
+        else { s.mode='custom'; if(s.admins.size===0) s.admins = new Set(ADMINS.map(x=>x.id)); }
+        renderMatrix(); renderSim();
+      };
+    });
+  }
+
+  function allOn(){ PROJECTS.forEach(p => initProj(p.id)); renderMatrix(); renderSim(); }
+  function allCustom(){ PROJECTS.forEach(p => { projState[p.id].mode='custom'; if(projState[p.id].admins.size===0) projState[p.id].admins=new Set(ADMINS.map(x=>x.id)); }); renderMatrix(); renderSim(); }
+
+  function addProject(){
+    const id = 'p'+nextPid++;
+    const name = '新项目·甜品品鉴';
+    PROJECTS.push({id, name});
+    initProj(id);   // 默认 mode:'all' → 全体管理员
+    renderMatrix();
+    const sp = document.getElementById('simProject');
+    const o = document.createElement('option'); o.value=id; o.textContent=name; sp.appendChild(o); sp.value=id;
+    renderSim();
+    const box = document.getElementById('newProjBox');
+    if(box) box.innerHTML = `已新增「<b>${name}</b>」，其 notifyAdmins 默认 <code>'all'</code> → 矩阵整列全勾，<b>全体 8 名管理员都会收到它的通知</b>（与现状一致，零丢单）。把它切到「指定」即可剔除不需要的人。`;
+  }
+
+  let simMode = 'new';
+  function setMode(m){ simMode=m; document.getElementById('modeNew').classList.toggle('on', m==='new'); document.getElementById('modeOld').classList.toggle('on', m==='old'); renderSim(); }
+
+  function recipientsOf(pid){
+    const s = projState[pid];
+    if(!s || s.mode==='all') return ADMINS.slice();
+    return ADMINS.filter(a => s.admins.has(a.id));
+  }
+
+  function renderSim(){
+    const pid = document.getElementById('simProject').value;
+    const ev = document.getElementById('simEvent').value;
+    const box = document.getElementById('recipients');
+    const diff = document.getElementById('diffBox');
+    if(simMode==='old'){
+      box.innerHTML = ADMINS.map(a=>`<span class="pill">${a.name}<span class="role">${a.role}</span></span>`).join('');
+      diff.innerHTML = `<b>旧逻辑</b>：项目「${nameOf(pid)}」的「${evName(ev)}」→ 通知 <b>全部 ${ADMINS.length} 人</b>，与项目无关。`;
+    } else {
+      const rec = recipientsOf(pid);
+      box.innerHTML = rec.length
+        ? rec.map(a=>`<span class="pill">${a.name}<span class="role">${a.role}</span></span>`).join('')
+        : '<span class="muted">无人接收（请到矩阵勾选）</span>';
+      const skipped = ADMINS.length - rec.length;
+      diff.innerHTML = `<b>新逻辑</b>：项目「${nameOf(pid)}」的「${evName(ev)}」→ 通知 <b>${rec.length} 人</b>，跳过 <b>${skipped} 人</b>（不在本项目 notifyAdmins 名单）。`;
+    }
+  }
+  function nameOf(id){ const p=PROJECTS.find(x=>x.id===id); return p?p.name:id; }
+  function evName(v){ return v==='new'?'新预约':v==='cancel'?'预约取消':'待审核'; }
+
+  const sp = document.getElementById('simProject');
+  PROJECTS.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; sp.appendChild(o); });
+  sp.onchange = renderSim;
+  document.getElementById('simEvent').onchange = renderSim;
+
+  document.querySelectorAll('nav button').forEach(b=>{
+    b.onclick = () => {
+      document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById(b.dataset.tab).classList.add('active');
+    };
+  });
+
+  renderMatrix(); renderSim();
+</script>
+</body>
+</html>

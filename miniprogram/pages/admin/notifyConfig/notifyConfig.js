@@ -69,12 +69,23 @@ Page({
     expiredOffsetIdx: 0,
     dayBeforeHourIdx: 17,
     dayBeforeMinuteIdx: 30,
-    cancelDelayIdx: 1
+    cancelDelayIdx: 1,
+    projectScopes: []
   },
 
   onLoad() {
     this.guard(['owner']).then(role => {
       if (!role) return
+      // 管理员通知分配概览：各项目当前的 notifyAdmins 范围（与 admins 页矩阵同源）
+      call('listProjects').then(d => {
+        const scopes = (d.list || []).map(p => {
+          const na = p.notifyAdmins
+          const scope = (na == null || na === 'all' || !Array.isArray(na)) ? 'all' : 'list'
+          const text = scope === 'all' ? '全部管理员' : `指定 ${na.length} 人`
+          return { name: p.name, text, scope }
+        })
+        this.setData({ projectScopes: scopes })
+      }).catch(() => {})
       call('getNotifyConfig').then(d => {
         // —— 订阅开关 ——
         const sub = d.subscribe || {}
@@ -169,6 +180,9 @@ Page({
   },
 
   goSms() { wx.navigateTo({ url: '/pages/admin/smsConfig/smsConfig' }) },
+
+  // 跳转管理员管理页（含「通知范围」分配矩阵）
+  goAdmins() { wx.navigateTo({ url: '/pages/admin/admins/admins' }) },
 
   save() {
     const d = this.data

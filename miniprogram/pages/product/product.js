@@ -29,8 +29,10 @@ Page({
     imageFiles: []       // 已上传 fileID（上传后回填）
   },
   onLoad(q) {
-    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
-    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+    // 显式启用右上角「转发」菜单（不调用则菜单置灰不可用）
+    // ⚠️ 刻意不开 shareTimeline（朋友圈）—— 单页模式无登录态/禁路由，本页数据全靠云函数。
+    //     详见 pages/index/index.js:onShow 处的完整说明。
+    wx.showShareMenu({ menus: ['shareAppMessage'] })
     this.setData({ productId: q.productId || '' })
     this.load()
   },
@@ -144,11 +146,4 @@ Page({
       path: '/pages/product/product?productId=' + (this.data.productId || '')
     }
   },
-  onShareTimeline() {
-    const p = this.data.product || {}
-    return {
-      title: (p.name ? p.name + ' · ' : '') + '二曜路8号咖啡和清酒 · 菜品评价',
-      query: 'productId=' + (this.data.productId || '')
-    }
-  }
 })

@@ -44,6 +44,13 @@ exports.main = async (event) => {
   // 短信通知：每项目独立开关
   if (event.smsEnabled !== undefined) patch.smsEnabled = !!event.smsEnabled
   if (event.showSeatInfo !== undefined) patch.showSeatInfo = !!event.showSeatInfo
+  // 预约成功结果页的默认菜单分类（2026-10 新增）：存 menuCategories 的 _id，空串 = 全部。
+  // ⚠️ 分类是**全局跨项目**集合（见 _lib 关于 COL.categories 的注释），
+  //    但不同项目热销分类不同（咖啡 vs 清酒）→ 必须按项目配置。
+  // 分类被 deleteCategory 删除后这里会变成悬空引用，结果页读到时会校验并回退「全部」。
+  if (event.resultCategoryId !== undefined) {
+    patch.resultCategoryId = typeof event.resultCategoryId === 'string' ? event.resultCategoryId.slice(0, 64) : ''
+  }
   // 软删除（标记后可恢复，不影响历史预约）
   if (event.deleted !== undefined) patch.deleted = !!event.deleted
   // 预约截止规则：{ mode:'before'|'after', minutes }（场次开始前/开始后 N 分钟）
@@ -67,6 +74,19 @@ exports.main = async (event) => {
     )
       .filter(id => id !== projectId)
       .slice(0, 50)
+  }
+  // 通知管理员分配（项目维度）：'all' = 全员；或 openid 字符串数组（指定接收人）。
+  // ⚠️ 非法值（非 all/非数组/空数组）一律拒绝，避免误写成「无人接收」导致静默丢单。缺省不传则不改。
+  if (event.notifyAdmins !== undefined) {
+    if (event.notifyAdmins === 'all') {
+      patch.notifyAdmins = 'all'
+    } else if (Array.isArray(event.notifyAdmins)) {
+      const list = Array.from(new Set(event.notifyAdmins.map(x => String(x).trim()).filter(Boolean)))
+      if (!list.length) return fail('notifyAdmins 数组不能为空（如需全员请传 "all"）')
+      patch.notifyAdmins = list
+    } else {
+      return fail('notifyAdmins 须为 "all" 或 openid 数组')
+    }
   }
   patch.updatedAt = Date.now()
 

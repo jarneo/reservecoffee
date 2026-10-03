@@ -1,6 +1,7 @@
 <view class="page">
   <view class="searchbar">
-    <input class="search-input" placeholder="搜索昵称 / 手机号 / 标签" value="{{query}}" bindinput="onSearch" confirm-type="search"/>
+    <!-- 输入框样式统一走公共 .f-inp（app.wxss）：原先各页自己写 .search-input，高度靠原生默认值 → 矮且易截断 -->
+    <input class="f-inp" placeholder="搜索昵称 / 手机号 / 标签" value="{{query}}" bindinput="onSearch" confirm-type="search"/>
   </view>
 
   <!-- 固定筛选条件 -->
@@ -26,6 +27,10 @@
       <view class="sm muted">累计预约 <text class="num-ink">{{item.total}}</text> 次 · 首约 {{item.firstAtText}}</view>
       <view wx:if="{{item.lastAtText}}" class="xs muted">末约 {{item.lastAtText}}</view>
     </view>
+
+    <!-- 最近访问：与「末约」语义不同（末约=最近一次下单，访问=最近一次打开小程序），
+         两者都要有 —— 一个熟客可能很久没下单但刚打开过。缺失时显示「—」。 -->
+    <view class="meta"><view class="xs muted">最近访问 {{item.visitText}}</view></view>
 
     <view class="row between meta">
       <view class="xs muted">

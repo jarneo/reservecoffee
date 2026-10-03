@@ -1,0 +1,29 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+  <view wx:else="">
+    <view class="dsec">{{title}}</view>
+    <view class="dl">
+      <view wx:for="{{rows}}" wx:key="k" class="r">
+        <view class="k">{{item.k}}</view>
+        <view class="v">{{item.v}}</view>
+        <!-- 手机号行额外给「拨打 / 复制」：管理员看到新预约最常见的下一步就是联系顾客 -->
+        <view wx:if="{{item.k==='手机号' && phone}}" class="ops">
+          <button class="mini" catchtap="callPhone">拨打</button>
+          <button class="mini" catchtap="copyPhone">复制</button>
+        </view>
+      </view>
+    </view>
+
+    <view class="acts">
+      <!-- 主按钮：新预约/取消=「查看该预约」；预约审核=「去审核 ›」；评论审核=「去评价管理 ›」
+           统一走 goMain + data-a 分发（不用 bindtap="{{xxx}}" 动态事件名，可读性差且易出错） -->
+      <view class="btn block" bindtap="goMain" data-a="{{mainAction}}">{{mainText}}</view>
+      <!-- 次按钮：仅「待审核预约」有（去审核之外仍想看该预约） -->
+      <view wx:if="{{subText}}" class="btn ghost block" style="margin-top:16rpx" bindtap="goMain" data-a="{{subAction}}">{{subText}}</view>
+      <view class="btn ghost block" style="margin-top:16rpx" bindtap="back">返回列表</view>
+    </view>
+    <view class="foot">打开详情即视为已读（只影响你自己）。</view>
+  </view>
+</view>
+
+<path-bar />

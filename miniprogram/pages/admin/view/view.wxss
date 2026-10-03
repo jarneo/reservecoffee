@@ -33,3 +33,13 @@
 .sheet-mask { position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,.4); display:flex; align-items:flex-end; z-index:50; }
 .sheet { background:#fff; width:100%; padding:36rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); border-radius:24rpx 24rpx 0 0; }
 .noop {}
+
+/* 需求1：选中日期后展开的各场次 section（标题 + 容量徽标 + 本场人数，下挂预约人列表组件） */
+.session { border:1rpx solid var(--line); border-radius:16rpx; margin-bottom:16rpx; overflow:hidden; }
+.session-h { display:flex; align-items:center; justify-content:space-between; padding:18rpx 20rpx; background:var(--fill-2); border-bottom:1rpx solid var(--line); }
+.session-h .tm { font-weight:600; font-size:30rpx; }
+.session-meta { display:flex; align-items:center; gap:12rpx; }
+.session-meta .cnt { font-size:22rpx; color:var(--ink-3); }
+.session-badge { font-size:22rpx; border:1rpx solid var(--line); border-radius:999rpx; padding:4rpx 14rpx; color:var(--ink-2); }
+.session-badge.full { background:var(--fill); color:var(--ink-3); }
+.session-badge.paused { border-style:dashed; color:var(--ink-3); }

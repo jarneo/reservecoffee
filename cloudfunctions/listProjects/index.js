@@ -20,7 +20,9 @@ exports.main = async () => {
       maxParty: p.maxParty || 2,
       subscribeNotify: !!p.subscribeNotify,
       openDays: p.openDays || [],
-      advanceDays: p.advanceDays || 7
+      advanceDays: p.advanceDays || 7,
+      // 通知管理员分配：缺失/非法按 'all' 兜底（前端据此默认全勾，零丢单）
+      notifyAdmins: (p.notifyAdmins == null || p.notifyAdmins === 'all' || Array.isArray(p.notifyAdmins)) ? p.notifyAdmins || 'all' : 'all'
     }))
   return ok({ list })
 }

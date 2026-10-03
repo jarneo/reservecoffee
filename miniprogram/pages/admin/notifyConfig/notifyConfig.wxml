@@ -1,6 +1,18 @@
 <view class="page">
   <view class="banner">双重开关：项目配置里的「订阅/短信」总开关 + 本页单模板开关，二者皆为开启才会真正推送；任一关闭都不发。</view>
 
+  <!-- 管理员通知分配：项目维度概览 + 跳转矩阵 -->
+  <view class="card">
+    <view class="sec">管理员通知分配</view>
+    <view class="tip" style="text-align:left;margin-top:0;margin-bottom:10rpx">各项目可独立指定接收管理通知的管理员。默认全员，可在「管理员管理」页的「通知范围」矩阵统一调整。</view>
+    <view wx:for="{{projectScopes}}" wx:key="name" class="field row between">
+      <view class="label">{{item.name}}</view>
+      <view class="val">{{item.text}}</view>
+    </view>
+    <view wx:if="{{!projectScopes.length}}" class="note">暂无项目</view>
+    <button class="btn block" style="margin-top:12rpx" bindtap="goAdmins">前往分配矩阵 ›</button>
+  </view>
+
   <!-- 订阅消息 -->
   <view class="card">
     <view class="sec">订阅消息（微信订阅，需用户授权）</view>

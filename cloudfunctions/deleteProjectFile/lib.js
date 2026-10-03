@@ -60,11 +60,20 @@ async function getRole(openid) {
   return { role: 'none', openid }
 }
 
-// 首个进入者自动成为 owner（仅当 admins 中无 owner 时）
+// 首个进入者自动成为 owner —— 仅限「admins 集合为空」（全新环境的首次初始化）
+//
+// ⚠️ 安全修复（2026-10-02）：原实现查的是「有没有 role:'owner' 的记录」，
+//   于是「集合非空但恰好无 owner」（owner 被误删 / 数据写坏）时，
+//   **下一个打开小程序的人会被自动授予店主权限** —— 这是最隐蔽的提权路径：
+//   顾客只要等店主删错一次记录，就能拿到数据分析、顾客名录、黑名单、发短信、
+//   公众号菜单等全部 owner 能力。
+// 改为查「集合是否为空」：集合非空说明环境已初始化过，此时无论有没有 owner 都不再自动授予。
+//   异常态（应有 owner 却没了）交由人工修数据，而不是把权限送给任意顾客。
+// 兼容性：当前线上有 3 位 owner，本改动对该环境行为无任何变化。
 async function ensureOwner(openid) {
   if (!openid) return null
-  const owners = await db.collection(COL.admins).where({ role: 'owner' }).get()
-  if (owners.data.length) return null
+  const any = await db.collection(COL.admins).limit(1).get()
+  if (any.data.length) return null                       // 集合非空 → 绝不授予
   await db.collection(COL.admins).add({
     data: { openid, role: 'owner', note: '初始店主', inviterOpenid: '', createdAt: Date.now() }
   })
@@ -318,27 +327,135 @@ function shouldSkipSms(smsSw, wxRes) {
 // 判定一条订阅发送结果是否「确实送达微信侧」（供落库排查用）
 function wxDelivered(wxRes) { return !!(wxRes && wxRes.ok === true && !wxRes.skipped) }
 
-// 取所有管理员（role 为 owner 或 manager）的 openid，使 owner + manager 都收管理侧通知
-async function listAdminOpenids(db) {
+// ===== 管理员侧订阅状态（admins.subscriptions）=====
+// 为什么需要：微信管理侧订阅也是「一次性」授权（发一条消耗一条），用尽后微信返 43101。
+// 原先 notifyAdmins 无条件广播 → 额度耗尽后**管理员侧完全无感**（只写 notifyLogs 流水），
+// 表现为「以前收得到、现在收不到」，只能靠人肉反复点「续订管理推送」。
+// 落一份 admins.subscriptions 后：43101 即标记失效，管理台可高亮提示「该续订了」。
+// ⚠️ 缺省语义必须与顾客侧 subbedOf 一致（!== false 视为已订阅）——
+//    若改成「缺省 false」，存量管理员（从未写过该字段）在续订前将永久收不到，属静默回归。
+const ADMIN_SUB_KEYS = ['adminNew', 'adminCancel', 'adminReview']
+
+// 规整为 3 个已知键的布尔对象；未显式置 false 一律视为已订阅（缺省开）
+//
+// ⚠️ 不能照抄顾客侧 normalizeSubs 的 `!!(s && s[k] !== false)` 写法：
+//   那个写法在 s 为 undefined 时会因 `s &&` 短路得到 false（**缺省变拒绝**），
+//   平时靠 loadUserSubs 先兜一个 {} 才没暴露。本函数是纯函数、会被直接传
+//   a.subscriptions（存量管理员该字段为 undefined），故必须显式兜底。
+function normalizeAdminSubs(s) {
+  const src = s || {}
+  const out = {}
+  for (const k of ADMIN_SUB_KEYS) out[k] = !(src[k] === false)   // 只有严格 false 才算失效
+  return out
+}
+
+// 单个管理员订阅是否生效（缺省开；记录缺失也视为已订阅）
+function adminSubbedOf(subs, key) { return subs ? (subs[key] !== false) : true }
+
+// 模板 ID → 管理员订阅键（adminNew / adminCancel / adminReview）
+function adminSubKeyOfTemplate(templateId) {
+  if (!templateId) return ''
+  if (TPL.adminNew === templateId) return 'adminNew'
+  if (TPL.adminCancel === templateId) return 'adminCancel'
+  if (TPL.adminReview === templateId) return 'adminReview'
+  return ''
+}
+
+// 取所有管理员（role 为 owner 或 manager）的完整文档。
+// ⚠️ 返回整文档而非只取 openid：notifyAdmins 需要读 subscriptions（跳过已失效者省额度）
+//    并在 43101 时回写；且 _id 在回写时必需（admins 的主键是自增 _id，openid 只是普通字段）。
+async function listAdminsFull(db) {
   const res = await db.collection(COL.admins).where({ role: _.in(['owner', 'manager']) }).get().catch(() => ({ data: [] }))
-  return (res.data || []).map(a => a.openid).filter(Boolean)
+  return res.data || []
+}
+
+// 取所有管理员 openid（保留旧名，内部改走 listAdminsFull，避免两处各查一遍）
+async function listAdminOpenids(db) {
+  const list = await listAdminsFull(db)
+  return list.map(a => a.openid).filter(Boolean)
+}
+
+// 标记某管理员的某类管理推送已失效（仅 43101「用户未授权订阅模板」才写）。
+// ⚠️ 严格只认 43101：47003（字段/关键字非法）/47004（模板不存在）/-501001（凭证失效）
+//    都是配置或代码问题，写 false 会让管理台误导管理员「去续订」，而真正该做的是修配置。
+// ⚠️ 用点路径 subscriptions.<key> 更新，绝不整覆盖 —— 整覆盖会连带清掉另两个键的授权状态。
+async function markAdminSubInvalid(db, adminId, key) {
+  if (!adminId || !key || ADMIN_SUB_KEYS.indexOf(key) < 0) return
+  try {
+    await db.collection(COL.admins).doc(adminId).update({
+      data: { [`subscriptions.${key}`]: false, lastErrorAt: Date.now(), lastErrorKey: key }
+    })
+  } catch (e) {
+    console.warn('[notifyAdmins] 标记订阅失效失败（忽略）:', adminId, key, e && (e.message || e))
+  }
+}
+
+// 统一「项目 notifyAdmins 配置 → 接收范围」归一化。notifyAdmins 与 getInbox 收件箱收窄必须同源，
+// 否则会出现「推送发出但收件箱看不到」或反之的错位丢单。
+// na == null / 'all' / 非数组 / 空数组 → 全员（安全兜底，绝不静默丢单）。
+// ⚠️ 空数组特意归为全员：updateProject 已禁止写入空数组，但若存量/异常数据出现空数组，
+//    与 resolveNotifyScope 保持一致（全员），避免「发了消息却没人能在收件箱看到」的丢单。
+function normalizeNotifyAdmins(na) {
+  if (na == null || na === 'all' || !Array.isArray(na)) return { mode: 'all' }
+  const set = new Set(na.filter(o => typeof o === 'string' && o))
+  if (!set.size) return { mode: 'all' }
+  return { mode: 'list', set }
+}
+// 某管理员是否在该项目的通知范围内（空数组与缺省/非法一律视为全员）。供 getInbox 复用，保证与 notifyAdmins 同源。
+function inNotifyScope(na, openid) {
+  const s = normalizeNotifyAdmins(na)
+  return s.mode === 'all' ? true : s.set.has(openid)
+}
+
+// 解析「某项目应通知哪些管理员」。返回 { mode:'all' } 或 { mode:'list', set:Set<openid> }。
+// 默认 'all'（含：未传 projectId / 项目不存在 / 未配置 / 配置非法）—— 与安全兜底一致，绝不静默丢单。
+// 采用「项目维度」存储（projects.notifyAdmins）而非管理员维度：新增项目天然默认全员（安全），
+// 避免「白名单模型下新项目漏通知被收窄管理员」的坑。
+async function resolveNotifyScope(db, projectId) {
+  if (!projectId) return { mode: 'all' }
+  let na = null
+  try {
+    const r = await db.collection(COL.projects).doc(projectId).get()
+    na = r && r.data && r.data.notifyAdmins
+  } catch (e) { na = null }
+  return normalizeNotifyAdmins(na)
 }
 
 // 给所有管理员（owner + manager）推送订阅消息（新预约 / 取消等管理侧通知）
 // 占位跳过 + 逐个发送 + 失败不阻断主流程；返回每个管理员的发送结果数组供排查
-async function notifyAdmins(db, { templateId, data, page }) {
+// ⚠️ 按项目维度收窄：projects.notifyAdmins==='all'（缺省）→ 全部；否则只发在名单内的 owner/manager。
+//    字段缺失 / 非法 → 按 'all' 处理，历史项目与新增项目均零改动全收（向后兼容 + 新项目安全）。
+async function notifyAdmins(db, { projectId, templateId, data, page }) {
   if (!templateId || templateId.indexOf('TPL_ID_') === 0) {
     return [{ ok: false, skipped: true, reason: 'template not configured', templateId }]
   }
-  const ids = await listAdminOpenids(db)
-  if (!ids.length) {
+  // 可选：按项目维度收窄接收范围（projects.notifyAdmins）
+  const scope = await resolveNotifyScope(db, projectId)
+  const admins = await listAdminsFull(db)
+  if (!admins.length) {
     return [{ ok: false, skipped: true, reason: 'no admin(owner/manager) found' }]
   }
-  console.log('[notifyAdmins] sending', templateId, 'to', ids.length, 'admin(s):', ids)
+  // 模板 → 订阅键：用于「跳过已知失效者」与「43101 回写失效」
+  const subKey = adminSubKeyOfTemplate(templateId)
+  console.log('[notifyAdmins] sending', templateId, 'to', admins.length, 'admin(s); scope:', scope.mode)
   const results = []
-  for (const oid of ids) {
+  for (const a of admins) {
+    const oid = a.openid
+    if (!oid) continue
+    // ★ 按项目名单过滤：不在范围内 → 跳过且不消耗订阅额度（与「不丢单」收件箱同源收窄）
+    if (scope.mode === 'list' && !scope.set.has(oid)) {
+      results.push({ ok: false, skipped: true, reason: 'not-in-project-scope', openid: oid, templateId, projectId })
+      continue
+    }
+    // 已知失效且模板未重新配置 → 跳过，避免白白消耗其余模板的额度（订阅额度按模板独立计算）
+    if (subKey && !adminSubbedOf(a.subscriptions, subKey)) {
+      results.push({ ok: false, skipped: true, reason: 'subscription marked invalid', openid: oid, templateId, subKey })
+      continue
+    }
     const r = await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
     r.role = 'admin'
+    // 额度耗尽（43101）→ 落库标记失效，供管理台高亮提示续订
+    if (r.errCode === 43101) await markAdminSubInvalid(db, a._id, subKey)
     results.push(r)
   }
   return results
@@ -881,10 +998,86 @@ function thumbs(list, field, target, kind) {
   return (list || []).map(it => ({ ...it, [target || 'imageUrl']: thumb(it[field], kind) }))
 }
 
+// ===== 管理员收件箱 =====
+// 目的：把「新预约 / 取消」事件落库，管理台打开即见 —— 作为订阅消息 / 短信 / 企微之外
+//       「永不丢单」的兜底通道（订阅额度耗尽、短信未配、企微未装都不影响它）。
+// ⚠️ 它不是推送：管理员不打开小程序就看不到，只保证「不丢」，不保证「实时」。
+//
+// 已读态设计（按管理员独立）：每条通知自带 readBy: [openid...]
+//   · 未读 = readBy 不含该 openid → 库侧 `readBy: _.neq(openid)` 一次查准，
+//     计数 / 筛选 / 分页三者可同时成立（字段缺失的旧文档同样算未读，天然兼容）
+//   · 单条已读 = push openid；全部已读 = 分批给命中文档 push
+// ⚠️ 曾考虑单独建 adminInboxRead 集合存 lastReadAt + readIds，但那样「未读筛选 + 分页 + 计数」
+//    无法在库侧同时成立（必须拉全量到内存算），故改为内嵌数组。
+const INBOX_COLL = 'adminInbox'
+
+/** 写一条收件箱通知。失败静默——绝不阻断预约主流程。 */
+async function pushInbox(db, doc) {
+  const data = Object.assign({ createdAt: Date.now(), readBy: [] }, doc)
+  try {
+    await db.collection(INBOX_COLL).add({ data })
+    return true
+  } catch (e) {
+    // CloudBase 不会因 add 自动建集合（踩过 3 次的坑）→ 懒建一次后重试
+    try {
+      await db.createCollection(INBOX_COLL)
+      await db.collection(INBOX_COLL).add({ data })
+      return true
+    } catch (e2) {
+      console.warn('[pushInbox] failed (ignored):', e2 && e2.message)
+      return false
+    }
+  }
+}
+
+/** 未读查询条件：readBy 数组里没有该 openid（含字段缺失的旧文档，MongoDB 语义） */
+function inboxUnreadWhere(openid) { return { readBy: _.neq(openid) } }
+
+/** 单条标为已读（幂等：已含则直接返回 true） */
+async function markInboxRead(db, openid, id) {
+  if (!openid || !id) return false
+  try {
+    const r = await db.collection(INBOX_COLL).doc(id).get()
+    const d = (r && r.data) || null
+    if (!d) return false
+    const cur = Array.isArray(d.readBy) ? d.readBy : []
+    if (cur.indexOf(openid) >= 0) return true
+    await db.collection(INBOX_COLL).doc(id).update({ data: { readBy: cur.concat([openid]) } })
+    return true
+  } catch (e) {
+    console.warn('[markInboxRead] failed (ignored):', e && e.message)
+    return false
+  }
+}
+
+/** 全部已读：分批给「未读」文档 push openid，返回实际处理条数 */
+async function markInboxAllRead(db, openid) {
+  if (!openid) return 0
+  let done = 0
+  for (let round = 0; round < 10; round++) { // 上限 10×100=1000 条，足够覆盖一个运营周期
+    const res = await db.collection(INBOX_COLL)
+      .where(inboxUnreadWhere(openid)).orderBy('createdAt', 'desc').limit(100).get()
+      .catch(e => { console.warn('[markInboxAllRead] query failed:', e && e.message); return null })
+    const rows = (res && res.data) || []
+    if (!rows.length) break
+    for (const r of rows) {
+      const cur = Array.isArray(r.readBy) ? r.readBy : []
+      if (cur.indexOf(openid) >= 0) continue
+      try {
+        await db.collection(INBOX_COLL).doc(r._id).update({ data: { readBy: cur.concat([openid]) } })
+        done++
+      } catch (e) { /* 单条失败不影响其余 */ }
+    }
+    if (rows.length < 100) break
+  }
+  return done
+}
+
 module.exports = {
   cloud, db, _, $, COL, TPL, MP_TPL, DEFAULT_STORE_NAME,
   ok, fail, wxCtx, getRole, ensureOwner, ymd, addDays, bjYmd, bjAddDays, bjTs, effStatus, monthDay, monthDaySlash, getStoreName,
-  sendSubscribe, listAdminOpenids, notifyAdmins,
+  sendSubscribe, listAdminOpenids, listAdminsFull, notifyAdmins, markAdminSubInvalid, inNotifyScope, normalizeNotifyAdmins,
+  ADMIN_SUB_KEYS, normalizeAdminSubs, adminSubbedOf, adminSubKeyOfTemplate,
   readMpSwitch, mpOn, getMpOpenid, sendMp, sendMpSubscribe, notifyAdminsMp,
   srcLabel, customerTags, loadSubscribeSwitch, subOn,
   loadSmsSwitch, shouldSkipSms, wxDelivered, loadAiSwitch,
@@ -898,5 +1091,7 @@ module.exports = {
   // 小程序 access_token / URL Link / 小程序码（公众号跳小程序的免费通路）
   getWxaAccessToken, generateUrlLink, generateUrlLinkCached, generateShortLink, getWxaQrCode, wxaEnvVersion,
   // 图片按显示尺寸缩略（首屏加载提速：实测 1.20MB → 94KB，省 92%）
-  THUMB_SPEC, thumb, thumbs
+  THUMB_SPEC, thumb, thumbs,
+  // 管理员收件箱（兜底通道：保证不丢单）
+  INBOX_COLL, pushInbox, inboxUnreadWhere, markInboxRead, markInboxAllRead
 }

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "通知详情",
+  "usingComponents": {
+    "path-bar": "/components/pathBar/pathBar"
+  }
+}

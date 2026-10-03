@@ -13,6 +13,19 @@ function daysAgo(ts) {
   return Math.floor(d / 365) + '年前'
 }
 
+// 最近访问：精确到分钟（运营要的是「几点来的」，而非相对时间）。
+// 同年 → MM-DD HH:mm；跨年 → YYYY-MM-DD HH:mm；无记录 → 「—」。
+function fmtVisit(ts) {
+  if (!ts) return '—'
+  const d = new Date(ts)
+  const pad = n => (n < 10 ? '0' + n : '' + n)
+  const mm = pad(d.getMonth() + 1), dd = pad(d.getDate())
+  const hh = pad(d.getHours()), mi = pad(d.getMinutes())
+  const y = d.getFullYear()
+  const now = new Date()
+  return (y === now.getFullYear() ? '' : y + '-') + mm + '-' + dd + ' ' + hh + ':' + mi
+}
+
 // 固定筛选条件（值为后端返回的布尔/数值字段判定）
 const FILTERS = {
   all: { label: '全部', test: () => true },
@@ -24,6 +37,9 @@ const FILTERS = {
 }
 // 排序（desc 居多；first 为最早预约升序）
 const SORTS = {
+  // ⚠️ visit 放在最前 = **默认排序**（data.sort）：运营视角优先看「谁刚来过」，
+  //   而非「谁预约最多」——后者是营销视角。lastVisitTime 由 getRole 每次冷启动刷新。
+  visit: { label: '最近访问', cmp: (a, b) => (b.lastVisitTime || 0) - (a.lastVisitTime || 0) },
   total: { label: '预约最多', cmp: (a, b) => (b.total || 0) - (a.total || 0) },
   last: { label: '最近预约', cmp: (a, b) => (b.lastAt || 0) - (a.lastAt || 0) },
   first: { label: '最早预约', cmp: (a, b) => (a.firstAt || 0) - (b.firstAt || 0) },
@@ -38,7 +54,7 @@ Page({
     list: [],
     loading: false,
     filter: 'all',
-    sort: 'total',
+    sort: 'visit',
     filterDefs: Object.keys(FILTERS).map(k => ({ key: k, label: FILTERS[k].label })),
     sortDefs: Object.keys(SORTS).map(k => ({ key: k, label: SORTS[k].label })),
     blackCount: 0
@@ -57,10 +73,18 @@ Page({
     try {
       const all = []
       let page = 1
-      while (true) {
+      // ⚠️ 三重护栏（原先是裸 while(true)）：
+      //   getCustomers 的 hasMore 判断是「本页返回条数 === size」，当总数恰为 100 的倍数时
+      //   会多发一次空请求（无害）；但若后端异常导致 hasMore 恒为 true，这里就是死循环。
+      //   ① MAX_PAGE 兜总量 ② 本页 0 条即退出 ③ 累计不增长即退出
+      const MAX_PAGE = 50
+      while (page <= MAX_PAGE) {
         const d = await call('getCustomers', { page })
         const rows = (d && d.list) || []
+        if (!rows.length) break
+        const before = all.length
         all.push(...rows)
+        if (all.length === before) break          // ③ 没有任何新增
         if (!d || !d.hasMore) break
         page++
       }
@@ -105,6 +129,9 @@ Page({
       ...c,
       firstAtText: daysAgo(c.firstAt),
       lastAtText: daysAgo(c.lastAt),
+      // 最近访问：0 = 该顾客还没有 lastVisitTime（存量用户 / 从未冷启动成功）→ 显示「—」
+      // ⚠️ 精确到分钟（fmtVisit），不再用 daysAgo 的相对时间。
+      visitText: fmtVisit(c.lastVisitTime),
       autoTags2: (c.autoTags || []).slice(0, 2),
       cancelBadge: c.cancelCount > 0 ? ('取消' + c.cancelCount) : ''
     }))

@@ -1,5 +1,7 @@
 const { call } = require('../../utils/cloud')
 const boot = require('../../utils/boot')
+const { splitMasonry } = require('../../utils/masonry')
+const { resolveRatios } = require('../../utils/imgRatio')
 const app = getApp()
 
 // ── 首页数据本地缓存（SWR：先用缓存秒开，再后台静默更新）───────────────────
@@ -7,15 +9,18 @@ const app = getApp()
 // 二次进入可以立刻渲染、只等图片门，不必再等一次云函数往返。
 // CACHE_VER 用于数据结构变更时作废旧缓存，避免读到旧结构。
 const CACHE_KEY = 'homepageCacheV1'
-const CACHE_VER = 2   // 结构变更（新增 categories / 首页菜单改展示前 15）→ 作废旧缓存
+// ⚠️ 数据结构变更必须自增，否则老缓存命中后走不到新逻辑：
+// 4 = 修正瀑布流卡片高度公式（列宽×ratio，此前误写成列宽÷ratio）+ 存量菜品已回填真实 ratio。
+//     老缓存里的菜品无 ratio，只会走默认兜底估算，底边必然偏差，故作废旧缓存。
+const CACHE_VER = 4
 const CACHE_TTL = 10 * 60 * 1000   // 10 分钟；超时后回退到「等网络」的正常流程
 
-// 双栏瀑布流：按索引奇偶拆成左右两列，两列各自独立纵向堆叠，互不强制行对齐，消除同行高度差造成的留白
-function splitCols(list) {
-  const colA = [], colB = []
-  ;(list || []).forEach((it, i) => { (i % 2 === 0 ? colA : colB).push(it) })
-  return { colA, colB }
-}
+// 双列瀑布流：按图片宽高比**贪心分列**（总是把卡片给当前较矮的一列），
+// 两列底边偏差被压到「一张卡以内」且图片保持原始构图。
+// ⚠️ 早期实现是「按索引奇偶拆两列」（0,2,4…进左列），不看卡片高度 ——
+//    15 项时必然左 8 右 7，底边差一整张图，视觉上就是「序号 11 和 13 都在左边」。
+//    现改为按高度贪心；高度预估逻辑与兜底见 utils/masonry.js。
+// 保留旧名以免遗漏调用点：调用处直接改名 splitMasonry。
 
 Page({
   data: {
@@ -36,8 +41,14 @@ Page({
   },
 
   onShow() {
-    // 显式启用右上角「转发 / 分享到朋友圈」菜单（不调用则菜单置灰不可用）
-    wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+    // 显式启用右上角「转发」菜单（不调用则菜单置灰不可用）
+    // ⚠️ 这里**只开启 shareAppMessage（转发给好友）**，**不开启 shareTimeline（朋友圈）**。
+    //   之前虽未在 menus 里启用 shareTimeline，但页面仍定义了 onShareTimeline，
+    //   部分基础库版本会在「···」菜单里照常显示「分享到朋友圈」入口；点开进入单页模式
+    //   （scene 1154）无登录态、云函数需开「允许未登录访问」、路由 API 全禁用、tabBar 不渲染，
+    //   首页数据又全来自 getHomepage → 用户看到「加载失败」。现直接删除 onShareTimeline，
+    //   从根上移除该入口，零风险规避单页模式。
+    wx.showShareMenu({ menus: ['shareAppMessage'] })
 
     const cached = this.readCache()
     if (cached) {
@@ -107,30 +118,36 @@ Page({
     const first = !this._boot.closed
     const top = d.products || []
     const categories = d.categories || []
-    const cols = splitCols(top)
-    // menuAll 始终保存「全部」视图的排序前 15 底稿；categories 同步缓存。
-    // 仅当当前在「全部」视图时才同步展示（否则保留用户已选分类的列表，避免后台刷新被覆盖）。
-    const patch = {
-      homepage: d.homepage || {},
-      projects: d.projects || [],
-      featured: (d.projects && d.projects[0]) || null,
-      aiEnabled: d.aiEnabled !== false,
-      categories,
-      menuAll: top
-    }
-    if (this.data.activeCat === 'all') {
-      patch.products = top
-      patch.colA = cols.colA
-      patch.colB = cols.colB
-    }
-    this.setData(patch, () => {
-      if (!first) return
-      // 图片门：在渲染回调里统计首屏真实图片张数（此时图片尚未开始加载，
-      // bindload 必然晚于声明，不会漏计）。与数据门共用同一个硬超时。
-      const heroN = this.data.homepage.heroImageUrl ? 1 : 0
-      const menuN = (cols.colA || []).filter(x => x.imageUrl).length
-                  + (cols.colB || []).filter(x => x.imageUrl).length
-      this._boot.images(heroN + menuN).settle(1)
+    // 关键：先用真实宽高比分列，避免「等高估算→奇偶交错→末尾堆左」的错位。
+    // resolveRatios 内部走 wx.getImageInfo，单张图最多 3s 兜底，不会卡死整页。
+    resolveRatios(top).then(items => {
+      const cols = splitMasonry(items)
+      // menuAll 始终保存「全部」视图的排序前 15 底稿；categories 同步缓存。
+      // 仅当当前在「全部」视图时才同步展示（否则保留用户已选分类的列表，避免后台刷新被覆盖）。
+      const patch = {
+        homepage: d.homepage || {},
+        projects: d.projects || [],
+        featured: (d.projects && d.projects[0]) || null,
+        aiEnabled: d.aiEnabled !== false,
+        categories,
+        menuAll: top
+      }
+      if (this.data.activeCat === 'all') {
+        patch.products = items
+        patch.colA = cols.colA
+        patch.colB = cols.colB
+      }
+      this.setData(patch, () => {
+        if (!first) return
+        // 图片门：在渲染回调里统计首屏真实图片张数（此时图片尚未开始加载，
+        // bindload 必然晚于声明，不会漏计）。与数据门共用同一个硬超时。
+        const heroN = this.data.homepage.heroImageUrl ? 1 : 0
+        // ⚠️ 按 top 统计而非 colA/colB：
+        //   1) top 是本次真正渲染的数据源，分类视图（activeCat!=='all'）下 colA/colB 还是上一次的残留；
+        //   2) 语义更直白——「本屏要显示几张图」而不是「两列各几张」。
+        const menuN = (top || []).filter(x => x.imageUrl).length
+        this._boot.images(heroN + menuN).settle(1)
+      })
     })
   },
 
@@ -140,8 +157,11 @@ Page({
     if (id === this.data.activeCat) return
     if (id === 'all') {
       const top = this.data.menuAll || []
-      const cols = splitCols(top)
-      this.setData({ activeCat: 'all', products: top, colA: cols.colA, colB: cols.colB })
+      // 真实宽高比先解析（menuAll 存的是原始底稿，无 _ratio），再分列
+      resolveRatios(top).then(items => {
+        const cols = splitMasonry(items)
+        this.setData({ activeCat: 'all', products: items, colA: cols.colA, colB: cols.colB })
+      })
       return
     }
     // 先清空再拉取，避免旧列表残留
@@ -149,8 +169,10 @@ Page({
     call('listProducts', { categoryId: id })
       .then(d => {
         const list = d.products || []
-        const cols = splitCols(list)
-        this.setData({ products: list, colA: cols.colA, colB: cols.colB })
+        resolveRatios(list).then(items => {
+          const cols = splitMasonry(items)
+          this.setData({ products: items, colA: cols.colA, colB: cols.colB })
+        })
       })
       .catch(err => wx.showToast({ title: err.message || '加载失败', icon: 'none' }))
   },
@@ -172,19 +194,12 @@ Page({
     wx.navigateTo({ url: '/pages/admin/hub/hub' })
   },
 
-  // 转发给好友 / 分享朋友圈：分享店铺首页
+  // 转发给好友：分享店铺首页（朋友圈分享已整体移除，规避单页模式取数失败）
   onShareAppMessage() {
     const hp = this.data.homepage || {}
     return {
       title: hp.logo || '二曜路8号咖啡和清酒',
       path: '/pages/index/index'
-    }
-  },
-  onShareTimeline() {
-    const hp = this.data.homepage || {}
-    return {
-      title: hp.logo || '二曜路8号咖啡和清酒',
-      query: ''
     }
   }
 })

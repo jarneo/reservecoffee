@@ -83,7 +83,9 @@ exports.main = async (event) => {
     subscribeNotify: !!p.subscribeNotify,
     mpNotify: !!p.mpNotify,
     showSeatInfo: p.showSeatInfo !== false,
-    fields: p.fields || ['name', 'phone']
+    fields: p.fields || ['name', 'phone'],
+    // 通知管理员分配：缺失/非法按 'all' 兜底
+    notifyAdmins: (p.notifyAdmins == null || p.notifyAdmins === 'all' || Array.isArray(p.notifyAdmins)) ? p.notifyAdmins || 'all' : 'all'
   }
 
   return ok({ project, schedules })

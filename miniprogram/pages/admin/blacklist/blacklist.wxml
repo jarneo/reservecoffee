@@ -18,7 +18,8 @@
   <!-- 加入黑名单 -->
   <view class="sec" style="margin-top:24rpx">加入黑名单（按昵称 / 手机号查找）</view>
   <view class="card">
-    <input class="search-input" placeholder="输入昵称或手机号" value="{{query}}" bindinput="onSearch" confirm-type="search"/>
+    <!-- 输入框样式统一走公共 .f-inp（app.wxss）：原先各页自己写 .search-input，高度靠原生默认值 → 矮且易截断 -->
+    <input class="f-inp" placeholder="输入昵称或手机号" value="{{query}}" bindinput="onSearch" confirm-type="search"/>
     <view wx:if="{{results.length === 0}}" class="xs muted" style="margin-top:14rpx">输入后自动查找匹配用户。</view>
     <view wx:for="{{results}}" wx:key="openid" class="res-row">
       <view class="col" style="flex:1">

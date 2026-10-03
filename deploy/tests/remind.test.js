@@ -250,7 +250,7 @@ const lib = loadLib()
   const baseEnd = (s, r, over = {}) => {
     s.cols.config = { smsnotify: Object.assign({ approaching: true, expired: true, expiredWhen: 'after', expiredOffset: 5, skipSmsIfWxOk: false }, over.smsnotify || {}), subscribe: { reminderEnd: true, reminder: true }, store: {} }
     s.smsTemplates = { expired: '2716682', approaching: '2716156' }
-    s.wx.allowedKeys = ['thing10', 'time12', 'time14', 'thing9']
+    s.wx.allowedKeys = ['time4', 'thing5']   // 真实模板 21337「预约过期通知」字段键：time4=预约时间 / thing5=温馨提醒
     s.cols.projects = { p1: { name: '法兰绒深烘咖啡', smsEnabled: true } }
     s.cols.reservations = { a1: Object.assign({ _id: 'a1', openid: 'oA', projectId: 'p1', phone: '13800000001', status: 'confirmed' }, r) }
   }
@@ -277,8 +277,8 @@ const lib = loadLib()
     check('已打 ended=true', r1.ended === true, r1)
     check('未记 too-late', r1.reminderEndSkipped === undefined, r1)
     check('微信结束提醒发出（1 次）', store.subscribeCalls.length === 1, store.subscribeCalls.length)
-    check('模板为 reminderEnd', store.subscribeCalls[0] && store.subscribeCalls[0].templateId === 'ShNSAxZvFsDgyZhFfi3OTUoYqm5khLVJkhCnqI1IEeo', store.subscribeCalls[0])
-    check('结束提醒字段键 thing10/time12/time14/thing9', store.subscribeCalls[0] && ['thing10', 'time12', 'time14', 'thing9'].every(k => store.subscribeCalls[0].data[k]), store.subscribeCalls[0] && Object.keys(store.subscribeCalls[0].data))
+    check('模板为 reminderEnd', store.subscribeCalls[0] && store.subscribeCalls[0].templateId === '6-dCpVBL6RL0IOjnzVZfpK_2apG2hwSpv01BrKvvRzM', store.subscribeCalls[0])
+    check('结束提醒字段键 time4/thing5', store.subscribeCalls[0] && ['time4', 'thing5'].every(k => store.subscribeCalls[0].data[k]), store.subscribeCalls[0] && Object.keys(store.subscribeCalls[0].data))
     check('过期短信发出（1 条）', store.smsCalls.length === 1, store.smsCalls)
     check('落库 reminderEndNotify', r1.reminderEndNotify && r1.reminderEndNotify.ok === true, r1.reminderEndNotify)
     check('sentEnd=1 / sentStart=0（不重复发临近提醒）', res.data.sentEnd === 1 && res.data.sentStart === 0, res.data)

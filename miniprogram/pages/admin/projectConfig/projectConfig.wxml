@@ -82,6 +82,16 @@
     <view class="tip">顾客端将在项目详情页展示这些入口，点击可跳转至对应项目；排序即顾客端展示顺序。</view>
   </view>
 
+  <!-- 通知管理员：项目维度分配（与 admins 页矩阵同源，写 projects.notifyAdmins） -->
+  <view class="card">
+    <view class="sec">通知管理员</view>
+    <view class="tip" style="text-align:left;margin-top:0;margin-bottom:10rpx">新预约 / 取消 / 待审核等管理通知，默认发给全部管理员；可收窄为指定接收人。</view>
+    <view class="field row between tap" bindtap="openNotify">
+      <view class="label">接收本项目通知</view>
+      <view class="val">{{notifySummary}} ›</view>
+    </view>
+  </view>
+
   <!-- ③ 全局设定 -->
   <view class="card" style="margin-top:0">
     <view class="sec">全局设定</view>
@@ -106,7 +116,18 @@
     <view class="field row between"><view class="label">开启短信通知（预约成功时推送）</view><switch checked="{{global.smsEnabled}}" bindchange="gSms"/></view>
     <view class="field row between"><view class="label">开启订阅消息通知（预约状态推送给预订人 / 管理员）</view><switch checked="{{global.subscribeNotify}}" bindchange="gSub"/></view>
     <view class="field row between"><view class="label">预约页显示剩余/已约座位信息</view><switch checked="{{global.showSeatInfo}}" bindchange="gSeat"/></view>
+    <!-- 预约成功结果页下方菜单的默认分类：如咖啡项目可留「全部」，清酒项目可停在「清酒」 -->
+    <picker mode="selector" range="{{catOpts}}" range-key="name" value="{{catOptsIdx}}" bindchange="onResultCatPick">
+      <view class="field row between">
+        <view class="label">预约成功页默认菜单分类</view>
+        <view class="picker">{{catOptsText}} ›</view>
+      </view>
+    </picker>
   </view>
+
+  <!-- 全局设定区保存：与底部「保存」同一处理器 saveAll（保存整个项目配置，含本页全局设定与已改动字段），
+       放在「全局设定」与「项目时间设置」之间，方便改完全局设定就近保存，不必滚到页面最底部。 -->
+  <button class="btn block" style="margin-top:20rpx" bindtap="saveAll">保存</button>
 
   <!-- ① 项目时间设置：直接点选日期切换可约/不可约 -->
   <view class="card">
@@ -203,6 +224,26 @@
       <view class="row" style="gap:12rpx;margin-top:16rpx">
         <button class="btn ghost block" bindtap="closeFields">取消</button>
         <button class="btn block" bindtap="saveFields">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 通知管理员：编辑接收人弹层（项目维度，与 admins 页矩阵同源） -->
+  <view class="modal-mask" wx:if="{{showNotify}}" bindtap="closeNotify">
+    <view class="modal" catchtap="noop">
+      <view class="modal-t">通知管理员 · {{projectName}}</view>
+      <view class="field row between">
+        <view class="label">全部管理员</view>
+        <switch checked="{{notifyAll}}" bindchange="toggleNotifyAll"/>
+      </view>
+      <view class="tip" style="text-align:left;margin-top:0;margin-bottom:8rpx">关闭「全部」后逐一勾选接收人；勾满等同全部。</view>
+      <view wx:for="{{admins}}" wx:key="openid" class="field row between">
+        <view class="label">{{item.nickname || item.openid}}<text class="xs muted" style="margin-left:8rpx">{{item.role==='owner'?'owner':'manager'}}</text></view>
+        <switch checked="{{notifyDraft[index]}}" bindchange="toggleNotifyAdmin" data-i="{{index}}"/>
+      </view>
+      <view class="row" style="gap:12rpx;margin-top:16rpx">
+        <button class="btn ghost block" bindtap="closeNotify">取消</button>
+        <button class="btn block" bindtap="saveNotify">保存</button>
       </view>
     </view>
   </view>

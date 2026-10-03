@@ -15,7 +15,7 @@
   <view wx:if="{{!unavailable}}" class="card">
     <view class="bold">{{projectName}}</view>
     <view class="sm muted" style="margin-top:8rpx">{{date}} · {{session.start}} – {{session.end}}</view>
-    <view class="sm muted">可约剩 {{session.remaining}} / {{session.capacity}}</view>
+    <view wx:if="{{showSeatInfo}}" class="sm muted">可约剩 {{session.remaining}} / {{session.capacity}}</view>
   </view>
 
   <!-- 资料引导条：称呼/手机号缺任一项时显示。

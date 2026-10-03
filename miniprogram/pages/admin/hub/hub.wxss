@@ -1,6 +1,46 @@
-.hd { display:flex; align-items:center; justify-content:space-between; padding:8rpx 4rpx 20rpx; }
-/* 管理推送授权卡片：品牌色描边，让它从菜单之上「轻轻跳出来」（订阅用尽后收不到推送，最容易踩） */
-.notify-card { border-color:var(--brand); margin-bottom:20rpx; }
+/* 角色徽标（原来 .badge 没有落样式，只有裸文字）——补上，与管理台黑白极简一致 */
+.hd .badge { font-size:20rpx; padding:4rpx 14rpx; border-radius:999rpx; border:1rpx solid var(--line); color:var(--ink-2); flex:none; }
+.hd .badge.ok { border-color:var(--brand); color:var(--brand); }
+.hd .badge.paused { border-style:dashed; color:var(--ink-3); }
+
+/* 并排两卡：等宽、等高（align-items:stretch 是默认，靠 .c2b 的 margin-top:auto 把按钮顶到底对齐） */
+.row2 { display:flex; gap:16rpx; margin-bottom:20rpx; }
+.c2 {
+  flex:1; min-width:0; display:flex; flex-direction:column;
+  background:#fff; border:1rpx solid var(--line); border-radius:16rpx; padding:20rpx;
+}
+/* 提醒卡：品牌色描边，让它从菜单之上「轻轻跳出来」（未读预约是最该先看的） */
+.c2.hi { border-color:var(--brand); background:#FDFAF6; }
+/* 推送失效态：改用警示红描边 + 左侧红点，与「正常态」一眼可辨。
+   注意这是「必须处理」而非「错误」—— 故沿用项目警示色系而非刺眼的纯红。 */
+.c2.bad { border-color:#B3261E; background:#FDF3F2; }
+/* ⚠️ flex-wrap 必须有：右卡的标签要列 4 类（新预约 · 取消 · 预约审核 · 评论审核），
+   半屏卡片一行放不下 → 让它整体折到标题下一行，而不是被压扁/溢出。
+   左卡标签短，不会触发换行，表现与之前完全一致。 */
+.c2t { display:flex; align-items:center; flex-wrap:wrap; font-size:26rpx; font-weight:600; }
+/* max-width + box-sizing 让长标签在最坏情况下内部折行而不是溢出卡片 */
+.c2tag { margin-left:auto; font-size:18rpx; line-height:1.5; padding:2rpx 8rpx; border-radius:6rpx; background:var(--fill); color:var(--ink-3); flex:none; max-width:100%; box-sizing:border-box; font-weight:400; }
+.c2tag.bad { background:#F6ECE9; color:#A3562F; }
+.dot-bad {
+  width:12rpx; height:12rpx; border-radius:50%;
+  background:#B3261E; margin-right:8rpx; flex:none;
+}
+.c2n { font-size:52rpx; font-weight:600; line-height:1.15; margin-top:10rpx; color:var(--brand); }
+/* 未读为 0 时**照常显示**，只是转灰 —— 不能隐藏卡片（用户明确要求） */
+.c2n.zero { color:var(--ink-3); }
+.c2n.xs { font-size:26rpx; margin-top:12rpx; color:var(--ink); }
+.c2n.xs.bad { color:#B3261E; }
+.c2d { font-size:20rpx; color:var(--ink-3); margin-top:6rpx; margin-bottom:14rpx; line-height:1.5; }
+.c2meta { font-size:20rpx; color:var(--ink-3); margin-top:-8rpx; margin-bottom:14rpx; }
+/* 卡片内按钮：整宽铺满卡底；margin-top:auto 保证两卡按钮在同一水平线上 */
+.c2b {
+  /* margin-top:auto 吃掉卡片剩余空间 → 两张卡的按钮永远落在同一水平线（文案长短不同也不歪） */
+  margin-top:auto; text-align:center;
+  font-size:24rpx; border-radius:10rpx; padding:12rpx 0;
+}
+.c2b.pri { background:var(--brand); color:#fff; }
+.c2b.danger { background:#B3261E; color:#fff; }
+.c2b.ghost { border:1rpx solid var(--line); color:var(--ink-2); background:#fff; }
 .menu { background:#fff; border:1rpx solid var(--line); border-radius:16rpx; overflow:hidden; }
 .mi { display:flex; align-items:center; justify-content:space-between; padding:28rpx 24rpx; border-bottom:1rpx solid var(--line); }
 .mi:last-child { border-bottom:none; }

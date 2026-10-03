@@ -2,6 +2,7 @@
   "navigationBarTitleText": "预约管理",
   "usingComponents": {
     "sessionCard": "/components/sessionCard/sessionCard",
+    "reservee": "/components/reservee/reservee",
     "path-bar": "/components/pathBar/pathBar"
   }
 }

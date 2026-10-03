@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "预约人",
   "usingComponents": {
-    "path-bar": "/components/pathBar/pathBar"
+    "path-bar": "/components/pathBar/pathBar",
+    "reservee": "/components/reservee/reservee"
   }
 }

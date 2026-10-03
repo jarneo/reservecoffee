@@ -3,16 +3,40 @@
     <view class="bold">管理台</view>
     <view class="badge {{role==='owner'?'ok':'paused'}}">{{role==='owner'?'超级管理员':'普通管理员'}}</view>
   </view>
-  <!-- 管理推送授权常驻卡片（置顶）：
-       微信订阅为「一次性」授权 —— 发一条消耗一条，用尽后后端只会静默失败（43101），
-       管理员侧完全无感（表现为「以前收得到，现在收不到」）。故常驻提醒 + 一键续订。 -->
-  <view class="card notify-card">
-    <view class="row between" style="align-items:center">
-      <view class="bold">管理推送授权</view>
-      <view class="tag muted">一次性</view>
+  <!-- 并排两卡（左右顺序按 10-03 拍板：左=管理推送授权，右=提醒）
+       ① 管理推送授权常驻：微信订阅是**一次性**授权 —— 发一条消耗一条，用尽后后端只会静默失败（43101）。
+          后端 notifyAdmins 收到 43101 会回写 admins.subscriptions[该键]=false，
+          据此把卡片切成「已失效」警示态（原来只能靠管理员人肉发现「以前收得到、现在收不到」）。
+       ② 提醒（页名沿革：收件箱 → 预约提醒 → 提醒）：把「新预约 / 取消 / 预约审核 / 评论审核」
+          四类事件落库，是订阅额度耗尽 / 短信未配时**不丢单**的兜底通道
+          （不是推送 —— 不打开就看不到，只保证不丢，不保证实时）。
+       ⚠️ 未读数为 0 时卡片照常显示（数字转灰），不改隐藏 —— 用户明确要求「保持显示」。 -->
+  <view class="row2">
+    <!-- 左：管理推送授权 -->
+    <view class="c2 {{mySubInvalid?'bad':''}}">
+      <view class="c2t">
+        <!-- ⚠️ 用两个各自带 wx:if 的元素而非 wx:if/wx:else：
+             WXML 要求 wx:else 与 wx:if 标签**紧邻无空白**，换行/缩进都会编译失败(-80054)。 -->
+        <view wx:if="{{mySubInvalid}}" class="dot-bad"></view>
+        <text>{{mySubInvalid?'推送已失效':'管理推送'}}</text>
+        <view class="c2tag {{mySubInvalid?'bad':''}}">{{mySubInvalid?'需续订':'一次性'}}</view>
+      </view>
+      <view class="c2n xs {{mySubInvalid?'bad':''}}">{{mySubInvalid?'收不到通知':'微信通知'}}</view>
+      <view class="c2d">{{mySubInvalid?'授权已用尽，有预约你也收不到':'发完即失效，失效后需续订'}}</view>
+      <view wx:if="{{mySubscribedAt}}" class="c2meta">上次续订 {{mySubscribedAt}}</view>
+      <view class="c2b {{mySubInvalid?'danger':'pri'}}" bindtap="enableAdminNotify">{{mySubInvalid?'立即续订':'续订推送'}}</view>
     </view>
-    <view class="xs muted" style="margin-top:8rpx;line-height:1.6">用于接收「新预约 / 取消 / 待审核」的微信通知。微信订阅每次授权只能发 1 条，发完即失效且不会提示，所以「以前收得到、现在收不到」时点下方续订即可。弹窗里请全部勾选，并勾选「总是保持以上选择，不再询问」以长期生效。</view>
-    <view class="btn block" style="margin-top:16rpx" bindtap="enableAdminNotify">续订管理推送</view>
+
+    <!-- 右：提醒（点进去是「预约情况」看板 + 待处理实时条 + 四类通知列表） -->
+    <view class="c2 hi tap" bindtap="goInbox">
+      <view class="c2t">
+        <text>提醒</text>
+        <view class="c2tag">新预约 · 取消 · 预约审核 · 评论审核</view>
+      </view>
+      <view class="c2n {{unread?'':'zero'}}">{{unread}}</view>
+      <view class="c2d">{{unread?unread+' 条未读':'暂无新通知'}}</view>
+      <view class="c2b ghost">查看全部 ›</view>
+    </view>
   </view>
 
   <view class="menu">

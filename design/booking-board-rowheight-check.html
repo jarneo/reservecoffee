@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>预约情况表格 · 行高校验（修复后目标效果）</title>
+<style>
+  :root { --brand:#7A5230; --ink:#1A1A1A; --ink-2:#555555; --ink-3:#999999; --line:#E7E7E7; --fill:#F5F5F5; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f5f5f5; font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:var(--ink); }
+  .wrap { max-width:1000px; margin:0 auto; padding:28px 16px 60px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--ink-3); font-size:13px; margin-bottom:22px; }
+  .layout { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+
+  /* 手机框：1rpx = 0.5px，故框宽 375px 对应 750rpx。
+     下面所有数值均由 miniprogram/pages/admin/inbox/inbox.wxss 的 rpx 值 ÷2 得到，忠实还原真机。 */
+  .phone { width:375px; background:#FAFAFA; border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+  .page { padding:12px; }
+
+  /* ===== 预约情况卡片（inbox.wxss .bkcard 系列） ===== */
+  .bkcard { background:#fff; border:.5px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; }
+  .bkhd { display:flex; align-items:center; padding:10px 12px 7px; }
+  .bktt { font-size:14px; font-weight:600; flex:1; }
+  .bksum { font-size:11px; color:var(--ink-3); flex:none; }
+
+  .dstrip { white-space:nowrap; padding:0 12px 8px; overflow-x:auto; }
+  .dchip { display:inline-block; width:44px; text-align:center; border:.5px solid var(--line); border-radius:6px; padding:5px 0; margin-right:6px; vertical-align:top; }
+  .dwk { font-size:10px; color:var(--ink-3); }
+  .ddd { font-size:13px; font-weight:600; margin-top:1px; }
+  .dtag { font-size:9px; color:var(--brand); margin-top:1px; }
+  .dchip.off { opacity:.38; }
+  .dchip.on { background:var(--brand); border-color:var(--brand); }
+  .dchip.on .dwk { color:rgba(255,255,255,.8); }
+  .dchip.on .ddd, .dchip.on .dtag { color:#fff; }
+
+  /* ===== 表格：修复后（硬 height 锁行高） ===== */
+  .bkrow { display:flex; align-items:stretch; height:38px; border-top:.5px solid var(--line); overflow:hidden; }
+  .bktm { width:84px; flex:none; display:flex; align-items:center; padding:0 8px; font-size:11px; line-height:1; color:var(--ink-2); background:#fff; white-space:nowrap; overflow:hidden; border-right:.5px solid var(--line); }
+  .bkc { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; padding:0 3px; font-size:11px; line-height:1; text-align:center; border-right:.5px solid var(--line); overflow:hidden; }
+  .bkc:last-child { border-right:none; }
+  .bkhead .bktm, .bkhead .bkc { background:var(--fill); color:var(--ink-2); font-weight:600; font-size:10px; }
+  .bkc-name { display:block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bkfoot .bktm, .bkfoot .bkc { background:#FCFAF7; color:var(--ink-3); }
+  .cnt { display:block; height:22px; line-height:22px; min-width:38px; border-radius:4px; font-size:11px; text-align:center; padding:0; }
+  .cnt.full { background:var(--brand); color:#fff; font-weight:600; }
+  .cnt.has { background:rgba(122,82,48,.1); color:var(--brand); font-weight:600; }
+  .cnt.empty { color:var(--ink-3); }
+  .cnt.pause { color:var(--ink-3); font-size:10px; }
+  .cnt.none { color:#C8C8C8; }
+  .bkhint { font-size:10px; color:var(--ink-3); padding:7px 12px 9px; line-height:1.6; }
+
+  /* 行高标尺：仅本页调试用，标出每一行的实际高度 */
+  .ruler { position:relative; }
+  .ruler .bkrow { position:relative; }
+  .ruler .bkrow::after {
+    content:''; position:absolute; left:0; right:0; top:0; height:38px;
+    border-bottom:1px dashed rgba(163,45,45,.45); pointer-events:none;
+  }
+
+  .side { flex:1; min-width:300px; }
+  .side h2 { font-size:15px; margin:18px 0 8px; }
+  .side h2:first-child { margin-top:0; }
+  .side p, .side li { font-size:13px; color:#333; line-height:1.75; }
+  .side code { background:#f0ece6; padding:1px 6px; border-radius:5px; font-size:12px; color:var(--brand); }
+  .ok { background:#eef4ea; border:1px solid #cfe0c6; border-radius:10px; padding:10px 12px; font-size:12px; color:#3f6b30; line-height:1.7; }
+  .warn { background:#fdf6f2; border:1px solid #eadfd4; border-radius:10px; padding:10px 12px; font-size:12px; color:#7a5230; line-height:1.7; }
+  table.cmp { border-collapse:collapse; width:100%; font-size:12px; margin-top:6px; }
+  table.cmp th, table.cmp td { border:1px solid #e7e3dd; padding:5px 8px; text-align:left; }
+  table.cmp th { background:#f3f1ec; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>预约情况表格 · 行高校验</h1>
+  <div class="sub">用<b>真实数据</b>（2026-10-03 当天）还原真机效果。红色虚线是行高标尺，每 38px 一条 —— 每条线都应压在行边界上。</div>
+
+  <div class="layout">
+    <div class="phone">
+      <div class="page">
+        <div class="bkcard">
+          <div class="bkhd">
+            <div class="bktt">预约情况</div>
+            <div class="bksum">10-03 · 合计 12 人 / 7 场</div>
+          </div>
+
+          <div class="dstrip">
+            <div class="dchip on"><div class="dwk">周六</div><div class="ddd">10-03</div><div class="dtag">今</div></div>
+            <div class="dchip"><div class="dwk">周日</div><div class="ddd">10-04</div></div>
+            <div class="dchip"><div class="dwk">周一</div><div class="ddd">10-05</div></div>
+            <div class="dchip"><div class="dwk">周二</div><div class="ddd">10-06</div></div>
+            <div class="dchip"><div class="dwk">周三</div><div class="ddd">10-07</div></div>
+            <div class="dchip"><div class="dwk">周四</div><div class="ddd">10-08</div></div>
+            <div class="dchip"><div class="dwk">周五</div><div class="ddd">10-09</div></div>
+            <div class="dchip"><div class="dwk">周六</div><div class="ddd">10-10</div></div>
+            <div class="dchip"><div class="dwk">周日</div><div class="ddd">10-11</div></div>
+            <div class="dchip"><div class="dwk">周一</div><div class="ddd">10-12</div></div>
+            <div class="dchip off"><div class="dwk">周二</div><div class="ddd">10-13</div></div>
+            <div class="dchip"><div class="dwk">周三</div><div class="ddd">10-14</div></div>
+            <div class="dchip"><div class="dwk">周四</div><div class="ddd">10-15</div></div>
+            <div class="dchip"><div class="dwk">周五</div><div class="ddd">10-16</div></div>
+          </div>
+
+          <div class="ruler">
+            <div class="bkrow bkhead">
+              <div class="bktm">场次</div>
+              <div class="bkc"><span class="bkc-name">法兰绒手冲咖啡预约</span></div>
+              <div class="bkc"><span class="bkc-name">清酒品鉴预约</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">10:00-11:30</div>
+              <div class="bkc"><span class="cnt empty">0/3</span></div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">12:00-13:30</div>
+              <div class="bkc"><span class="cnt empty">0/8</span></div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">13:30-15:00</div>
+              <div class="bkc"><span class="cnt has">4/8</span></div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">15:00-16:30</div>
+              <div class="bkc"><span class="cnt empty">0/8</span></div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">16:30-18:00</div>
+              <div class="bkc"><span class="cnt has">1/8</span></div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">18:00-20:00</div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+              <div class="bkc"><span class="cnt has">3/6</span></div>
+            </div>
+            <div class="bkrow">
+              <div class="bktm">20:00-22:00</div>
+              <div class="bkc"><span class="cnt none">—</span></div>
+              <div class="bkc"><span class="cnt has">4/6</span></div>
+            </div>
+            <div class="bkrow bkfoot">
+              <div class="bktm">合计</div>
+              <div class="bkc">5 人</div>
+              <div class="bkc">7 人</div>
+            </div>
+          </div>
+          <div class="bkhint">单元格 = 已约 / 容量；「—」= 该项目当日无此场次。满场为实心品牌色。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <h2>修复前后的差别</h2>
+      <table class="cmp">
+        <tr><th></th><th>修复前（6.6.105）</th><th>修复后（6.6.107）</th></tr>
+        <tr><td>行高约束</td><td><code>min-height:76rpx</code><br/>仅是下限，内容超了就变高</td><td><code>height:76rpx</code><br/>硬锁，内容超了也不变</td></tr>
+        <tr><td>单元格上下 padding</td><td>8rpx（数据行）<br/>表头被改成 14rpx</td><td>0，全部由行高决定</td></tr>
+        <tr><td>人数胶囊高度</td><td>靠 <code>padding:4rpx</code> 撑<br/>「—」无背景就显矮</td><td><code>height:44rpx</code> 锁死<br/>有无背景都等高</td></tr>
+        <tr><td>文字行高</td><td>继承 <code>1.5</code>，随字号变</td><td><code>line-height:1</code> 定值</td></tr>
+        <tr><td>时间列换行</td><td>可能换行撑高</td><td><code>nowrap</code> 禁止</td></tr>
+      </table>
+
+      <h2>为什么上一版没修好</h2>
+      <div class="warn">
+        上一版我只把三个类的 padding 对齐 + 加了 <code>min-height</code>。但 <code>min-height</code> 是<b>下限不是约束</b>：数据行的「胶囊」内容（22rpx 字 + 8rpx padding ≈ 41rpx，再叠单元格 8rpx×2 = 57rpx）只要不超过 76rpx，它就<b>什么都不做</b>；一旦某处因字号/渲染差异超了，那一行就自己变高，而表头行是纯文字撑不上去 —— 于是依旧不等高。<br/><br/>
+        这次改成 <b>硬 <code>height</code></b>：无论内容是什么，行高恒为 76rpx。
+      </div>
+
+      <h2>行高标尺怎么用</h2>
+      <div class="ok">
+        左侧表格上叠了红色虚线，每 <b>38px</b>（= 76rpx）一条。如果修复生效，<b>每一条虚线都应该正好压在相邻两行之间的分隔线上</b>；若某条虚线落在行的中间，就说明那一行被撑高了。
+      </div>
+
+      <h2>如果你真机上看到的不是这样</h2>
+      <p>那么大概率是<b>版本没更新</b> —— 体验版需要在微信里重新进入才会加载新包。请确认右上角 <code>···</code> 处显示的版本是 <b>6.6.107</b>，而不是 6.6.105 / 6.6.106。若确认是 6.6.107 仍不对，请给我一张真机截图，我按实际像素继续定位。</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

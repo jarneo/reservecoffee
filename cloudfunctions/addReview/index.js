@@ -3,7 +3,7 @@
 //  1) 必须携带真实微信昵称与头像（前端在授权弹窗后通过 chooseAvatar + nickname 采集），不允许匿名 / 随机名兜底。
 //  2) 提交瞬间调用微信内容安全：msgSecCheck(文字) + imgSecCheck(图片)，任一不通过直接拦截、不入库。
 //  3) 机器检测通过后进入人工审核队列 reviewStatus='pending'，审核通过(reviewStatus='approved')才对外展示。
-const { db, COL, ok, fail, wxCtx, cloud } = require('./lib')
+const { db, COL, ok, fail, wxCtx, cloud, pushInbox } = require('./lib')
 
 // 文字内容安全（评论场景 scene=2）
 async function secCheckText(openid, text) {
@@ -98,6 +98,26 @@ exports.main = async (event) => {
     createdAt: Date.now()
   }
   const add = await db.collection(COL.reviews).add({ data: review })
+
+  // 管理员收件箱：落一条「待审核评价」通知。
+  // 与预约侧同源 —— 订阅额度耗尽 / 短信未配都不影响它，保证「不丢评价」。
+  // ⚠️ 微信侧暂无「评价待审核」订阅模板（现有 adminReview 字段是「门店名称/计划就餐时间/用餐人数」
+  //    的预约语义，不可复用），故当前只走收件箱通道；日后申请到模板再补订阅推送。
+  //    失败静默（pushInbox 内部已兜），绝不阻断顾客提交。
+  // ⚠️ 摘要截 40 字：列表条目的副行放不下整段，完整内容在详情页 / 评价管理页看。
+  await pushInbox(db, {
+    type: 'reviewDish',
+    reviewId: add._id,
+    productId,
+    productName: p.name || '',
+    projectId: p.projectId || '',
+    projectName: (proj && proj.data && proj.data.name) || '',
+    customerName: nick,
+    rating: r,
+    text: String(text || '').trim().slice(0, 40),
+    imageCount: review.images.length
+  })
+
   // 新评价待人工审核，不立即公开、不计入对外评分
   return ok({ id: add._id, pending: true, message: '已提交，审核通过后展示' })
 }

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>顾客端预约流程改版 · 原型 (场次横向小卡 + 表单内嵌)</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#0A0A0A; --ink-2:#6B6B6B; --ink-3:#9A9A9A;
+    --line:#E7E7E7; --fill:#F5F5F5; --fill-2:#FAFAFA; --brand:#7A5230;
+    --radius:14px; --radius-sm:10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:"PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    background:#EDEDED;color:var(--ink);font-size:14px;line-height:1.5;}
+  .wrap{max-width:560px;margin:0 auto;padding:28px 20px 60px;}
+  h1{font-size:19px;font-weight:600;margin:0 0 4px;}
+  .sub{color:var(--ink-3);font-size:13px;margin-bottom:18px;}
+  .phone{width:390px;height:780px;background:var(--bg);border:1px solid var(--line);
+    border-radius:26px;overflow:hidden;position:relative;display:flex;flex-direction:column;margin:0 auto;}
+  .screen{flex:1;overflow-y:auto;padding:14px 14px 28px;}
+  .screen::-webkit-scrollbar{width:0;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px;}
+  .topbar .back{color:var(--ink-3);font-size:18px;width:24px;}
+  .topbar .t{font-size:16px;font-weight:600;}
+  .topbar .share{color:var(--ink-3);font-size:16px;width:24px;text-align:right;}
+  .pname{font-size:18px;font-weight:600;margin-bottom:12px;}
+
+  /* 日期条（保持现状，横向点选） */
+  .datestrip-wrap{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .dnav{flex:none;width:32px;height:32px;line-height:32px;text-align:center;border-radius:50%;
+    border:1px solid var(--line);background:#fff;color:var(--ink-2);font-size:18px;cursor:pointer;user-select:none;}
+  .dnav.disabled{opacity:.25;pointer-events:none;}
+  .datestrip{display:flex;gap:8px;overflow-x:auto;flex:1;padding:2px 0;}
+  .datestrip::-webkit-scrollbar{height:0;}
+  .dchip{flex:none;width:52px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:7px 0 5px;text-align:center;cursor:pointer;}
+  .dchip .wk{font-size:10px;color:var(--ink-3);}
+  .dchip .dd{font-size:15px;font-weight:600;margin-top:3px;}
+  .dchip.off{background:var(--fill);color:var(--ink-3);}
+  .dchip.off .wk,.dchip.off .dd{color:var(--ink-3);}
+  .dchip.open{border-color:var(--ink);color:var(--ink);}
+  .dchip.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .dchip.on .wk,.dchip.on .dd{color:#fff;}
+  .rangelabel{font-size:11px;color:var(--ink-3);text-align:center;margin:4px 0 10px;}
+  .biz{font-size:12px;color:var(--ink-2);margin:0 2px 10px;}
+
+  /* ===== 场次：自适应 4 列网格，超过 4 个自动换行（本次改版核心） ===== */
+  .secttl{font-size:12px;color:var(--ink-3);margin:4px 2px 8px;}
+  .sessstrip{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 4px;}
+  .schip{flex:0 0 calc((100% - 24px)/4);background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:9px 0 8px;text-align:center;cursor:pointer;}
+  .schip .st{font-size:14px;font-weight:600;line-height:1.1;}
+  .schip .en{font-size:10px;color:var(--ink-3);margin-top:3px;}
+  .schip .stt{font-size:9px;color:var(--ink-3);margin-top:5px;border-top:1px solid var(--line);padding-top:4px;}
+  .schip.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .schip.on .en,.schip.on .stt{color:rgba(255,255,255,.7);}
+  .schip.on .stt{border-color:rgba(255,255,255,.25);}
+  .schip.dis{background:var(--fill);color:var(--ink-3);pointer-events:none;}
+  .schip.dis .st,.schip.dis .en,.schip.dis .stt{color:var(--ink-3);}
+
+  /* ===== 确认表单：原 confirm 页内容，内嵌页面底部 ===== */
+  .form{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;display:none;}
+  .form.show{display:block;}
+  .form .fttl{font-size:13px;font-weight:600;margin-bottom:10px;}
+  .scard{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;}
+  .scard .nm{font-weight:600;font-size:15px;}
+  .scard .ln{font-size:12px;color:var(--ink-3);margin-top:6px;}
+  .field{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;}
+  .field .label{font-size:12px;color:var(--ink-2);margin-bottom:8px;}
+  .field .label .req{color:var(--brand);}
+  .field input,.field textarea{width:100%;border:none;outline:none;font-size:14px;font-family:inherit;background:transparent;}
+  .field textarea{height:54px;resize:none;}
+  .phone-row{display:flex;align-items:center;gap:10px;}
+  .phone-row input{flex:1;}
+  .get-phone{flex:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;
+    font-size:12px;background:#fff;color:var(--ink);cursor:pointer;}
+  .stepper{display:flex;align-items:center;gap:14px;}
+  .stepper button{flex:none;width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:18px;cursor:pointer;}
+  .stepper .v{font-size:16px;font-weight:600;min-width:22px;text-align:center;}
+  .cap-note{font-size:11px;color:var(--ink-3);margin:-4px 0 10px;line-height:1.5;}
+  .submit{width:100%;background:var(--ink);color:#fff;border:none;border-radius:var(--radius);
+    padding:14px 0;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;}
+  .tip{font-size:11px;color:var(--ink-3);margin:12px 2px 0;line-height:1.6;}
+
+  /* 成功覆盖层（沿用 confirm 的 success-mask，提交逻辑不变 → 仍跳结果页/此层兜底） */
+  .mask{position:absolute;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:50;}
+  .mask.show{display:flex;}
+  .sheet{background:#fff;width:100%;padding:24px 20px 28px;border-radius:20px 20px 0 0;}
+  .sheet .ok{width:46px;height:46px;border-radius:50%;background:var(--ink);margin:0 auto 12px;}
+  .sheet .ot{text-align:center;font-size:17px;font-weight:600;}
+  .sheet .os{text-align:center;font-size:12px;color:var(--ink-3);margin-top:6px;}
+  .sheet .rows{margin:16px 0 18px;border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;}
+  .sheet .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;}
+  .sheet .row .k{color:var(--ink-3);}
+  .sheet .btn2{width:100%;background:var(--ink);color:#fff;border:none;border-radius:var(--radius);padding:13px 0;font-weight:600;cursor:pointer;margin-bottom:8px;}
+  .sheet .btn2.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  .hint{font-size:11px;color:var(--ink-3);text-align:center;margin:14px 0;line-height:1.6;}
+  .legend{font-size:11px;color:var(--ink-3);margin:18px 0 0;line-height:1.7;}
+  .legend b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>顾客端预约流程改版 · 可交互原型</h1>
+  <div class="sub">需求：去掉独立「确认预约」页。场次改为<b>横向小卡片</b>（像日期那样点选），选中后<b>确认表单直接内嵌在页面底部</b>，填完直接提交。其余逻辑（createReservation / 订阅授权 / 结果页）不变。点击日期、场次、人数、提交试试。</div>
+
+  <div class="phone">
+    <div class="screen">
+      <div class="topbar">
+        <div class="back">‹</div>
+        <div class="t">选择日期与场次</div>
+        <div class="share">↗</div>
+      </div>
+      <div class="pname">法兰绒深烘咖啡</div>
+
+      <!-- 日期条（保持现状） -->
+      <div class="datestrip-wrap">
+        <div class="dnav" id="dprev">‹</div>
+        <div class="datestrip" id="dateStrip"></div>
+        <div class="dnav" id="dnext">›</div>
+      </div>
+      <div class="rangelabel">10/01 – 10/14</div>
+      <div class="biz" id="biz">今日营业 10:00 – 21:30</div>
+
+      <!-- 场次：横向小卡 -->
+      <div class="secttl">选择场次（点击选中）</div>
+      <div class="sessstrip" id="sessStrip"></div>
+
+      <!-- 确认表单（内嵌底部，选中场次后出现） -->
+      <div class="form" id="form">
+        <div class="fttl">填写预约信息</div>
+        <div class="scard" id="scard">
+          <div class="nm" id="fProj">法兰绒深烘咖啡</div>
+          <div class="ln" id="fWhen">2026-10-03 · 14:00 – 15:30</div>
+          <div class="ln" id="fSeat">可约剩 4 / 6</div>
+        </div>
+
+        <div class="field">
+          <div class="label">称呼<span class="req">（必填）</span></div>
+          <input id="fName" placeholder="如何称呼您（可一键填入微信昵称）" />
+        </div>
+
+        <div class="field">
+          <div class="label">手机号<span class="req">（必填）</span></div>
+          <div class="phone-row">
+            <input id="fPhone" placeholder="仅用于本次预约的通知" />
+            <div class="get-phone">获取手机号</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">微信号（选填）</div>
+          <input placeholder="微信号，方便联系" />
+        </div>
+
+        <div class="field" style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="label" style="margin:0">性别（选填）</div>
+          <input style="width:auto;text-align:right" placeholder="如 女" />
+        </div>
+
+        <div class="field">
+          <div class="label">年龄（选填）</div>
+          <input type="number" placeholder="如 28" />
+        </div>
+
+        <div class="field">
+          <div class="label">人数</div>
+          <div class="stepper">
+            <button id="minus">−</button>
+            <div class="v" id="ps">1</div>
+            <button id="plus">+</button>
+          </div>
+          <div class="cap-note" id="psNote">单次最多 6 人</div>
+        </div>
+
+        <div class="field">
+          <div class="label">备注（选填）</div>
+          <textarea placeholder="如有特殊需求请告知店家"></textarea>
+        </div>
+
+        <button class="submit" id="submit">提交预约</button>
+        <div class="tip">点「提交预约」后，微信会询问是否接收本单通知；未开启的项将改用短信通知您（需店家已开启短信）。</div>
+      </div>
+    </div>
+
+    <!-- 成功覆盖层 -->
+    <div class="mask" id="mask">
+      <div class="sheet">
+        <div class="ok"></div>
+        <div class="ot" id="okTitle">已为您留座</div>
+        <div class="os" id="okSub">我们已收到您的预约，期待与您相见</div>
+        <div class="rows" id="okRows"></div>
+        <button class="btn2" id="goMine">查看我的预约</button>
+        <button class="btn2 ghost" id="goHome">返回首页</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>与现状的差异：</b><br>
+    ① 场次从「竖向大卡（点击→跳 confirm 页）」改为「<b>横向小卡片</b>」，点选即选中（不再跳转）。<br>
+    ② 原 confirm 页整套表单<b>下移内嵌</b>到本页底部，选中场次后出现。<br>
+    ③ 提交后逻辑不变：仍走 createReservation → 微信订阅授权 → 跳结果页（此层为兜底展示）。<br>
+    <b>不变：</b>字段显隐（项目配置 fields）、座位开关、人数上限夹取、黑名单/失效阻断、订阅裁剪、结果页。
+  </div>
+</div>
+
+<script>
+  // ---- 模拟数据 ----
+  const DATES = ['10/01','10/02','10/03','10/04','10/05'];
+  const SESS = {
+    '10/03': [
+      { st:'10:00', en:'11:30', rem:3, cap:4, status:'paused' },
+      { st:'14:00', en:'15:30', rem:4, cap:6, status:'ok' },
+      { st:'16:00', en:'17:30', rem:0, cap:4, status:'full' },
+      { st:'18:00', en:'19:30', rem:2, cap:4, status:'ok' },
+      { st:'20:00', en:'21:30', rem:1, cap:3, status:'expired' },
+    ],
+    '10/04': [
+      { st:'14:00', en:'15:30', rem:2, cap:6, status:'ok' },
+      { st:'18:00', en:'19:30', rem:5, cap:6, status:'ok' },
+    ],
+  };
+  const DEFAULTS = [
+    { st:'14:00', en:'15:30', rem:4, cap:6, status:'ok' },
+    { st:'18:00', en:'19:30', rem:3, cap:6, status:'ok' },
+  ];
+  const MAXP = 6;
+  let selDate = '10/03';
+  let selSess = null;
+  let party = 1;
+
+  const $ = id => document.getElementById(id);
+
+  function statusLabel(s){
+    if(s.status==='full') return '满员';
+    if(s.status==='expired') return '已过期';
+    if(s.status==='paused') return '已暂停';
+    return '剩 '+s.rem;
+  }
+
+  function renderDates(){
+    const strip = $('dateStrip'); strip.innerHTML='';
+    DATES.forEach(d=>{
+      const c=document.createElement('div');
+      const isSel = d===selDate;
+      c.className='dchip open'+(isSel?' on':'');
+      c.innerHTML='<div class="wk">周'+['日','一','二','三','四','五','六'][new Date(2026,9,parseInt(d.split('/')[1])).getDay()]+'</div><div class="dd">'+d.split('/')[1]+'</div>';
+      c.onclick=()=>{ selDate=d; selSess=null; party=1; renderDates(); renderSessions(); hideForm(); };
+      strip.appendChild(c);
+    });
+  }
+
+  function renderSessions(){
+    const strip=$('sessStrip'); strip.innerHTML='';
+    const list = SESS[selDate] || DEFAULTS;
+    list.forEach((s,i)=>{
+      const c=document.createElement('div');
+      const dis = (s.status!=='ok');
+      const isSel = selSess===i;
+      c.className='schip'+(isSel?' on':'')+(dis?' dis':'');
+      c.innerHTML='<div class="st">'+s.st+'</div><div class="en">'+s.en+'</div><div class="stt">'+statusLabel(s)+'</div>';
+      if(!dis){
+        c.onclick=()=>{ selSess=i; renderSessions(); showForm(s); };
+      }
+      strip.appendChild(c);
+    });
+  }
+
+  function showForm(s){
+    const f=$('form'); f.classList.add('show');
+    $('fWhen').textContent='2026-'+selDate.replace('/','-')+' · '+s.st+' – '+s.en;
+    $('fSeat').textContent='可约剩 '+s.rem+' / '+s.cap;
+    party=1; $('ps').textContent=party; $('psNote').textContent='单次最多 '+MAXP+' 人';
+    f.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function hideForm(){ $('form').classList.remove('show'); }
+
+  $('minus').onclick=()=>{ if(party>1){party--; $('ps').textContent=party;} };
+  $('plus').onclick=()=>{
+    const s=(SESS[selDate]||DEFAULTS)[selSess];
+    const cap=Math.min(MAXP, s?s.rem:MAXP);
+    if(party<cap){party++; $('ps').textContent=party;}
+    else wxToast('单次最多 '+MAXP+' 人，更多请致电 19292757851');
+  };
+
+  $('submit').onclick=()=>{
+    if(!$('fName').value.trim()){ wxToast('请填写称呼'); return; }
+    if(!$('fPhone').value.trim()){ wxToast('手机号是必填项'); return; }
+    // 模拟：提交 → 结果页（此处用覆盖层表达「提交成功」）
+    const s=(SESS[selDate]||DEFAULTS)[selSess];
+    $('okRows').innerHTML=
+      '<div class="row"><span class="k">项目</span><span>法兰绒深烘咖啡</span></div>'+
+      '<div class="row"><span class="k">日期</span><span>2026-'+selDate.replace('/','-')+'</span></div>'+
+      '<div class="row"><span class="k">场次</span><span>'+s.st+' – '+s.en+'</span></div>'+
+      '<div class="row"><span class="k">人数</span><span>'+party+' 人</span></div>';
+    $('mask').classList.add('show');
+  };
+  $('goMine').onclick=()=>{ $('mask').classList.remove('show'); wxToast('→ 我的预约（tabBar）'); };
+  $('goHome').onclick=()=>{ $('mask').classList.remove('show'); wxToast('→ 首页'); };
+
+  function wxToast(t){ const el=document.createElement('div'); el.textContent=t;
+    el.style.cssText='position:absolute;left:50%;top:42%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;font-size:12px;padding:8px 14px;border-radius:8px;z-index:99;';
+    document.querySelector('.phone').appendChild(el); setTimeout(()=>el.remove(),2000); }
+
+  renderDates(); renderSessions();
+</script>
+</body>
+</html>

@@ -159,6 +159,9 @@ exports.main = async () => {
   const products = rawProducts.map(p => ({
     _id: p._id, name: p.name, price: p.price, desc: p.desc,
     image: p.image, categoryId: p.categoryId || '',
+    // ⚠️ ratio 必须显式带出：这是**字段投影**（不是 {...p} 展开），漏了就丢。
+    // 前端首页瀑布流用它估算卡片高度、对齐两列底边；0/缺失时前端回退默认 1.30。
+    ratio: Number(p.ratio) > 0 ? Number(p.ratio) : 0,
     imageUrl: thumb(productUrlMap[p.image] || '', 'card'),
     reviewCount: cnt[p._id] || 0
   }))

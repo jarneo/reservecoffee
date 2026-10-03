@@ -1,0 +1,64 @@
+<view class="page">
+  <!-- 上方：留座信息。视觉沿用 confirm.wxss 的 .success-* 系列，
+       但从 fixed 遮罩改为文档流内块 → 无 z-index 冲突，也不需要 page-loading 避让。 -->
+  <view class="succ">
+    <view class="succ-icon"></view>
+    <view class="succ-title">{{needReview ? '提交成功，待审核' : '已为您留座'}}</view>
+    <view class="succ-sub">{{needReview ? '店家审核通过后将发送预约成功通知' : '我们已收到您的预约，期待与您相见'}}</view>
+
+    <view class="succ-detail">
+      <view class="sd-row"><text class="sd-k">项目</text><text class="sd-v">{{projectName}}</text></view>
+      <view class="sd-row"><text class="sd-k">日期</text><text class="sd-v">{{date}}</text></view>
+      <view class="sd-row"><text class="sd-k">场次</text><text class="sd-v">{{start}} – {{end}}</text></view>
+      <view class="sd-row"><text class="sd-k">人数</text><text class="sd-v">{{partySize}} 人</text></view>
+      <view wx:if="{{phone}}" class="sd-row"><text class="sd-k">联系电话</text><text class="sd-v">{{phone}}</text></view>
+    </view>
+  </view>
+
+  <!-- 下方：完整店铺菜单（分类 tabs + 真·瀑布流双列，与首页同一实现） -->
+  <view class="sec-title" style="margin-top:36rpx">店铺菜单</view>
+  <view class="menu-cats">
+    <category-tabs categories="{{categories}}" activeId="{{activeCat}}" bindchange="onCatChange" />
+  </view>
+
+  <view wx:if="{{menuLoading}}" class="note">菜单加载中…</view>
+  <view wx:if="{{menuFailed}}" class="failbar">
+    <text>菜单加载失败</text>
+    <text class="retry" bindtap="retryMenu">重试</text>
+  </view>
+  <view wx:if="{{!menuLoading && !menuFailed && products.length===0}}" class="note">暂无在售菜品</view>
+
+  <view class="menu-cols">
+    <view class="menu-col">
+      <view wx:for="{{colA}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
+        <view class="menu-img-wrap">
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <view wx:else="" class="menu-img ph">暂无图</view>
+        </view>
+        <view class="menu-info">
+          <view class="menu-name">{{item.name}}</view>
+          <view class="menu-price">¥{{item.price}}</view>
+        </view>
+      </view>
+    </view>
+    <view class="menu-col">
+      <view wx:for="{{colB}}" wx:key="_id" class="menu-card tap" bindtap="goProduct" data-id="{{item._id}}">
+        <view class="menu-img-wrap">
+          <image wx:if="{{item.imageUrl}}" class="menu-img" src="{{item.imageUrl}}" mode="widthFix"/>
+          <view wx:else="" class="menu-img ph">暂无图</view>
+        </view>
+        <view class="menu-info">
+          <view class="menu-name">{{item.name}}</view>
+          <view class="menu-price">¥{{item.price}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="acts">
+    <button class="btn block" bindtap="goHome">返回首页</button>
+    <button class="btn ghost block" bindtap="goMine">查看我的预约</button>
+  </view>
+</view>
+
+<path-bar />

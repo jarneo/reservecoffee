@@ -13,7 +13,9 @@ Page({
     peopleShow: false, peopleTitle: '', peopleLoading: false, list: [], detail: null,
     peopleExpired: false
   },
-  onLoad() {
+  // 入参（由预约页「进入预约管理」带入）：projectId=定位项目，date=预选该条预约对应日期
+  onLoad(q) {
+    this.q = q || {}
     this.guard(['owner', 'manager']).then(role => {
       if (!role) return
       this.setData({ role, canChangeCap: role === 'owner' || role === 'manager' })
@@ -24,21 +26,30 @@ Page({
     call('listProjects').then(d => {
       const list = d.list || []
       this.setData({ projects: list })
-      if (list.length) this.select(list[0]._id)
+      if (!list.length) return
+      // 优先选中入参指定的项目，否则默认第一个
+      const want = this.q.projectId
+      const hit = want && list.find(x => x._id === want)
+      this._autoDate = this.q.date || ''   // 仅首次自动选中时应用，之后手动切项目不再强制
+      this.select(hit ? want : list[0]._id)
     })
   },
   onPick(e) { this.select(this.data.projects[e.detail.value]._id) },
   async select(id) {
     const sel = (this.data.projects || []).find(x => x._id === id)
-    this.setData({ projectId: id, projectName: sel ? sel.name : '', dateAnchor: '', selDate: '', sessions: [] })
+    // 目标日期：仅首次自动选中时取入参，取一次即清空（之后用户手动浏览不再强制定位）
+    const wantDate = this._autoDate || ''
+    this._autoDate = ''
+    this.setData({ projectId: id, projectName: sel ? sel.name : '', dateAnchor: wantDate || '', selDate: '', sessions: [] })
     const d = await call('getSchedule', { projectId: id })
     const scheduleDates = (d.schedules || []).map(s => s.date).sort()
     this.setData({ scheduleDates }, () => {
       this.buildDateChips()
-      // 自动选中今天及之后第一个有场次的日期
-      const todayStr = ymd(new Date())
-      const firstHas = scheduleDates.find(x => x >= todayStr)
-      if (firstHas) this.loadDate(firstHas)
+      // 预选入参日期（该项目当日确有场次时），否则回落到「今天及之后第一个有场次的日期」
+      const target = (wantDate && scheduleDates.indexOf(wantDate) >= 0)
+        ? wantDate
+        : scheduleDates.find(x => x >= ymd(new Date()))
+      if (target) this.loadDate(target)
     })
   },
   onDate(e) {
@@ -50,7 +61,24 @@ Page({
     this.setData({ selDate: date })
     const d = await call('getSchedule', { projectId: this.data.projectId, date })
     const sch = (d.schedules || []).find(x => x.date === date)
-    this.setData({ sessions: (sch ? sch.sessions : []).map(x => ({ ...x, remaining: x.capacity - x.booked })) }, () => this.buildDateChips())
+    const base = (sch ? sch.sessions : []).map(x => ({ ...x, remaining: x.capacity - x.booked }))
+    // 当日全部场次的预约人一次性加载，直接挂在对应场次下（无需再点「查看本场预约人」）
+    const g = await call('listDateReservations', { projectId: this.data.projectId, date }).catch(() => null)
+    const groups = (g && g.groups) || {}
+    const withPeople = base.map(s => ({
+      ...s,
+      people: groups[s.id] || [],
+      cancelable: !this.isSessionPast(date, s.end)
+    }))
+    this.setData({ sessions: withPeople }, () => this.buildDateChips())
+  },
+  // 在所有场次的 people 里按 _id 找预约人（列表已内联到各场次下，不再有集中的 list）
+  findPerson(id) {
+    for (const s of (this.data.sessions || [])) {
+      const p = (s.people || []).find(x => x._id === id)
+      if (p) return p
+    }
+    return null
   },
   // 横向日期条：以 dateAnchor 为起点，14 天窗口，只显示今天及之后（参考预约项目页）
   buildDateChips() {
@@ -97,22 +125,6 @@ Page({
     this.setData({ dateAnchor: na, selDate: '', sessions: [] }, () => this.buildDateChips())
   },
   onOp(e) { this.handleOp(e.detail.action, e.detail.id) },
-  // 点击「查看本场预约人」→ 直接弹出本场预约人弹层（不再跳转页面）
-  async onShowPeople(e) {
-    const id = e.currentTarget.dataset.id
-    const sess = (this.data.sessions || []).find(x => x.id === id)
-    const title = sess ? `${sess.start}–${sess.end}` : ''
-    // 场次是否已过（按结束时间判断）→ 过期场次不可取消
-    const expired = sess ? this.isSessionPast(this.data.selDate, sess.end) : true
-    this.setData({ peopleShow: true, peopleTitle: title, list: [], detail: null, peopleExpired: expired, peopleLoading: true })
-    try {
-      const d = await call('listSessionReservations', { projectId: this.data.projectId, date: this.data.selDate, sessionId: id })
-      this.setData({ list: d.list || [], peopleLoading: false })
-    } catch (err) {
-      this.setData({ peopleLoading: false })
-      wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
-    }
-  },
   // 场次是否已成过去（按场次结束时间判断）
   isSessionPast(dateStr, endStr) {
     const [y, m, d] = String(dateStr || '').split('-').map(Number)
@@ -121,10 +133,11 @@ Page({
     const end = new Date(y, m - 1, d, hh || 0, mm || 0)
     return Date.now() > end.getTime()
   },
-  // 管理员代取消本场某条预约（释放名额 + 通知双方）；仅未过期场次可取消
+  // 管理员代取消某条预约（释放名额 + 通知双方）；仅未过期场次可取消
+  // 事件来自 reservee 组件：e.detail = { id }
   onCancel(e) {
-    const id = e.currentTarget.dataset.id
-    const item = (this.data.list || []).find(x => x._id === id)
+    const id = (e.detail && e.detail.id) || e.currentTarget.dataset.id
+    const item = this.findPerson(id)
     wx.showModal({
       title: '取消预约',
       content: `确认取消「${item ? item.name : '该顾客'}」本场预约？将释放名额并通知双方。`,
@@ -134,19 +147,17 @@ Page({
         wx.showLoading({ title: '取消中', mask: true })
         try {
           await call('cancelReservation', { reservationId: id })
-          const list = this.data.list.filter(x => x._id !== id)
-          const detail = (this.data.detail && this.data.detail._id === id) ? null : this.data.detail
-          this.setData({ list, detail })
-          // 刷新底层场次已约 / 剩余名额（卡片上的「X 人」会随之更新）
-          this.loadDate(this.data.selDate)
-          wx.hideLoading(); wx.showToast({ title: '已取消', icon: 'success' })
+          wx.hideLoading()
+          wx.showToast({ title: '已取消', icon: 'success' })
+          // 刷新整日：场次已约 / 剩余名额 / 各场预约人都会更新
+          await this.loadDate(this.data.selDate)
         } catch (err) {
-          wx.hideLoading(); wx.showToast({ title: (err && err.message) || '取消失败', icon: 'none' })
+          wx.hideLoading()
+          wx.showToast({ title: (err && err.message) || '取消失败', icon: 'none' })
         }
       }
     })
   },
-  closePeople() { this.setData({ peopleShow: false, detail: null }) },
   // 预约人「查看顾客」→ 单用户分析（结合预约管理入口）
   goCustomer(e) {
     const openid = e.currentTarget.dataset.openid
@@ -165,12 +176,14 @@ Page({
     if (phone) wx.makePhoneCall({ phoneNumber: phone })
   },
   dial() { if (this.data.detail && this.data.detail.phone) wx.makePhoneCall({ phoneNumber: this.data.detail.phone }) },
-  // 审核预约：通过 / 不通过（owner/manager 均可，与弹层权限一致）
+  // 审核预约：通过 / 不通过（owner/manager 均可）
+  // 事件来自 reservee 组件：e.detail = { id, decision }
   onReview(e) {
-    const id = e.currentTarget.dataset.id
-    const decision = e.currentTarget.dataset.decision
+    const d = e.detail || {}
+    const id = d.id || e.currentTarget.dataset.id
+    const decision = d.decision || e.currentTarget.dataset.decision
     if (!id || !['approve', 'reject'].includes(decision)) return
-    const item = (this.data.list || []).find(x => x._id === id)
+    const item = this.findPerson(id)
     wx.showModal({
       title: decision === 'approve' ? '通过审核' : '拒绝预约',
       content: `确认${decision === 'approve' ? '通过' : '拒绝'}「${item ? item.name : '该顾客'}」的预约？`,
@@ -182,19 +195,9 @@ Page({
         call('reviewReservation', { reservationId: id, decision })
           .then(() => {
             wx.hideLoading()
-            const review = decision === 'approve' ? 'approved' : 'rejected'
-            const status = decision === 'approve' ? 'confirmed' : 'cancelled'
-            // 本地更新列表：拒绝的会被查询过滤掉，直接移除；通过的更新状态
-            const list = this.data.list
-              .filter(x => x._id !== id || decision === 'approve')
-              .map(x => x._id === id ? { ...x, review, status } : x)
-            const detail = (this.data.detail && this.data.detail._id === id)
-              ? (decision === 'approve' ? { ...this.data.detail, review, status } : null)
-              : this.data.detail
-            this.setData({ list, detail })
-            // 刷新底层场次已约名额（拒绝会释放名额）
-            this.loadDate(this.data.selDate)
             wx.showToast({ title: decision === 'approve' ? '已通过' : '已拒绝', icon: 'success' })
+            // 刷新整日：拒绝会释放名额，通过会更新状态与已约数
+            this.loadDate(this.data.selDate)
           })
           .catch(err => {
             wx.hideLoading()
