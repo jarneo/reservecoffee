@@ -454,8 +454,17 @@ async function notifyAdmins(db, { projectId, templateId, data, page }) {
     }
     const r = await sendSubscribe({ openid: oid, templateId, data, page: page || 'pages/admin/hub/hub' })
     r.role = 'admin'
-    // 额度耗尽（43101）→ 落库标记失效，供管理台高亮提示续订
-    if (r.errCode === 43101) await markAdminSubInvalid(db, a._id, subKey)
+    if (r.errCode === 43101) {
+      // 额度耗尽（43101）→ 落库标记失效，供管理台高亮提示续订（微信侧未真正发出，不扣减额度）
+      await markAdminSubInvalid(db, a._id, subKey)
+    } else if (r.ok === true) {
+      // 真正发出成功 → 消耗一次该管理员「推送额度」（pushQuota，按 openid 独立计数；点击续订 +1 / 发送 -1）
+      if (typeof a.pushQuota === 'number' && a.pushQuota > 0) {
+        await db.collection(COL.admins).doc(a._id).update({
+          data: { pushQuota: _.inc(-1) }
+        }).catch(e => console.warn('[notifyAdmins] 扣减 pushQuota 失败（忽略）:', a._id, e && (e.message || e)))
+      }
+    }
     results.push(r)
   }
   return results

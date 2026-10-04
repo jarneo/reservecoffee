@@ -37,14 +37,18 @@ exports.main = async (event) => {
   }
   if (!Object.keys(patch).length) return fail('未提供任何订阅状态')
 
+  // 本次点击至少授权通过 1 个模板 → 管理员「推送额度」+1（用户自维护计数器：点击续订 +1 / 真正发出 -1，可超过 3）
+  const granted = ADMIN_SUB_KEYS.some(k => incoming[k] === true)
+  const newQuota = (typeof me.pushQuota === 'number' ? me.pushQuota : 0) + (granted ? 1 : 0)
+
   // 读回合并后的完整状态返回，供前端即时刷新卡片
   const merged = normalizeAdminSubs(Object.assign({}, me.subscriptions, incoming))
 
-  const data = Object.assign({}, patch, { updatedAt: Date.now() })
+  const data = Object.assign({}, patch, { updatedAt: Date.now(), pushQuota: newQuota })
   // 本次至少有一个模板被授权 → 视为「已续订」，刷新时间戳
   if (ADMIN_SUB_KEYS.some(k => merged[k])) data.subscribedAt = Date.now()
 
   await db.collection(COL.admins).doc(me._id).update({ data })
 
-  return ok({ subscriptions: merged, subscribedAt: data.subscribedAt || me.subscribedAt || 0 })
+  return ok({ subscriptions: merged, subscribedAt: data.subscribedAt || me.subscribedAt || 0, pushQuota: newQuota })
 }

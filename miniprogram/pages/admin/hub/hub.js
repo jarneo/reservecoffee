@@ -93,13 +93,14 @@ Page({
       const myOpenid = (getApp().globalData || {}).openid || ''
       const me = myOpenid ? list.find(a => a.openid === myOpenid) : null
       if (!me || !me.subscriptions) return
-      this.applySubs(me.subscriptions, me.subscribedAt)
+      this.applySubs(me.subscriptions, me.subscribedAt, me.pushQuota)
     }).catch(() => {})
   },
-  applySubs(subs, subscribedAt) {
+  applySubs(subs, subscribedAt, pushQuota) {
     const keys = ADMIN_SUBS.map(s => s.key)
     const invalid = keys.some(k => subs[k] === false)
-    const remain = subs ? keys.filter(k => subs[k] !== false).length : null
+    // 「剩余可用推送」改为自维护额度计数器：点击续订 +1 / 真正发出 -1，可超过 3、归零后重新累加
+    const remain = (typeof pushQuota === 'number') ? pushQuota : 0
     this.setData({
       mySubs: subs,
       mySubInvalid: invalid,
@@ -121,7 +122,7 @@ Page({
       const patch = toSubsPatch(r)
       // 落库失败不阻断提示：授权已在微信侧生效，只是本地状态没记上
       call('saveAdminSubs', { subs: patch })
-        .then(d => { if (d && d.subscriptions) this.applySubs(d.subscriptions, d.subscribedAt) })
+        .then(d => { if (d && d.subscriptions) this.applySubs(d.subscriptions, d.subscribedAt, d.pushQuota) })
         .catch(() => {})
       if (!badN) {
         wx.showToast({ title: `已续订 ${okN}/${r.total} 个管理推送`, icon: 'none' })
