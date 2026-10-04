@@ -3,10 +3,20 @@ const guard = require('../../../components/adminGuard/adminGuard.js')
 
 Page({
   behaviors: [guard],
-  data: { list: [] },
-  onLoad() { this.guard(['owner', 'manager']).then(r => { if (r) this.load() }) },
+  data: { list: [], filterName: '', selRid: '' },
+  onLoad(q) {
+    this.q = q || {}
+    this.guard(['owner', 'manager']).then(r => { if (r) this.load() })
+  },
   load() {
-    call('listReviews').then(d => this.setData({ list: d.list || [] })).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
+    call('listReviews').then(d => {
+      const all = (d && d.list) || []
+      const pid = this.q.projectId
+      // 来自订阅消息「待审核提醒」跳转时带 projectId → 只呈现该项目待审核；其余入口（收件箱等）无参 → 显示全部
+      const list = pid ? all.filter(x => x.projectId === pid) : all
+      const filterName = pid ? ((all.find(x => x.projectId === pid) || {}).projectName || '') : ''
+      this.setData({ list, filterName, selRid: this.q.rid || '' })
+    }).catch(e => wx.showToast({ title: e.message, icon: 'none' }))
   },
   approve(e) { this.act(e.currentTarget.dataset.id, 'approve') },
   reject(e) { this.act(e.currentTarget.dataset.id, 'reject') },

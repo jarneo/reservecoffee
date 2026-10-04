@@ -239,7 +239,7 @@ exports.main = async (event) => {
               time2: { value: `${date} ${session.start}` },
               number3: { value: pSize }
             },
-            page: 'pages/admin/review/review'
+            page: 'pages/admin/review/review?projectId=' + projectId + '&date=' + date + '&rid=' + add._id
           })
         }
       } else {
@@ -253,7 +253,7 @@ exports.main = async (event) => {
               thing12: { value: name.trim() },
               thing3: { value: dt }
             },
-            page: 'pages/admin/hub/hub'
+            page: 'pages/admin/view/view?projectId=' + projectId + '&date=' + date
           }).catch(e => { console.warn('[createReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
         }
       }

@@ -82,7 +82,7 @@ exports.main = async (event) => {
         time4: { value: `${r.date} ${r.sessionStart}` },
         phone_number2: { value: r.phone || '' }
       },
-      page: 'pages/admin/hub/hub'
+      page: 'pages/admin/view/view?projectId=' + r.projectId + '&date=' + r.date
     })
 
     // C 线 · 顾客取消短信（延迟发 + 发送前复校；微信已送达则降级不发）
