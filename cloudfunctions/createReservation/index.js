@@ -48,6 +48,31 @@ function sessionExpired(dateStr, startStr, cutoff) {
   return Date.now() >= deadline.getTime()
 }
 
+// ===== thing 字段安全填充（订阅消息）=====
+// 微信官方规范：thing.DATA 上限 **20 个字符**，可汉字/数字/字母/符号组合（汉字按 1 字符计；
+//   佐证：本文件 thing3 现填「10月24日 14:00-15:00」= 18 字符，长期正常下发）。
+// ⚠️ 超限后果很隐蔽：微信返回 47003「argument invalid」，而本项目是**静默失败**——
+//   只写 notifyLogs 流水，管理员完全无感，等于这条推送凭空消失。
+// ⚠️ 顾客「称呼」是自由填写（saveProfile 上限 30 字），且下方只校验非空、不校验长度，
+//   所以任何把 name 塞进 thing 的地方都必须先过这里。
+const THING_MAX = 20
+
+// 单值截断
+function fitThing(v, max) {
+  const s = String(v == null ? '' : v)
+  const m = typeof max === 'number' ? max : THING_MAX
+  return s.length <= m ? s : s.slice(0, m)
+}
+
+// 「主体 + 后缀」拼接并整体控制在 max 内：**优先保住后缀**（人数），空间不够时截主体。
+//   例：fitThingWith('黎明', ' 2人') → '黎明 2人'
+//       称呼超长（如 19 字）→ 截主体到 16 字 + ' 2人' = 20 字，仍能下发
+function fitThingWith(main, suffix, max) {
+  const m = typeof max === 'number' ? max : THING_MAX
+  const suf = String(suffix == null ? '' : suffix)
+  return fitThing(main, Math.max(0, m - suf.length)) + suf
+}
+
 exports.main = async (event) => {
   const { OPENID } = wxCtx()
   if (!OPENID) return fail('无法识别用户身份')
@@ -243,15 +268,20 @@ exports.main = async (event) => {
           })
         }
       } else {
-        // 免审：项目 · 预订人 · 日期场次（thing3 上限 20 字，仅放日期场次 dt，不拼人数）
+        // 免审：项目 · 预订人(+人数) · 日期场次
+        // 人数拼在 thing12（预订人）：本模板只有 3 个关键词、没有独立的「人数」字段；
+        //   为免重新提交模板审核，采用「姓名 + 人数」裸拼（如「黎明 2人」）。
+        //   微信下发只校验键名与类型/长度、**不校验语义**，因此不会被拦截，也不需要重新审核。
+        // ⚠️ 不要改拼到 thing3：它已是 18 字符（10月24日 14:00-15:00），再加人数必超 20 上限。
+        // ⚠️ 三个字段一律过 fitThing*：超限会 47003 **静默失败**（只落库、管理员完全无感）。
         if (subOn(subCfg, 'adminNew')) {
           adminNotify = await notifyAdmins(db, {
             projectId,
             templateId: TPL.adminNew,
             data: {
-              thing1: { value: p.name },
-              thing12: { value: name.trim() },
-              thing3: { value: dt }
+              thing1: { value: fitThing(p.name) },
+              thing12: { value: fitThingWith(name.trim(), ` ${pSize}人`) },
+              thing3: { value: fitThing(dt) }
             },
             page: 'pages/admin/view/view?projectId=' + projectId + '&date=' + date
           }).catch(e => { console.warn('[createReservation] notifyAdmins failed:', e && e.message); return [{ ok: false, err: e && e.message }] })
