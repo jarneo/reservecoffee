@@ -1,6 +1,7 @@
 // 就绪门行为仿真：用假 Page 实例驱动 boot.js，验证计数池语义
 const path = require('path')
-const boot = require(path.join('D:/WorkBuddy/reservecoffee/miniprogram/utils/boot.js'))
+// ⚠️ 原为硬编码 Windows 路径 D:/WorkBuddy/...（换机即 MODULE_NOT_FOUND），改为相对本文件定位
+const boot = require(path.join(__dirname, '../miniprogram/utils/boot.js'))
 
 let pass = 0, fail = 0
 function ok(cond, msg) { if (cond) { pass++; console.log('  PASS ' + msg) } else { fail++; console.log('  FAIL ' + msg) } }

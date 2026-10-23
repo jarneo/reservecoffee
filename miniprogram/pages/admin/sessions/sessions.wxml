@@ -32,3 +32,7 @@
 </view>
 
 <path-bar />
+
+<!-- 与顾客端同一套全屏加载遮罩（app.json 已全局注册，无需在此声明）。
+     首次进入 / 切换项目 都由 booting 驱动：数据链跑完才淡出，避免中间态空白或闪一下。 -->
+<page-loading show="{{booting}}" />
